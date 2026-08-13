@@ -31,7 +31,7 @@ import {
   useTestimonials,
 } from "@/hooks/useContent";
 import heroImg from "@/assets/hero-corporacao-team.jpg";
-import quemSomosBg from "@/assets/coaches-running.jpg";
+import quemSomosBg from "@/assets/quem-somos-novo.jpg.asset.json";
 import avatarLucas from "@/assets/coach-lucas.jpg";
 import avatarHelo from "@/assets/coach-helo.jpg";
 import avatarDuo from "@/assets/coaches-duo.jpg";
@@ -448,8 +448,8 @@ const Index = () => {
             />
             <div className="relative aspect-[4/5] rounded-[1.75rem] overflow-hidden border border-border/40">
               <img
-                src={siteSettings.images?.homeIntro || quemSomosBg}
-                alt="Equipe Corporação treinando"
+                src={siteSettings.images?.homeIntro || quemSomosBg.url}
+                alt="Equipe Corporação na largada"
                 loading="lazy"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-[6000ms] hover:scale-[1.04]"
               />
