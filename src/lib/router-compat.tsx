@@ -64,7 +64,7 @@ export function useLocation() {
 }
 
 export function useParams<T extends Record<string, string> = Record<string, string>>() {
-  return useTanstackParams({ strict: false }) as T;
+  return useTanstackParams({ strict: false } as never) as T;
 }
 
 export function useSearchParams(): [
