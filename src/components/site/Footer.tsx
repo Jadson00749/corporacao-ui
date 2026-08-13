@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-compat";
 import { Instagram, Mail, MapPin, MessageCircle } from "lucide-react";
 import { useSettings, useWhatsappLink } from "@/contexts/SettingsContext";
 import logo from "@/assets/logo.png";

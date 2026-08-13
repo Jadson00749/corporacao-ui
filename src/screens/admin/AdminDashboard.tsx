@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-compat";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlans, useTrainings, useEvents, useProducts, useGallery, useTestimonials, useFaqs } from "@/hooks/useContent";
 

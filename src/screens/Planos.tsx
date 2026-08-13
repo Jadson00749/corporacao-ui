@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link } from "@/lib/router-compat";
 import { Layout } from "@/components/site/Layout";
 import { SEO } from "@/components/site/SEO";
 import { PageHero } from "@/components/site/PageHero";

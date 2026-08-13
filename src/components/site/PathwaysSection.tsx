@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-compat";
 import { SectionHeader } from "@/components/site/SectionHeader";
 import { useSettings } from "@/contexts/SettingsContext";
 import pathRunning from "@/assets/path-running.jpg";

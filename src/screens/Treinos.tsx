@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "@/lib/router-compat";
 import { CalendarDays, ArrowRight } from "lucide-react";
 import { Layout } from "@/components/site/Layout";
 import { SEO } from "@/components/site/SEO";

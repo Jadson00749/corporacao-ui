@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Users, Target, HeartPulse, Trophy, Calendar, Camera, Clock, MapPin } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-compat";
 
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/site/Layout";

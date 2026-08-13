@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { NavLink, Link, useLocation } from "react-router-dom";
+import { NavLink, Link, useLocation } from "@/lib/router-compat";
 import { Menu, X, User, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettings, useWhatsappLink } from "@/contexts/SettingsContext";

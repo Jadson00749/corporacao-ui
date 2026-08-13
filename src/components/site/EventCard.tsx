@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-compat";
 import { Calendar, MapPin, ArrowRight } from "lucide-react";
 import { RaceEvent, eventStatusLabel } from "@/data/events";
 import { cn } from "@/lib/utils";

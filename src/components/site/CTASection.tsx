@@ -1,5 +1,5 @@
 import { ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-compat";
 import { Button } from "@/components/ui/button";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
 import logoCorporacao from "@/assets/logo-corporacao.png";

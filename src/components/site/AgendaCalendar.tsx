@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar as CalendarIcon, MapPin, Trophy, Dumbbell } from "lucide-react";
 import { ptBR } from "date-fns/locale";
 import { format, isSameDay, isSameMonth, parseISO } from "date-fns";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-compat";
 
 type AgendaItem = {
   id: string;
