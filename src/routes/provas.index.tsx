@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Provas from "@/screens/Provas";
 
-export const Route = createFileRoute("/provas")({
+export const Route = createFileRoute("/provas/")({
   head: () => ({
     meta: [
       { title: "Provas e corridas — Corporação Running" },

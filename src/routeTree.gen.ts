@@ -10,33 +10,373 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AgendaRouteImport } from './routes/agenda'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ContatoRouteImport } from './routes/contato'
+import { Route as FotosRouteImport } from './routes/fotos'
+import { Route as MinhaContaRouteImport } from './routes/minha-conta'
+import { Route as PlanosRouteImport } from './routes/planos'
+import { Route as ProdutosRouteImport } from './routes/produtos'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SobreRouteImport } from './routes/sobre'
+import { Route as TreinosRouteImport } from './routes/treinos'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminEventSignupsRouteImport } from './routes/admin.event-signups'
+import { Route as AdminEventsRouteImport } from './routes/admin.events'
+import { Route as AdminFaqsRouteImport } from './routes/admin.faqs'
+import { Route as AdminGalleryRouteImport } from './routes/admin.gallery'
+import { Route as AdminHighlightsRouteImport } from './routes/admin.highlights'
+import { Route as AdminPartnersRouteImport } from './routes/admin.partners'
+import { Route as AdminPhotoEventsRouteImport } from './routes/admin.photo-events'
+import { Route as AdminPlansRouteImport } from './routes/admin.plans'
+import { Route as AdminProductsRouteImport } from './routes/admin.products'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminTestimonialsRouteImport } from './routes/admin.testimonials'
+import { Route as AdminTrainingsRouteImport } from './routes/admin.trainings'
+import { Route as ProvasIndexRouteImport } from './routes/provas.index'
+import { Route as ProvasIdIndexRouteImport } from './routes/provas.$id.index'
+import { Route as ProvasIdInscricaoRouteImport } from './routes/provas.$id.inscricao'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgendaRoute = AgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContatoRoute = ContatoRouteImport.update({
+  id: '/contato',
+  path: '/contato',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FotosRoute = FotosRouteImport.update({
+  id: '/fotos',
+  path: '/fotos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MinhaContaRoute = MinhaContaRouteImport.update({
+  id: '/minha-conta',
+  path: '/minha-conta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanosRoute = PlanosRouteImport.update({
+  id: '/planos',
+  path: '/planos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProdutosRoute = ProdutosRouteImport.update({
+  id: '/produtos',
+  path: '/produtos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SobreRoute = SobreRouteImport.update({
+  id: '/sobre',
+  path: '/sobre',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TreinosRoute = TreinosRouteImport.update({
+  id: '/treinos',
+  path: '/treinos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEventSignupsRoute = AdminEventSignupsRouteImport.update({
+  id: '/event-signups',
+  path: '/event-signups',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEventsRoute = AdminEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFaqsRoute = AdminFaqsRouteImport.update({
+  id: '/faqs',
+  path: '/faqs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminGalleryRoute = AdminGalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminHighlightsRoute = AdminHighlightsRouteImport.update({
+  id: '/highlights',
+  path: '/highlights',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPartnersRoute = AdminPartnersRouteImport.update({
+  id: '/partners',
+  path: '/partners',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPhotoEventsRoute = AdminPhotoEventsRouteImport.update({
+  id: '/photo-events',
+  path: '/photo-events',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPlansRoute = AdminPlansRouteImport.update({
+  id: '/plans',
+  path: '/plans',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminProductsRoute = AdminProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTestimonialsRoute = AdminTestimonialsRouteImport.update({
+  id: '/testimonials',
+  path: '/testimonials',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTrainingsRoute = AdminTrainingsRouteImport.update({
+  id: '/trainings',
+  path: '/trainings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const ProvasIndexRoute = ProvasIndexRouteImport.update({
+  id: '/provas/',
+  path: '/provas/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProvasIdIndexRoute = ProvasIdIndexRouteImport.update({
+  id: '/provas/$id/',
+  path: '/provas/$id/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProvasIdInscricaoRoute = ProvasIdInscricaoRouteImport.update({
+  id: '/provas/$id/inscricao',
+  path: '/provas/$id/inscricao',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/agenda': typeof AgendaRoute
+  '/auth': typeof AuthRoute
+  '/contato': typeof ContatoRoute
+  '/fotos': typeof FotosRoute
+  '/minha-conta': typeof MinhaContaRoute
+  '/planos': typeof PlanosRoute
+  '/produtos': typeof ProdutosRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/sobre': typeof SobreRoute
+  '/treinos': typeof TreinosRoute
+  '/admin/event-signups': typeof AdminEventSignupsRoute
+  '/admin/events': typeof AdminEventsRoute
+  '/admin/faqs': typeof AdminFaqsRoute
+  '/admin/gallery': typeof AdminGalleryRoute
+  '/admin/highlights': typeof AdminHighlightsRoute
+  '/admin/partners': typeof AdminPartnersRoute
+  '/admin/photo-events': typeof AdminPhotoEventsRoute
+  '/admin/plans': typeof AdminPlansRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/testimonials': typeof AdminTestimonialsRoute
+  '/admin/trainings': typeof AdminTrainingsRoute
+  '/admin/': typeof AdminIndexRoute
+  '/provas/': typeof ProvasIndexRoute
+  '/provas/$id/inscricao': typeof ProvasIdInscricaoRoute
+  '/provas/$id/': typeof ProvasIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agenda': typeof AgendaRoute
+  '/auth': typeof AuthRoute
+  '/contato': typeof ContatoRoute
+  '/fotos': typeof FotosRoute
+  '/minha-conta': typeof MinhaContaRoute
+  '/planos': typeof PlanosRoute
+  '/produtos': typeof ProdutosRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/sobre': typeof SobreRoute
+  '/treinos': typeof TreinosRoute
+  '/admin/event-signups': typeof AdminEventSignupsRoute
+  '/admin/events': typeof AdminEventsRoute
+  '/admin/faqs': typeof AdminFaqsRoute
+  '/admin/gallery': typeof AdminGalleryRoute
+  '/admin/highlights': typeof AdminHighlightsRoute
+  '/admin/partners': typeof AdminPartnersRoute
+  '/admin/photo-events': typeof AdminPhotoEventsRoute
+  '/admin/plans': typeof AdminPlansRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/testimonials': typeof AdminTestimonialsRoute
+  '/admin/trainings': typeof AdminTrainingsRoute
+  '/admin': typeof AdminIndexRoute
+  '/provas': typeof ProvasIndexRoute
+  '/provas/$id/inscricao': typeof ProvasIdInscricaoRoute
+  '/provas/$id': typeof ProvasIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/agenda': typeof AgendaRoute
+  '/auth': typeof AuthRoute
+  '/contato': typeof ContatoRoute
+  '/fotos': typeof FotosRoute
+  '/minha-conta': typeof MinhaContaRoute
+  '/planos': typeof PlanosRoute
+  '/produtos': typeof ProdutosRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/sobre': typeof SobreRoute
+  '/treinos': typeof TreinosRoute
+  '/admin/event-signups': typeof AdminEventSignupsRoute
+  '/admin/events': typeof AdminEventsRoute
+  '/admin/faqs': typeof AdminFaqsRoute
+  '/admin/gallery': typeof AdminGalleryRoute
+  '/admin/highlights': typeof AdminHighlightsRoute
+  '/admin/partners': typeof AdminPartnersRoute
+  '/admin/photo-events': typeof AdminPhotoEventsRoute
+  '/admin/plans': typeof AdminPlansRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/testimonials': typeof AdminTestimonialsRoute
+  '/admin/trainings': typeof AdminTrainingsRoute
+  '/admin/': typeof AdminIndexRoute
+  '/provas/': typeof ProvasIndexRoute
+  '/provas/$id/inscricao': typeof ProvasIdInscricaoRoute
+  '/provas/$id/': typeof ProvasIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/agenda'
+    | '/auth'
+    | '/contato'
+    | '/fotos'
+    | '/minha-conta'
+    | '/planos'
+    | '/produtos'
+    | '/reset-password'
+    | '/sobre'
+    | '/treinos'
+    | '/admin/event-signups'
+    | '/admin/events'
+    | '/admin/faqs'
+    | '/admin/gallery'
+    | '/admin/highlights'
+    | '/admin/partners'
+    | '/admin/photo-events'
+    | '/admin/plans'
+    | '/admin/products'
+    | '/admin/settings'
+    | '/admin/testimonials'
+    | '/admin/trainings'
+    | '/admin/'
+    | '/provas/'
+    | '/provas/$id/inscricao'
+    | '/provas/$id/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/agenda'
+    | '/auth'
+    | '/contato'
+    | '/fotos'
+    | '/minha-conta'
+    | '/planos'
+    | '/produtos'
+    | '/reset-password'
+    | '/sobre'
+    | '/treinos'
+    | '/admin/event-signups'
+    | '/admin/events'
+    | '/admin/faqs'
+    | '/admin/gallery'
+    | '/admin/highlights'
+    | '/admin/partners'
+    | '/admin/photo-events'
+    | '/admin/plans'
+    | '/admin/products'
+    | '/admin/settings'
+    | '/admin/testimonials'
+    | '/admin/trainings'
+    | '/admin'
+    | '/provas'
+    | '/provas/$id/inscricao'
+    | '/provas/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/agenda'
+    | '/auth'
+    | '/contato'
+    | '/fotos'
+    | '/minha-conta'
+    | '/planos'
+    | '/produtos'
+    | '/reset-password'
+    | '/sobre'
+    | '/treinos'
+    | '/admin/event-signups'
+    | '/admin/events'
+    | '/admin/faqs'
+    | '/admin/gallery'
+    | '/admin/highlights'
+    | '/admin/partners'
+    | '/admin/photo-events'
+    | '/admin/plans'
+    | '/admin/products'
+    | '/admin/settings'
+    | '/admin/testimonials'
+    | '/admin/trainings'
+    | '/admin/'
+    | '/provas/'
+    | '/provas/$id/inscricao'
+    | '/provas/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  AgendaRoute: typeof AgendaRoute
+  AuthRoute: typeof AuthRoute
+  ContatoRoute: typeof ContatoRoute
+  FotosRoute: typeof FotosRoute
+  MinhaContaRoute: typeof MinhaContaRoute
+  PlanosRoute: typeof PlanosRoute
+  ProdutosRoute: typeof ProdutosRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  SobreRoute: typeof SobreRoute
+  TreinosRoute: typeof TreinosRoute
+  ProvasIndexRoute: typeof ProvasIndexRoute
+  ProvasIdInscricaoRoute: typeof ProvasIdInscricaoRoute
+  ProvasIdIndexRoute: typeof ProvasIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +388,248 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agenda': {
+      id: '/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AgendaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contato': {
+      id: '/contato'
+      path: '/contato'
+      fullPath: '/contato'
+      preLoaderRoute: typeof ContatoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fotos': {
+      id: '/fotos'
+      path: '/fotos'
+      fullPath: '/fotos'
+      preLoaderRoute: typeof FotosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/minha-conta': {
+      id: '/minha-conta'
+      path: '/minha-conta'
+      fullPath: '/minha-conta'
+      preLoaderRoute: typeof MinhaContaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planos': {
+      id: '/planos'
+      path: '/planos'
+      fullPath: '/planos'
+      preLoaderRoute: typeof PlanosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/produtos': {
+      id: '/produtos'
+      path: '/produtos'
+      fullPath: '/produtos'
+      preLoaderRoute: typeof ProdutosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sobre': {
+      id: '/sobre'
+      path: '/sobre'
+      fullPath: '/sobre'
+      preLoaderRoute: typeof SobreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/treinos': {
+      id: '/treinos'
+      path: '/treinos'
+      fullPath: '/treinos'
+      preLoaderRoute: typeof TreinosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/event-signups': {
+      id: '/admin/event-signups'
+      path: '/event-signups'
+      fullPath: '/admin/event-signups'
+      preLoaderRoute: typeof AdminEventSignupsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/events': {
+      id: '/admin/events'
+      path: '/events'
+      fullPath: '/admin/events'
+      preLoaderRoute: typeof AdminEventsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/faqs': {
+      id: '/admin/faqs'
+      path: '/faqs'
+      fullPath: '/admin/faqs'
+      preLoaderRoute: typeof AdminFaqsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/gallery': {
+      id: '/admin/gallery'
+      path: '/gallery'
+      fullPath: '/admin/gallery'
+      preLoaderRoute: typeof AdminGalleryRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/highlights': {
+      id: '/admin/highlights'
+      path: '/highlights'
+      fullPath: '/admin/highlights'
+      preLoaderRoute: typeof AdminHighlightsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/partners': {
+      id: '/admin/partners'
+      path: '/partners'
+      fullPath: '/admin/partners'
+      preLoaderRoute: typeof AdminPartnersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/photo-events': {
+      id: '/admin/photo-events'
+      path: '/photo-events'
+      fullPath: '/admin/photo-events'
+      preLoaderRoute: typeof AdminPhotoEventsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/plans': {
+      id: '/admin/plans'
+      path: '/plans'
+      fullPath: '/admin/plans'
+      preLoaderRoute: typeof AdminPlansRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/products': {
+      id: '/admin/products'
+      path: '/products'
+      fullPath: '/admin/products'
+      preLoaderRoute: typeof AdminProductsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/testimonials': {
+      id: '/admin/testimonials'
+      path: '/testimonials'
+      fullPath: '/admin/testimonials'
+      preLoaderRoute: typeof AdminTestimonialsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/trainings': {
+      id: '/admin/trainings'
+      path: '/trainings'
+      fullPath: '/admin/trainings'
+      preLoaderRoute: typeof AdminTrainingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/provas/': {
+      id: '/provas/'
+      path: '/provas'
+      fullPath: '/provas/'
+      preLoaderRoute: typeof ProvasIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/provas/$id/': {
+      id: '/provas/$id/'
+      path: '/provas/$id'
+      fullPath: '/provas/$id/'
+      preLoaderRoute: typeof ProvasIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/provas/$id/inscricao': {
+      id: '/provas/$id/inscricao'
+      path: '/provas/$id/inscricao'
+      fullPath: '/provas/$id/inscricao'
+      preLoaderRoute: typeof ProvasIdInscricaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminEventSignupsRoute: typeof AdminEventSignupsRoute
+  AdminEventsRoute: typeof AdminEventsRoute
+  AdminFaqsRoute: typeof AdminFaqsRoute
+  AdminGalleryRoute: typeof AdminGalleryRoute
+  AdminHighlightsRoute: typeof AdminHighlightsRoute
+  AdminPartnersRoute: typeof AdminPartnersRoute
+  AdminPhotoEventsRoute: typeof AdminPhotoEventsRoute
+  AdminPlansRoute: typeof AdminPlansRoute
+  AdminProductsRoute: typeof AdminProductsRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminTestimonialsRoute: typeof AdminTestimonialsRoute
+  AdminTrainingsRoute: typeof AdminTrainingsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminEventSignupsRoute: AdminEventSignupsRoute,
+  AdminEventsRoute: AdminEventsRoute,
+  AdminFaqsRoute: AdminFaqsRoute,
+  AdminGalleryRoute: AdminGalleryRoute,
+  AdminHighlightsRoute: AdminHighlightsRoute,
+  AdminPartnersRoute: AdminPartnersRoute,
+  AdminPhotoEventsRoute: AdminPhotoEventsRoute,
+  AdminPlansRoute: AdminPlansRoute,
+  AdminProductsRoute: AdminProductsRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminTestimonialsRoute: AdminTestimonialsRoute,
+  AdminTrainingsRoute: AdminTrainingsRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  AgendaRoute: AgendaRoute,
+  AuthRoute: AuthRoute,
+  ContatoRoute: ContatoRoute,
+  FotosRoute: FotosRoute,
+  MinhaContaRoute: MinhaContaRoute,
+  PlanosRoute: PlanosRoute,
+  ProdutosRoute: ProdutosRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  SobreRoute: SobreRoute,
+  TreinosRoute: TreinosRoute,
+  ProvasIndexRoute: ProvasIndexRoute,
+  ProvasIdInscricaoRoute: ProvasIdInscricaoRoute,
+  ProvasIdIndexRoute: ProvasIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
