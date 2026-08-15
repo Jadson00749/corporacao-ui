@@ -175,23 +175,8 @@ const ProvaDetalhe = () => {
           </nav>
 
           {/* TABS */}
-          <div className="mt-5 border-b border-border/60 overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-7 min-w-max">
-              {tabs.map((t, i) => (
-                <a
-                  key={t.id}
-                  href={`#${t.id}`}
-                  className={cn(
-                    "relative pb-3 text-sm font-medium whitespace-nowrap transition-colors",
-                    i === 0 ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {t.label}
-                  {i === 0 && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-brand rounded-full" />}
-                </a>
-              ))}
-            </div>
-          </div>
+          <SectionTabs tabs={tabs} />
+
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start">
             {/* COLUNA PRINCIPAL */}
