@@ -48,26 +48,23 @@ const PartnerCard = ({ partner }: { partner: Partner }) => {
   return (
     <Wrapper
       {...wrapperProps}
-      className="group relative flex h-[190px] flex-col overflow-hidden rounded-xl
-                 bg-white/[0.025] border border-white/[0.06]
-                 hover:border-brand/25 hover:bg-white/[0.04]
-                 transition-all duration-400 ease-out
-                 hover:-translate-y-[2px]"
+      className="group relative flex h-[130px] flex-col overflow-hidden rounded-xl
+                 bg-[#f5f5f5] border border-black/5
+                 hover:shadow-lg hover:-translate-y-1
+                 transition-all duration-300 ease-out"
     >
-      {/* Logo bar */}
-      <div className="relative h-[58px] shrink-0 flex items-center justify-center px-4
-                      bg-[#f5f5f5] border-b border-black/5">
+      {/* Logo area */}
+      <div className="relative flex-1 flex items-center justify-center p-3">
         <img
           src={partner.logo}
           alt={partner.name}
           loading="lazy"
-          className="max-h-14 max-w-[190px] object-contain
+          className="max-h-16 max-w-[180px] object-contain
                      transition-transform duration-500 group-hover:scale-105"
         />
         {partner.category && (
-          <span className="absolute top-1.5 left-2 inline-flex items-center
-                           rounded-full bg-black/80 border border-white/10
-                           backdrop-blur-md
+          <span className="absolute top-2 left-2 inline-flex items-center
+                           rounded-full bg-black/80
                            text-white px-2 py-[2px] text-[8px] font-semibold
                            uppercase tracking-[0.16em]">
             {partner.category}
@@ -75,46 +72,14 @@ const PartnerCard = ({ partner }: { partner: Partner }) => {
         )}
       </div>
 
-      {/* Body */}
-      <div className="flex flex-col gap-1 p-2.5 flex-1 min-h-0">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-display text-[13.5px] font-semibold text-white tracking-tight leading-tight truncate">
-            {partner.name}
-          </h3>
-          {partner.url && (
-            <ArrowUpRight className="h-3.5 w-3.5 text-white/30 group-hover:text-brand-glow group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all shrink-0 mt-0.5" />
-          )}
-        </div>
-
-        {partner.description && (
-          <p className="text-[11px] text-white/55 leading-snug line-clamp-2">
-            {partner.description}
-          </p>
+      {/* Name bar */}
+      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-white border-t border-black/5">
+        <h3 className="font-display text-[12px] font-semibold text-black/90 tracking-tight leading-tight truncate">
+          {partner.name}
+        </h3>
+        {partner.url && (
+          <ArrowUpRight className="h-3.5 w-3.5 text-black/40 group-hover:text-black/70 transition-all shrink-0" />
         )}
-
-        <div className="mt-auto pt-1.5 border-t border-white/[0.05]">
-          {partner.benefit_text ? (
-            <>
-              <div className="flex items-center gap-1.5">
-                <span className="h-1 w-1 rounded-full bg-brand-glow shadow-[0_0_6px_hsl(var(--accent-brand))]" />
-                <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-brand-glow">
-                  Benefício aluno
-                </span>
-              </div>
-              <p className="mt-0.5 text-[11px] text-white/90 font-medium leading-snug line-clamp-1">
-                {partner.benefit_text}
-              </p>
-              {partner.coupon_code && (
-                <div className="mt-1 inline-flex items-center gap-1 text-[9px] text-white/35">
-                  <Lock className="h-2.5 w-2.5" />
-                  Cupom liberado para alunos
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="text-[10px] text-white/30 uppercase tracking-[0.18em]">Parceiro oficial</div>
-          )}
-        </div>
       </div>
     </Wrapper>
   );
