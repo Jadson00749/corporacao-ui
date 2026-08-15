@@ -609,7 +609,7 @@ const SectionTabs = ({ tabs }: { tabs: { id: string; label: string }[] }) => {
       let current = tabs[0]?.id;
       for (const t of tabs) {
         const el = document.getElementById(t.id);
-        if (el && el.getBoundingClientRect().top - 160 <= 0) current = t.id;
+        if (el && el.getBoundingClientRect().top - 170 <= 0) current = t.id;
       }
       setActive(current);
     };
@@ -622,14 +622,14 @@ const SectionTabs = ({ tabs }: { tabs: { id: string; label: string }[] }) => {
     e.preventDefault();
     const el = document.getElementById(id);
     if (!el) return;
-    const y = el.getBoundingClientRect().top + window.scrollY - 140;
+    const y = el.getBoundingClientRect().top + window.scrollY - 150;
     window.scrollTo({ top: y, behavior: "smooth" });
     setActive(id);
     if (history.replaceState) history.replaceState(null, "", `#${id}`);
   };
 
   return (
-    <div className="sticky top-[68px] z-30 -mx-4 px-4 mt-5 bg-background/85 backdrop-blur-md border-b border-border/60">
+    <div className="sticky top-[86px] z-30 -mx-4 px-4 mt-5 bg-background/95 backdrop-blur-md border-b border-border/60">
       <div className="overflow-x-auto no-scrollbar">
         <div className="flex items-center gap-7 min-w-max">
           {tabs.map((t) => (
