@@ -392,9 +392,30 @@ const ProvaInscricao = () => {
                             data-invalid={errors.distance || undefined}
                             className={`bg-card border rounded-2xl p-4 sm:p-5 ${errors.distance ? "border-destructive" : "border-border"}`}
                           >
-                            <h3 className="text-sm uppercase tracking-wide text-muted-foreground mb-3">Modalidade</h3>
+                            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                              <h3 className="text-sm uppercase tracking-wide text-muted-foreground">Modalidade</h3>
+                              {groups.length > 1 && (
+                                <div className="flex gap-1 overflow-x-auto no-scrollbar bg-secondary/40 border border-border rounded-full p-1">
+                                  {groups.map((g) => (
+                                    <button
+                                      key={g}
+                                      type="button"
+                                      onClick={() => setGroup(g)}
+                                      className={[
+                                        "whitespace-nowrap rounded-full px-4 py-1.5 text-sm transition-colors",
+                                        group === g
+                                          ? "bg-brand text-brand-foreground font-semibold"
+                                          : "text-muted-foreground hover:text-foreground",
+                                      ].join(" ")}
+                                    >
+                                      {g}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                             <div className="space-y-2">
-                              {distances.map((d: any) => {
+                              {visibleDistances.map((d: any) => {
                                 const active = distance === d.distance;
                                 const price = priceOf(d);
                                 return (
@@ -409,7 +430,7 @@ const ProvaInscricao = () => {
                                         : "border-border bg-secondary/30 hover:bg-secondary/60",
                                     ].join(" ")}
                                   >
-                                    <span className="font-semibold">{d.distance}</span>
+                                    <span className="font-semibold">{cleanDistanceLabel(d.distance)}</span>
                                     {price > 0 && (
                                       <span className="text-sm">
                                         <span className="text-muted-foreground mr-1">{isLote2(d) ? "2º lote" : "1º lote"}</span>
@@ -419,9 +440,13 @@ const ProvaInscricao = () => {
                                   </button>
                                 );
                               })}
+                              {visibleDistances.length === 0 && (
+                                <p className="text-sm text-muted-foreground">Nenhuma modalidade nessa categoria.</p>
+                              )}
                             </div>
                           </div>
                         )}
+
 
                         {kitOptions.length > 0 && (
                           <div
