@@ -170,8 +170,20 @@ export const PartnersSection = () => {
           </p>
         </div>
 
-        {/* Infinite horizontal marquee */}
-        <div className="group/marquee relative marquee-mask">
+        {/* Mobile: swipeable horizontal scroll */}
+        <div className="md:hidden -mx-4 px-4 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-3 pb-2">
+            {partners.map((p) => (
+              <div key={p.id} className="snap-start shrink-0 w-[78%] sm:w-[260px]">
+                <PartnerCard partner={p} />
+              </div>
+            ))}
+            <div className="shrink-0 w-1" aria-hidden />
+          </div>
+        </div>
+
+        {/* Desktop: infinite horizontal marquee */}
+        <div className="hidden md:block group/marquee relative marquee-mask">
           <div
             className="flex w-max gap-3 md:gap-4 animate-marquee-x will-change-transform"
             style={{ ["--marquee-duration" as any]: `${duration}s` }}
@@ -179,7 +191,7 @@ export const PartnersSection = () => {
             {loop.map((p, i) => (
               <div
                 key={`${p.id}-${i}`}
-                className="w-[230px] sm:w-[250px] md:w-[270px] shrink-0"
+                className="w-[230px] lg:w-[260px] shrink-0"
                 aria-hidden={i >= partners.length ? true : undefined}
               >
                 <PartnerCard partner={p} />
