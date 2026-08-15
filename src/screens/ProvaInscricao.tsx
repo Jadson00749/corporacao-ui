@@ -37,6 +37,25 @@ const brl = (n: number) =>
 
 const STEPS = ["Inscrição", "Dados", "Pagamento"];
 
+// Deriva a categoria a partir do nome da modalidade (ex.: "3Km Caminhada - 60+")
+const GROUP_RULES: { label: string; test: RegExp }[] = [
+  { label: "60+", test: /(\b60\s*\+|\b60\s*anos|master|melhor idade)/i },
+  { label: "Kids", test: /(kids|infantil|kid|mirim)/i },
+  { label: "PCD", test: /(pcd|cadeirante|deficien)/i },
+];
+
+const groupOf = (name: string) => {
+  const found = GROUP_RULES.find((r) => r.test.test(name));
+  return found ? found.label : "Geral";
+};
+
+const cleanDistanceLabel = (name: string) => {
+  const g = groupOf(name);
+  if (g === "Geral") return name;
+  return name.replace(/\s*[-–·|]\s*[^-–·|]*$/, (m) => (GROUP_RULES.some((r) => r.test.test(m)) ? "" : m)).trim() || name;
+};
+
+
 const Stepper = ({ current }: { current: number }) => (
   <div className="flex items-start justify-center gap-2 sm:gap-4 mb-8">
     {STEPS.map((label, i) => {
