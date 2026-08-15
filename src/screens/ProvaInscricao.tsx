@@ -152,6 +152,31 @@ const ProvaInscricao = () => {
     return (event.distance || "").split(/[•|,/]/).map((s: string) => ({ distance: s.trim() })).filter((d: Distance) => d.distance);
   }, [event]);
 
+  const groups = useMemo<string[]>(() => {
+    const found = Array.from(new Set(distances.map((d) => groupOf(d.distance))));
+    if (found.length <= 1) return [];
+    const order = ["Geral", "60+", "Kids", "PCD"];
+    return found.sort((a, b) => {
+      const ia = order.indexOf(a), ib = order.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+  }, [distances]);
+
+  const [group, setGroup] = useState("Geral");
+  useEffect(() => { if (groups.length && !groups.includes(group)) setGroup(groups[0]); }, [groups]);
+
+  const visibleDistances = useMemo(
+    () => (groups.length ? distances.filter((d) => groupOf(d.distance) === group) : distances),
+    [distances, groups, group]
+  );
+
+  // Ao trocar de categoria, limpa a modalidade que não pertence mais à lista
+  useEffect(() => {
+    if (distance && !visibleDistances.some((d) => d.distance === distance)) setDistance("");
+  }, [visibleDistances]);
+
+
+
   const genders = useMemo<string[]>(() => {
     const arr = ((event?.genders as string[]) || ["Masculino", "Feminino"]).filter((g) => g && g.trim());
     return arr;
