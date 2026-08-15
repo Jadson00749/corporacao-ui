@@ -175,23 +175,8 @@ const ProvaDetalhe = () => {
           </nav>
 
           {/* TABS */}
-          <div className="mt-5 border-b border-border/60 overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-7 min-w-max">
-              {tabs.map((t, i) => (
-                <a
-                  key={t.id}
-                  href={`#${t.id}`}
-                  className={cn(
-                    "relative pb-3 text-sm font-medium whitespace-nowrap transition-colors",
-                    i === 0 ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {t.label}
-                  {i === 0 && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-brand rounded-full" />}
-                </a>
-              ))}
-            </div>
-          </div>
+          <SectionTabs tabs={tabs} />
+
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start">
             {/* COLUNA PRINCIPAL */}
@@ -616,8 +601,59 @@ const ProvaDetalhe = () => {
   );
 };
 
+const SectionTabs = ({ tabs }: { tabs: { id: string; label: string }[] }) => {
+  const [active, setActive] = useState(tabs[0]?.id);
+
+  useEffect(() => {
+    const onScroll = () => {
+      let current = tabs[0]?.id;
+      for (const t of tabs) {
+        const el = document.getElementById(t.id);
+        if (el && el.getBoundingClientRect().top - 170 <= 0) current = t.id;
+      }
+      setActive(current);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [tabs]);
+
+  const go = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (!el) return;
+    const y = el.getBoundingClientRect().top + window.scrollY - 150;
+    window.scrollTo({ top: y, behavior: "smooth" });
+    setActive(id);
+    if (history.replaceState) history.replaceState(null, "", `#${id}`);
+  };
+
+  return (
+    <div className="sticky top-[86px] z-30 -mx-4 px-4 mt-5 bg-background/95 backdrop-blur-md border-b border-border/60">
+      <div className="overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-7 min-w-max">
+          {tabs.map((t) => (
+            <a
+              key={t.id}
+              href={`#${t.id}`}
+              onClick={(e) => go(e, t.id)}
+              className={cn(
+                "relative py-3 text-sm font-medium whitespace-nowrap transition-colors",
+                active === t.id ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t.label}
+              {active === t.id && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-brand rounded-full" />}
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Block = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
-  <section id={id} className="scroll-mt-28">
+  <section id={id} className="scroll-mt-36">
     <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-3">{title}</h2>
     {children}
   </section>
