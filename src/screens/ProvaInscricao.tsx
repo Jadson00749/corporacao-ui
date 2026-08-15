@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle } from "lucide-react";
+import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
 
 type Distance = { distance: string; price?: number };
@@ -35,6 +35,36 @@ const calcAge = (birth?: string | null) => {
 const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+const STEPS = ["Inscrição", "Dados", "Pagamento"];
+
+const Stepper = ({ current }: { current: number }) => (
+  <div className="flex items-start justify-center gap-2 sm:gap-4 mb-8">
+    {STEPS.map((label, i) => {
+      const state = i < current ? "done" : i === current ? "active" : "todo";
+      return (
+        <div key={label} className="flex items-start">
+          <div className="flex flex-col items-center w-20 sm:w-28">
+            <div
+              className={[
+                "w-9 h-9 rounded-full grid place-items-center text-sm font-bold border-2 transition-colors",
+                state === "active"
+                  ? "border-brand text-brand bg-brand/10"
+                  : state === "done"
+                  ? "border-brand bg-brand text-brand-foreground"
+                  : "border-border text-muted-foreground bg-secondary/40",
+              ].join(" ")}
+            >
+              {state === "done" ? <Check className="w-4 h-4" /> : i + 1}
+            </div>
+            <span className={`mt-2 text-xs sm:text-sm ${state === "todo" ? "text-muted-foreground" : "font-semibold"}`}>{label}</span>
+          </div>
+          {i < STEPS.length - 1 && <div className="h-[2px] w-8 sm:w-24 bg-border mt-[18px]" />}
+        </div>
+      );
+    })}
+  </div>
+);
+
 const ProvaInscricao = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -43,6 +73,7 @@ const ProvaInscricao = () => {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const buildWhats = useWhatsappLink();
 
+  const [step, setStep] = useState(0);
   const [distance, setDistance] = useState("");
   const [gender, setGender] = useState("");
   const [bracket, setBracket] = useState("");
@@ -123,6 +154,7 @@ const ProvaInscricao = () => {
   useEffect(() => { if (distances.length === 1) setDistance(distances[0].distance); }, [distances]);
   useEffect(() => { if (genders.length === 1) setGender(genders[0]); }, [genders]);
   useEffect(() => { if (ageBrackets.length === 1) setBracket(`${ageBrackets[0].min}-${ageBrackets[0].max}`); }, [ageBrackets]);
+  useEffect(() => { if (kitOptions.length === 1) setKitOption(kitOptions[0].name); }, [kitOptions]);
   useEffect(() => {
     if (ageBrackets.length && profile?.birth_date) {
       const age = calcAge(profile.birth_date);
@@ -137,8 +169,10 @@ const ProvaInscricao = () => {
 
   const distanceObj = distances.find((d) => d.distance === distance);
   const today = new Date().toISOString().slice(0, 10);
-  const lote2Active = !!(distanceObj && (distanceObj as any).price_lote2 > 0 && (distanceObj as any).lote2_starts_at && today >= (distanceObj as any).lote2_starts_at);
-  const distancePrice = lote2Active ? ((distanceObj as any).price_lote2 ?? 0) : (distanceObj?.price ?? 0);
+  const isLote2 = (d: any) => !!(d && d.price_lote2 > 0 && d.lote2_starts_at && today >= d.lote2_starts_at);
+  const priceOf = (d: any) => (isLote2(d) ? (d.price_lote2 ?? 0) : (d?.price ?? 0));
+  const lote2Active = isLote2(distanceObj);
+  const distancePrice = priceOf(distanceObj);
   const kitExtra = kitOptions.find((k) => k.name === kitOption)?.extra_price ?? 0;
   const total = distancePrice + kitExtra;
 
@@ -158,6 +192,21 @@ const ProvaInscricao = () => {
     }
     setAppliedCoupon(found);
     toast.success(`Cupom ${found.code} aplicado.`);
+  };
+
+  const goStep2 = () => {
+    const newErrors: Record<string, boolean> = {};
+    const missing: string[] = [];
+    if (distances.length > 0 && !distance) { newErrors.distance = true; missing.push("Modalidade"); }
+    if (kitOptions.length > 0 && !kitOption) { newErrors.kitOption = true; missing.push("Kit"); }
+    if (missing.length) {
+      setErrors(newErrors);
+      toast.error("Selecione para continuar", { description: missing.join(" · "), position: "top-center" });
+      return;
+    }
+    setErrors({});
+    setStep(1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const submit = async () => {
@@ -205,244 +254,323 @@ const ProvaInscricao = () => {
     }
     qc.invalidateQueries({ queryKey: ["my_signups"] });
     setDone(true);
+    setStep(2);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   if (loading || !user) return null;
 
+  const summaryCard = event && (
+    <div className="bg-card border border-border rounded-2xl p-5 space-y-4 lg:sticky lg:top-28">
+      <div>
+        <h2 className="font-display text-lg font-bold leading-tight">{event.name}</h2>
+        <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+          <span className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-brand" />
+            {new Date(event.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</span>
+          <span className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-brand" />{event.city}</span>
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-3 space-y-2 text-sm">
+        <div className="flex justify-between gap-3">
+          <span className="text-muted-foreground">Modalidade</span>
+          <span className="font-medium text-right">{distance || "—"}</span>
+        </div>
+        {kitOptions.length > 0 && (
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground">Kit</span>
+            <span className="font-medium text-right">{kitOption || "—"}</span>
+          </div>
+        )}
+        {(gender || bracket) && (
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground">Categoria</span>
+            <span className="font-medium text-right">{[gender, bracket && `${bracket} anos`].filter(Boolean).join(" · ")}</span>
+          </div>
+        )}
+      </div>
+
+      {total > 0 && (
+        <div className="border-t border-border pt-3 space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span>Inscrição <span className="text-xs text-muted-foreground">({lote2Active ? "2º lote" : "1º lote"})</span></span>
+            <span>{brl(distancePrice)}</span>
+          </div>
+          {kitExtra > 0 && <div className="flex justify-between"><span>Kit</span><span>+{brl(kitExtra)}</span></div>}
+          <div className="flex justify-between font-bold text-base pt-2 border-t border-border">
+            <span>Total</span><span className="text-brand">{brl(total)}</span>
+          </div>
+          <p className="text-xs text-muted-foreground pt-1">Pagamento via PIX após a confirmação.</p>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <Layout>
       <SEO title={`Inscrição: ${event?.name || "Prova"}`} description="Inscrição em prova de corrida." />
-      <section className="section-padding pt-32">
-        <div className="container-page max-w-2xl">
-          <Link to={`/provas/${id}`} className="text-sm text-muted-foreground hover:text-brand mb-4 inline-block">← Voltar para a prova</Link>
+      <section className="section-padding pt-28">
+        <div className="container-page max-w-5xl">
+          <Link to={`/provas/${id}`} className="text-sm text-muted-foreground hover:text-brand mb-4 inline-flex items-center gap-1">
+            <ChevronLeft className="w-4 h-4" /> Voltar para a prova
+          </Link>
 
           {eventLoading || profileLoading ? (
             <Skeleton className="h-96" />
           ) : !event ? (
             <p className="text-center text-muted-foreground">Prova não encontrada.</p>
-          ) : done ? (
-            <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-6">
-              <div className="text-center">
-                <CheckCircle2 className="w-14 h-14 text-success mx-auto mb-3" />
-                <h1 className="font-display text-2xl font-bold mb-2">Inscrição recebida!</h1>
-                <p className="text-muted-foreground">
-                  Copie a chave PIX abaixo, faça o pagamento e envie o comprovante via WhatsApp para confirmarmos sua participação.
-                </p>
-              </div>
+          ) : (
+            <>
+              <Stepper current={step} />
 
-              <div className="bg-secondary/40 rounded-xl p-4 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Prova</span><span className="font-medium">{event.name}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Categoria</span><span className="font-medium">{categoryLabel}</span></div>
-                {total > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
-              </div>
+              {done ? (
+                <div className="max-w-2xl mx-auto bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-6">
+                  <div className="text-center">
+                    <CheckCircle2 className="w-14 h-14 text-success mx-auto mb-3" />
+                    <h1 className="font-display text-2xl font-bold mb-2">Inscrição recebida!</h1>
+                    <p className="text-muted-foreground">
+                      Copie a chave PIX abaixo, faça o pagamento e envie o comprovante via WhatsApp para confirmarmos sua participação.
+                    </p>
+                  </div>
 
-              {(payment?.pix_key || payment?.pix_recipient || payment?.payment_instructions) && (
-                <div className="border border-brand/40 bg-brand/5 rounded-xl p-4 space-y-3">
-                  <h3 className="font-display font-bold text-brand">Pagamento via PIX</h3>
-                  {payment?.pix_recipient && (
-                    <div className="text-sm"><span className="text-muted-foreground">Recebedor: </span><span className="font-medium">{payment.pix_recipient}</span></div>
-                  )}
-                  {payment?.pix_key && (
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Chave PIX</div>
-                      <div className="flex gap-2">
-                        <Input readOnly value={payment.pix_key} className="font-mono text-sm" />
-                        <Button type="button" variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(payment.pix_key!); toast.success("Chave copiada!"); }}>
-                          <Copy className="w-4 h-4" />
-                        </Button>
-                      </div>
+                  <div className="bg-secondary/40 rounded-xl p-4 space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Prova</span><span className="font-medium">{event.name}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Categoria</span><span className="font-medium">{categoryLabel}</span></div>
+                    {total > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
+                  </div>
+
+                  {(payment?.pix_key || payment?.pix_recipient || payment?.payment_instructions) && (
+                    <div className="border border-brand/40 bg-brand/5 rounded-xl p-4 space-y-3">
+                      <h3 className="font-display font-bold text-brand">Pagamento via PIX</h3>
+                      {payment?.pix_recipient && (
+                        <div className="text-sm"><span className="text-muted-foreground">Recebedor: </span><span className="font-medium">{payment.pix_recipient}</span></div>
+                      )}
+                      {payment?.pix_key && (
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Chave PIX</div>
+                          <div className="flex gap-2">
+                            <Input readOnly value={payment.pix_key} className="font-mono text-sm" />
+                            <Button type="button" variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(payment.pix_key!); toast.success("Chave copiada!"); }}>
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      {payment?.payment_instructions && (
+                        <p className="text-sm whitespace-pre-line text-foreground/80">{payment.payment_instructions}</p>
+                      )}
                     </div>
                   )}
-                  {payment?.payment_instructions && (
-                    <p className="text-sm whitespace-pre-line text-foreground/80">{payment.payment_instructions}</p>
-                  )}
-                </div>
-              )}
 
-              <Button
-                asChild
-                variant="brand"
-                size="lg"
-                className="w-full"
-              >
-                <a
-                  href={buildWhats(`Olá! Fiz minha inscrição na prova ${event.name} e gostaria de enviar o comprovante do PIX.`)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <MessageCircle className="w-4 h-4" /> Enviar comprovante no WhatsApp
-                </a>
-              </Button>
+                  <Button asChild variant="brand" size="lg" className="w-full">
+                    <a
+                      href={buildWhats(`Olá! Fiz minha inscrição na prova ${event.name} e gostaria de enviar o comprovante do PIX.`)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <MessageCircle className="w-4 h-4" /> Enviar comprovante no WhatsApp
+                    </a>
+                  </Button>
 
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button asChild variant="outline" size="sm"><Link to="/minha-conta">Ver minhas inscrições</Link></Button>
-                <Button asChild variant="ghost" size="sm"><Link to="/provas">Ver outras provas</Link></Button>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-6">
-              <div>
-                <h1 className="font-display text-2xl font-bold mb-1">Inscrição em prova</h1>
-                <p className="text-sm text-muted-foreground">Confirme seus dados e finalize a inscrição.</p>
-              </div>
-
-              <div className="bg-secondary/40 rounded-xl p-4">
-                <h2 className="font-display text-lg font-semibold">{event.name}</h2>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
-                  <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />
-                    {new Date(event.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</span>
-                  <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{event.city}</span>
-                </div>
-              </div>
-
-              {!profileComplete && (
-                <div className="bg-warning/15 border border-warning/40 text-foreground rounded-xl p-4 text-sm">
-                  Seus dados estão incompletos. <Link to="/minha-conta" className="underline text-brand">Complete seu perfil</Link> antes de finalizar.
-                </div>
-              )}
-
-              <dl className="grid sm:grid-cols-2 gap-3 text-sm">
-                <Field label="Nome" value={profile?.full_name} />
-                <Field label="CPF" value={profile?.cpf} />
-                <Field label="Idade" value={calcAge(profile?.birth_date) ? `${calcAge(profile?.birth_date)} anos` : ""} />
-                <Field label="Cidade" value={[profile?.city, profile?.state].filter(Boolean).join(" / ")} />
-                <Field label="E-mail" value={profile?.email || user.email || ""} />
-                <Field label="WhatsApp" value={profile?.whatsapp} />
-              </dl>
-
-              {/* Categoria */}
-              {(distances.length > 0 || genders.length > 0 || ageBrackets.length > 0) && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold">Categoria</h3>
-                  <div className="grid sm:grid-cols-3 gap-3">
-                    {distances.length > 1 && (
-                      <div>
-                        <Label className={errors.distance ? "text-destructive" : ""}>Distância *</Label>
-                        <Select value={distance} onValueChange={setDistance}>
-                          <SelectTrigger data-invalid={errors.distance || undefined} className={`mt-1 ${errors.distance ? "border-destructive ring-2 ring-destructive/50 animate-pulse" : ""}`}><SelectValue placeholder="Distância" /></SelectTrigger>
-                          <SelectContent>
-                            {distances.map((d: any) => {
-                              const l2 = d.price_lote2 > 0 && d.lote2_starts_at && today >= d.lote2_starts_at;
-                              const current = l2 ? d.price_lote2 : d.price;
-                              return (
-                                <SelectItem key={d.distance} value={d.distance}>
-                                  {d.distance}{current ? ` (${brl(current)} · ${l2 ? "2º lote" : "1º lote"})` : ""}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    {genders.length > 1 && (
-                      <div>
-                        <Label className={errors.gender ? "text-destructive" : ""}>Sexo *</Label>
-                        <Select value={gender} onValueChange={setGender}>
-                          <SelectTrigger data-invalid={errors.gender || undefined} className={`mt-1 ${errors.gender ? "border-destructive ring-2 ring-destructive/50 animate-pulse" : ""}`}><SelectValue placeholder="Sexo" /></SelectTrigger>
-                          <SelectContent>
-                            {genders.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    {ageBrackets.length > 1 && (
-                      <div>
-                        <Label className={errors.bracket ? "text-destructive" : ""}>Faixa etária *</Label>
-                        <Select value={bracket} onValueChange={setBracket}>
-                          <SelectTrigger data-invalid={errors.bracket || undefined} className={`mt-1 ${errors.bracket ? "border-destructive ring-2 ring-destructive/50 animate-pulse" : ""}`}><SelectValue placeholder="Faixa" /></SelectTrigger>
-                          <SelectContent>
-                            {ageBrackets.map((b) => (
-                              <SelectItem key={`${b.min}-${b.max}`} value={`${b.min}-${b.max}`}>
-                                {b.min} a {b.max} anos
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button asChild variant="outline" size="sm"><Link to="/minha-conta">Ver minhas inscrições</Link></Button>
+                    <Button asChild variant="ghost" size="sm"><Link to="/provas">Ver outras provas</Link></Button>
                   </div>
                 </div>
-              )}
+              ) : (
+                <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
+                  <div className="space-y-6">
+                    {step === 0 && (
+                      <>
+                        <div>
+                          <h1 className="font-display text-2xl sm:text-3xl font-bold">{event.name}</h1>
+                          <p className="text-sm text-muted-foreground mt-1">Selecione a modalidade e o kit para ver o valor da inscrição.</p>
+                        </div>
 
-              {kitOptions.length > 0 && (
-                <div>
-                  <Label className={errors.kitOption ? "text-destructive" : ""}>Opção de kit *</Label>
-                  <Select value={kitOption} onValueChange={setKitOption}>
-                    <SelectTrigger data-invalid={errors.kitOption || undefined} className={`mt-1 ${errors.kitOption ? "border-destructive ring-2 ring-destructive/50 animate-pulse" : ""}`}><SelectValue placeholder="Escolha o kit" /></SelectTrigger>
-                    <SelectContent>
-                      {kitOptions.map((k) => (
-                        <SelectItem key={k.name} value={k.name}>
-                          {k.name}{k.extra_price ? ` (+${brl(k.extra_price)})` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+                        {distances.length > 0 && (
+                          <div
+                            data-invalid={errors.distance || undefined}
+                            className={`bg-card border rounded-2xl p-4 sm:p-5 ${errors.distance ? "border-destructive" : "border-border"}`}
+                          >
+                            <h3 className="text-sm uppercase tracking-wide text-muted-foreground mb-3">Modalidade</h3>
+                            <div className="space-y-2">
+                              {distances.map((d: any) => {
+                                const active = distance === d.distance;
+                                const price = priceOf(d);
+                                return (
+                                  <button
+                                    key={d.distance}
+                                    type="button"
+                                    onClick={() => setDistance(d.distance)}
+                                    className={[
+                                      "w-full text-left rounded-xl px-4 py-3 border transition-all flex items-center justify-between gap-3",
+                                      active
+                                        ? "border-brand bg-brand/10 ring-1 ring-brand/40"
+                                        : "border-border bg-secondary/30 hover:bg-secondary/60",
+                                    ].join(" ")}
+                                  >
+                                    <span className="font-semibold">{d.distance}</span>
+                                    {price > 0 && (
+                                      <span className="text-sm">
+                                        <span className="text-muted-foreground mr-1">{isLote2(d) ? "2º lote" : "1º lote"}</span>
+                                        <span className="font-bold text-brand">{brl(price)}</span>
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
 
-              <div>
-                <Label htmlFor="team">Nome da equipe (opcional)</Label>
-                <Input id="team" value={teamName} onChange={(e) => setTeamName(e.target.value)} className="mt-1" maxLength={120} />
-              </div>
+                        {kitOptions.length > 0 && (
+                          <div
+                            data-invalid={errors.kitOption || undefined}
+                            className={`bg-card border rounded-2xl p-4 sm:p-5 ${errors.kitOption ? "border-destructive" : "border-border"}`}
+                          >
+                            <h3 className="text-sm uppercase tracking-wide text-muted-foreground mb-3">Kit do atleta</h3>
+                            <div className="grid sm:grid-cols-2 gap-2">
+                              {kitOptions.map((k) => {
+                                const active = kitOption === k.name;
+                                return (
+                                  <button
+                                    key={k.name}
+                                    type="button"
+                                    onClick={() => setKitOption(k.name)}
+                                    className={[
+                                      "text-left rounded-xl px-4 py-3 border transition-all flex items-center gap-3",
+                                      active
+                                        ? "border-brand bg-brand/10 ring-1 ring-brand/40"
+                                        : "border-border bg-secondary/30 hover:bg-secondary/60",
+                                    ].join(" ")}
+                                  >
+                                    <Shirt className={`w-4 h-4 shrink-0 ${active ? "text-brand" : "text-muted-foreground"}`} />
+                                    <span className="flex-1 font-medium">{k.name}</span>
+                                    {k.extra_price ? <span className="text-sm text-brand font-semibold">+{brl(k.extra_price)}</span> : null}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
 
-              {coupons.length > 0 && (
-                <div>
-                  <Label>Cupom (opcional)</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input value={couponInput} onChange={(e) => setCouponInput(e.target.value)} placeholder="Tem um cupom? Informe aqui" />
-                    <Button type="button" variant="outline" onClick={applyCoupon}>Aplicar</Button>
+                        <Button onClick={goStep2} variant="brand" size="lg" className="w-full sm:w-auto sm:min-w-56">
+                          Continuar
+                        </Button>
+                      </>
+                    )}
+
+                    {step === 1 && (
+                      <>
+                        <div>
+                          <h1 className="font-display text-2xl sm:text-3xl font-bold">Seus dados</h1>
+                          <p className="text-sm text-muted-foreground mt-1">Confira as informações e finalize a inscrição.</p>
+                        </div>
+
+                        {!profileComplete && (
+                          <div className="bg-warning/15 border border-warning/40 text-foreground rounded-xl p-4 text-sm">
+                            Seus dados estão incompletos. <Link to="/minha-conta" className="underline text-brand">Complete seu perfil</Link> antes de finalizar.
+                          </div>
+                        )}
+
+                        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5">
+                          <dl className="grid sm:grid-cols-2 gap-3 text-sm">
+                            <Field label="Nome" value={profile?.full_name} />
+                            <Field label="CPF" value={profile?.cpf} />
+                            <Field label="Idade" value={calcAge(profile?.birth_date) ? `${calcAge(profile?.birth_date)} anos` : ""} />
+                            <Field label="Cidade" value={[profile?.city, profile?.state].filter(Boolean).join(" / ")} />
+                            <Field label="E-mail" value={profile?.email || user.email || ""} />
+                            <Field label="WhatsApp" value={profile?.whatsapp} />
+                          </dl>
+                        </div>
+
+                        {(genders.length > 1 || ageBrackets.length > 1) && (
+                          <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-3">
+                            <h3 className="text-sm uppercase tracking-wide text-muted-foreground">Categoria</h3>
+                            <div className="grid sm:grid-cols-2 gap-3">
+                              {genders.length > 1 && (
+                                <div>
+                                  <Label className={errors.gender ? "text-destructive" : ""}>Sexo *</Label>
+                                  <Select value={gender} onValueChange={setGender}>
+                                    <SelectTrigger data-invalid={errors.gender || undefined} className={`mt-1 ${errors.gender ? "border-destructive ring-2 ring-destructive/50" : ""}`}><SelectValue placeholder="Sexo" /></SelectTrigger>
+                                    <SelectContent>
+                                      {genders.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                              {ageBrackets.length > 1 && (
+                                <div>
+                                  <Label className={errors.bracket ? "text-destructive" : ""}>Faixa etária *</Label>
+                                  <Select value={bracket} onValueChange={setBracket}>
+                                    <SelectTrigger data-invalid={errors.bracket || undefined} className={`mt-1 ${errors.bracket ? "border-destructive ring-2 ring-destructive/50" : ""}`}><SelectValue placeholder="Faixa" /></SelectTrigger>
+                                    <SelectContent>
+                                      {ageBrackets.map((b) => (
+                                        <SelectItem key={`${b.min}-${b.max}`} value={`${b.min}-${b.max}`}>
+                                          {b.min} a {b.max} anos
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
+                          <div>
+                            <Label htmlFor="team">Nome da equipe (opcional)</Label>
+                            <Input id="team" value={teamName} onChange={(e) => setTeamName(e.target.value)} className="mt-1" maxLength={120} />
+                          </div>
+
+                          {coupons.length > 0 && (
+                            <div>
+                              <Label>Cupom (opcional)</Label>
+                              <div className="flex gap-2 mt-1">
+                                <Input value={couponInput} onChange={(e) => setCouponInput(e.target.value)} placeholder="Tem um cupom? Informe aqui" />
+                                <Button type="button" variant="outline" onClick={applyCoupon}>Aplicar</Button>
+                              </div>
+                              {appliedCoupon && (
+                                <p className="text-xs text-success mt-1 flex items-center gap-1">
+                                  <Tag className="w-3 h-3" /> Cupom {appliedCoupon.code} aplicado{appliedCoupon.description ? `: ${appliedCoupon.description}` : ""}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          <div>
+                            <Label htmlFor="notes">Observações (opcional)</Label>
+                            <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1" rows={3} maxLength={1000} />
+                          </div>
+                        </div>
+
+                        <div data-invalid={errors.terms || undefined} className={`flex items-start gap-2 rounded-lg p-2 ${errors.terms ? "ring-2 ring-destructive/60 bg-destructive/5" : ""}`}>
+                          <Checkbox id="terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(!!v)} className={`mt-0.5 ${errors.terms ? "border-destructive" : ""}`} />
+                          <label htmlFor="terms" className={`text-sm cursor-pointer ${errors.terms ? "text-destructive font-medium" : ""}`}>
+                            Estou de acordo com os{" "}
+                            {event.regulation_url ? (
+                              <a href={event.regulation_url} target="_blank" rel="noreferrer" className="text-brand underline">termos e regulamento</a>
+                            ) : "termos e regulamento"} do evento.
+                          </label>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <Button variant="outline" size="lg" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                            <ChevronLeft className="w-4 h-4" /> Voltar
+                          </Button>
+                          <Button onClick={submit} disabled={submitting || !profileComplete} variant="brand" size="lg" className="flex-1">
+                            {submitting ? "Enviando..." : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  {appliedCoupon && (
-                    <p className="text-xs text-success mt-1 flex items-center gap-1">
-                      <Tag className="w-3 h-3" /> Cupom {appliedCoupon.code} aplicado{appliedCoupon.description ? `: ${appliedCoupon.description}` : ""}
-                    </p>
-                  )}
+
+                  <div>{summaryCard}</div>
                 </div>
               )}
-
-              <div>
-                <Label htmlFor="notes">Observações (opcional)</Label>
-                <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1" rows={3} maxLength={1000} />
-              </div>
-
-              {total > 0 && (
-                <div className="bg-secondary/40 rounded-xl p-4 text-sm space-y-1">
-                  <div className="flex justify-between">
-                    <span>
-                      Inscrição
-                      {distanceObj && (
-                        <span className="ml-1 text-xs text-muted-foreground">
-                          ({lote2Active ? "2º lote" : "1º lote"})
-                        </span>
-                      )}
-                    </span>
-                    <span>{brl(distancePrice)}</span>
-                  </div>
-                  {distanceObj && (distanceObj as any).price_lote2 > 0 && (distanceObj as any).lote2_starts_at && !lote2Active && (
-                    <p className="text-[11px] text-muted-foreground">
-                      A partir de {(() => { const [y,m,dd] = (distanceObj as any).lote2_starts_at.split("-"); return `${dd}/${m}/${y}`; })()} o valor passa para {brl((distanceObj as any).price_lote2)} (2º lote).
-                    </p>
-                  )}
-                  {kitExtra > 0 && <div className="flex justify-between"><span>Kit ({kitOption})</span><span>+{brl(kitExtra)}</span></div>}
-                  <div className="flex justify-between font-bold pt-1 border-t border-border"><span>Total</span><span>{brl(total)}</span></div>
-                  <p className="text-xs text-muted-foreground">Pagamento combinado diretamente com a equipe.</p>
-                </div>
-              )}
-
-              <div data-invalid={errors.terms || undefined} className={`flex items-start gap-2 rounded-lg p-2 -m-2 ${errors.terms ? "ring-2 ring-destructive/60 bg-destructive/5 animate-pulse" : ""}`}>
-                <Checkbox id="terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(!!v)} className={`mt-0.5 ${errors.terms ? "border-destructive" : ""}`} />
-                <label htmlFor="terms" className={`text-sm cursor-pointer ${errors.terms ? "text-destructive font-medium" : ""}`}>
-                  Estou de acordo com os{" "}
-                  {event.regulation_url ? (
-                    <a href={event.regulation_url} target="_blank" rel="noreferrer" className="text-brand underline">termos e regulamento</a>
-                  ) : "termos e regulamento"} do evento.
-                </label>
-              </div>
-
-              <Button onClick={submit} disabled={submitting || !profileComplete} variant="brand" size="lg" className="w-full">
-                {submitting ? "Enviando..." : "Confirmar inscrição"}
-              </Button>
-            </div>
+            </>
           )}
         </div>
       </section>
