@@ -17,17 +17,17 @@ type Benefit = {
 // Ordem dos cards = ordem das imagens em site_settings.home_benefit_image_1..6
 const benefits: Benefit[] = [
   {
-    fallbackImage: benefitRaces,
+    fallbackImage: c1Asset.url,
     title: "Provas da região no radar",
     desc: "Calendário mapeado e orientação pra escolher a próxima.",
   },
   {
-    fallbackImage: benefitPerks,
+    fallbackImage: c2Asset.url,
     title: "Clube de benefícios",
     desc: "Descontos exclusivos em tênis e produtos com parceiros.",
   },
   {
-    fallbackImage: benefitGroup,
+    fallbackImage: c3Asset.url,
     title: "Treinão mensal",
     desc: "Uma vez por mês a equipe se encontra pra correr junto.",
     objectPosition: "center 30%",
