@@ -48,28 +48,27 @@ const PartnerCard = ({ partner }: { partner: Partner }) => {
   return (
     <Wrapper
       {...wrapperProps}
-      className="group relative flex h-[230px] flex-col overflow-hidden rounded-xl
+      className="group relative flex h-[190px] flex-col overflow-hidden rounded-xl
                  bg-white/[0.025] border border-white/[0.06]
                  hover:border-brand/25 hover:bg-white/[0.04]
                  transition-all duration-400 ease-out
                  hover:-translate-y-[2px]"
     >
       {/* Logo bar */}
-      <div className="relative h-[78px] shrink-0 flex items-center justify-center px-4
-                      bg-gradient-to-b from-white/[0.04] to-transparent
-                      border-b border-white/[0.04]">
+      <div className="relative h-[58px] shrink-0 flex items-center justify-center px-4
+                      bg-[#f5f5f5] border-b border-black/5">
         <img
           src={partner.logo}
           alt={partner.name}
           loading="lazy"
-          className="max-h-9 max-w-[130px] object-contain
+          className="max-h-14 max-w-[190px] object-contain
                      transition-transform duration-500 group-hover:scale-105"
         />
         {partner.category && (
-          <span className="absolute top-2 left-2 inline-flex items-center
-                           rounded-full bg-black/40 border border-white/[0.08]
+          <span className="absolute top-1.5 left-2 inline-flex items-center
+                           rounded-full bg-black/80 border border-white/10
                            backdrop-blur-md
-                           text-white/80 px-2 py-[2px] text-[9px] font-semibold
+                           text-white px-2 py-[2px] text-[8px] font-semibold
                            uppercase tracking-[0.16em]">
             {partner.category}
           </span>
@@ -77,7 +76,7 @@ const PartnerCard = ({ partner }: { partner: Partner }) => {
       </div>
 
       {/* Body */}
-      <div className="flex flex-col gap-1.5 p-3 flex-1 min-h-0">
+      <div className="flex flex-col gap-1 p-2.5 flex-1 min-h-0">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-display text-[13.5px] font-semibold text-white tracking-tight leading-tight truncate">
             {partner.name}
@@ -88,12 +87,12 @@ const PartnerCard = ({ partner }: { partner: Partner }) => {
         </div>
 
         {partner.description && (
-          <p className="text-[11.5px] text-white/55 leading-snug line-clamp-2">
+          <p className="text-[11px] text-white/55 leading-snug line-clamp-2">
             {partner.description}
           </p>
         )}
 
-        <div className="mt-auto pt-2 border-t border-white/[0.05]">
+        <div className="mt-auto pt-1.5 border-t border-white/[0.05]">
           {partner.benefit_text ? (
             <>
               <div className="flex items-center gap-1.5">
@@ -102,11 +101,11 @@ const PartnerCard = ({ partner }: { partner: Partner }) => {
                   Benefício aluno
                 </span>
               </div>
-              <p className="mt-0.5 text-[12px] text-white/90 font-medium leading-snug line-clamp-1">
+              <p className="mt-0.5 text-[11px] text-white/90 font-medium leading-snug line-clamp-1">
                 {partner.benefit_text}
               </p>
               {partner.coupon_code && (
-                <div className="mt-1 inline-flex items-center gap-1 text-[9.5px] text-white/35">
+                <div className="mt-1 inline-flex items-center gap-1 text-[9px] text-white/35">
                   <Lock className="h-2.5 w-2.5" />
                   Cupom liberado para alunos
                 </div>
@@ -171,8 +170,20 @@ export const PartnersSection = () => {
           </p>
         </div>
 
-        {/* Infinite horizontal marquee */}
-        <div className="group/marquee relative marquee-mask">
+        {/* Mobile: swipeable horizontal scroll */}
+        <div className="md:hidden -mx-4 px-4 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-3 pb-2">
+            {partners.map((p) => (
+              <div key={p.id} className="snap-start shrink-0 w-[78%] sm:w-[260px]">
+                <PartnerCard partner={p} />
+              </div>
+            ))}
+            <div className="shrink-0 w-1" aria-hidden />
+          </div>
+        </div>
+
+        {/* Desktop: infinite horizontal marquee */}
+        <div className="hidden md:block group/marquee relative marquee-mask">
           <div
             className="flex w-max gap-3 md:gap-4 animate-marquee-x will-change-transform"
             style={{ ["--marquee-duration" as any]: `${duration}s` }}
@@ -180,7 +191,7 @@ export const PartnersSection = () => {
             {loop.map((p, i) => (
               <div
                 key={`${p.id}-${i}`}
-                className="w-[230px] sm:w-[250px] md:w-[270px] shrink-0"
+                className="w-[230px] lg:w-[260px] shrink-0"
                 aria-hidden={i >= partners.length ? true : undefined}
               >
                 <PartnerCard partner={p} />
