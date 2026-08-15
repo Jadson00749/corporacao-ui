@@ -156,7 +156,7 @@ export const PartnersSection = () => {
             {loop.map((p, i) => (
               <div
                 key={`${p.id}-${i}`}
-                className="w-[230px] lg:w-[260px] shrink-0"
+                className="w-[180px] lg:w-[200px] shrink-0"
                 aria-hidden={i >= partners.length ? true : undefined}
               >
                 <PartnerCard partner={p} />
