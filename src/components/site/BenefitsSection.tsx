@@ -2,10 +2,10 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/site/SectionHeader";
 import { useSettings, useWhatsappLink } from "@/contexts/SettingsContext";
-import benefitGroup from "@/assets/coaches-running.jpg";
-import benefitApp from "@/assets/training-app-phone.jpg";
-import benefitRaces from "@/assets/benefit-races-team.jpg";
-import benefitPerks from "@/assets/benefit-shoes-discount.jpg";
+import c1Asset from "@/assets/c1.jpg.asset.json";
+import c2Asset from "@/assets/c2.jpg.asset.json";
+import c3Asset from "@/assets/c3.jpg.asset.json";
+
 
 type Benefit = {
   fallbackImage: string;
