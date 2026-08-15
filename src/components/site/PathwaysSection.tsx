@@ -3,9 +3,13 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "@/lib/router-compat";
 import { SectionHeader } from "@/components/site/SectionHeader";
 import { useSettings } from "@/contexts/SettingsContext";
-import pathRunning from "@/assets/path-running.jpg";
-import pathStrength from "@/assets/path-strength.jpg";
-import pathComplete from "@/assets/path-complete.jpg";
+import pathRunningAsset from "@/assets/path-corrida.jpg.asset.json";
+import pathStrengthAsset from "@/assets/path-forca.jpg.asset.json";
+import pathCompleteAsset from "@/assets/path-completo.jpg.asset.json";
+
+const pathRunning = pathRunningAsset.url;
+const pathStrength = pathStrengthAsset.url;
+const pathComplete = pathCompleteAsset.url;
 
 type Pathway = {
   number: string;
