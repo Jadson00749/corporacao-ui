@@ -138,326 +138,333 @@ const ProvaDetalhe = () => {
   const badge = statusBadge[event.status] ?? statusBadge.open;
   const slotsLeft = event.max_slots ? Math.max(event.max_slots - signupsCount, 0) : null;
 
+  const kits = (Array.isArray(event.kit_options) ? (event.kit_options as any[]) : []).filter((k) => k?.name);
+  const prices = (Array.isArray(event.distances) ? (event.distances as any[]) : []).filter((d) => d?.distance);
+  const docs = (Array.isArray(event.documents) ? (event.documents as { label: string; url: string }[]) : []).filter(
+    (d) => d.url && d.label
+  );
+  const mapsQuery = encodeURIComponent(`${event.city}`);
+
+  const tabs = [
+    { id: "sobre", label: "Sobre" },
+    ...(kits.length || event.kit_info ? [{ id: "kit", label: "Kit" }] : []),
+    ...(event.regulation_url ? [{ id: "regulamento", label: "Regulamento" }] : []),
+    ...(event.registration_deadline ? [{ id: "prazos", label: "Prazos" }] : []),
+    { id: "local", label: "Localização" },
+  ];
+
+  const ctaHref = internal ? `/provas/${event.id}/inscricao` : event.registration_url;
+
   return (
     <Layout>
       <SEO title={`${event.name} | Provas`} description={event.description?.slice(0, 160)} />
 
-      {/* HERO */}
-      <section className="relative pt-24 pb-12 overflow-hidden">
-        {banner ? (
-          <div className="absolute inset-0">
-            <img
-              src={banner}
-              alt={`Banner ${event.name}`}
-              className="w-full h-full object-cover"
-              style={{ filter: "brightness(0.7) saturate(1.05)" }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/85 to-background/40" />
-            <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/30 to-transparent" />
-          </div>
-        ) : (
-          <div className="absolute inset-0 bg-gradient-dark" />
-        )}
-
-        <div className="container-page relative pt-12 md:pt-20 pb-8">
-          <Link
-            to="/provas"
-            className="inline-flex items-center gap-2 text-sm text-foreground/80 hover:text-brand mb-6 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Voltar para provas
-          </Link>
-
-          <div className="max-w-3xl">
-            <div className="flex flex-wrap items-center gap-2 mb-5">
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border backdrop-blur-sm",
-                  badge.className
-                )}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                {badge.label}
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-brand/40 bg-brand/10 text-brand backdrop-blur-sm">
-                <Trophy className="w-3.5 h-3.5" /> {event.distance}
-              </span>
-              {signupsCount > 0 && (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-card/60 text-foreground/80 backdrop-blur-sm">
-                  <Users className="w-3.5 h-3.5" /> {signupsCount} atletas inscritos
-                </span>
-              )}
-            </div>
-
-            <h1 className="font-display text-3xl md:text-5xl font-bold leading-tight text-balance mb-4">
-              {event.name}
-            </h1>
-
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-foreground/85">
-              <span className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-brand" /> {fmt(event.date)}
-              </span>
-              {event.start_time && (
-                <span className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-brand" /> Largada {event.start_time}
-                </span>
-              )}
-              <span className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-brand" /> {event.city}
-              </span>
-            </div>
-
-            <p className="mt-6 text-base md:text-lg text-foreground/80 max-w-2xl flex items-start gap-2">
-              <Sparkles className="w-5 h-5 text-brand shrink-0 mt-0.5" />
-              <span>Prova mapeada pela Corporação: planilha de preparação individual e orientação dos coaches pra você chegar pronto na largada.</span>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* CONTEUDO */}
-      <section className="pb-20">
+      <div className="pt-24 pb-16">
         <div className="container-page">
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              {event.description && (
-                <InfoBlock icon={Info} title="Sobre a prova">
-                  <p className="whitespace-pre-line leading-relaxed">{event.description}</p>
-                </InfoBlock>
-              )}
+          {/* BREADCRUMB */}
+          <nav className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
+            <Link to="/provas" className="hover:text-foreground transition-colors">
+              Descobrir
+            </Link>
+            <ChevronRight className="w-4 h-4 opacity-50" />
+            <span className="text-foreground truncate">{event.name}</span>
+          </nav>
 
-              {event.kit_info && (
-                <InfoBlock icon={Shirt} title="Kit do atleta">
-                  <p className="whitespace-pre-line leading-relaxed">{event.kit_info}</p>
-                </InfoBlock>
-              )}
-
-              {event.kit_delivery && (
-                <InfoBlock icon={Package} title="Entrega do kit">
-                  <p className="whitespace-pre-line leading-relaxed">{event.kit_delivery}</p>
-                </InfoBlock>
-              )}
-
-              {event.more_info && (
-                <InfoBlock icon={Info} title="Informações importantes">
-                  <p className="whitespace-pre-line leading-relaxed">{event.more_info}</p>
-                </InfoBlock>
-              )}
-
-              {Array.isArray(event.documents) && event.documents.length > 0 && (
-                <InfoBlock icon={FileText} title="Documentos de apoio">
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {(event.documents as { label: string; url: string }[])
-                      .filter((d) => d.url && d.label)
-                      .map((d, i) => (
-                        <a
-                          key={i}
-                          href={d.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="group flex items-center gap-3 p-4 rounded-xl border border-border bg-background/50 hover:border-brand hover:bg-brand/5 hover:-translate-y-0.5 transition-all"
-                        >
-                          <div className="w-11 h-11 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0 group-hover:bg-brand group-hover:text-brand-foreground transition">
-                            <FileText className="w-5 h-5" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="font-medium text-sm truncate">{d.label}</div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                              Abrir documento <ExternalLink className="w-3 h-3" />
-                            </div>
-                          </div>
-                        </a>
-                      ))}
-                  </div>
-                </InfoBlock>
-              )}
-
-              {event.regulation_url && (
-                <InfoBlock icon={ScrollText} title="Regulamento">
-                  <p className="text-foreground/70 mb-3">
-                    Leia o regulamento completo da prova antes de se inscrever.
-                  </p>
-                  <a
-                    href={event.regulation_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 text-brand font-semibold hover:underline"
-                  >
-                    <FileText className="w-4 h-4" /> Abrir regulamento <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </InfoBlock>
-              )}
+          {/* TABS */}
+          <div className="mt-5 border-b border-border/60 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-7 min-w-max">
+              {tabs.map((t, i) => (
+                <a
+                  key={t.id}
+                  href={`#${t.id}`}
+                  className={cn(
+                    "relative pb-3 text-sm font-medium whitespace-nowrap transition-colors",
+                    i === 0 ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {t.label}
+                  {i === 0 && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-brand rounded-full" />}
+                </a>
+              ))}
             </div>
+          </div>
 
-            {/* SIDEBAR PREMIUM */}
-            <aside className="lg:col-span-1">
-              <div className="sticky top-28 space-y-4">
-                <div className="relative rounded-2xl p-6 border border-border/60 bg-card/80 backdrop-blur-md shadow-elegant overflow-hidden">
-                  <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-brand/20 blur-3xl pointer-events-none" />
+          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start">
+            {/* COLUNA PRINCIPAL */}
+            <div className="min-w-0 space-y-8">
+              {/* BANNER */}
+              <div className="relative rounded-2xl overflow-hidden border border-border/60 bg-card">
+                {banner ? (
+                  <img src={banner} alt={`Banner ${event.name}`} className="w-full h-[220px] md:h-[340px] object-cover" />
+                ) : (
+                  <div className="w-full h-[220px] md:h-[340px] bg-gradient-dark" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-5 md:p-7">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border backdrop-blur-sm",
+                      badge.className
+                    )}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                    {badge.label.toUpperCase()}
+                  </span>
+                  <h1 className="mt-3 font-display text-2xl md:text-4xl font-bold leading-tight text-balance">
+                    {event.name}
+                  </h1>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mt-1">
+                    {event.distance}
+                  </p>
+                </div>
+              </div>
 
-                  <div className="relative space-y-5">
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border",
-                          badge.className
-                        )}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                        {badge.label}
+              {/* SOBRE */}
+              {event.description && (
+                <Block id="sobre" title="Sobre a prova">
+                  <p className="whitespace-pre-line leading-relaxed text-sm text-foreground/80">{event.description}</p>
+                  <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-foreground/70">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-brand" /> {fmt(event.date)}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-brand" /> {event.city}
+                    </span>
+                    {event.start_time && (
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-brand" /> Largada {event.start_time}
                       </span>
-                    </div>
+                    )}
+                  </div>
+                </Block>
+              )}
 
-                    <div>
-                      <h2 className="font-display text-2xl font-bold mb-1">Garanta sua vaga</h2>
-                      <p className="text-sm text-muted-foreground">
-                        {closed
-                          ? "As inscrições para esta prova estão encerradas."
-                          : event.status === "soon"
-                          ? "As inscrições abrem em breve."
-                          : "Treine e participe com a equipe."}
-                      </p>
+              {/* KIT */}
+              {(kits.length > 0 || event.kit_info) && (
+                <Block id="kit" title="Kit do atleta">
+                  {kits.length > 0 ? (
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {kits.map((k, i) => (
+                        <div
+                          key={i}
+                          className="rounded-xl border border-border/60 bg-card/60 p-4 hover:border-brand/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Package className="w-4 h-4 text-brand shrink-0" />
+                            <span className="font-semibold text-sm">{k.name}</span>
+                          </div>
+                          {k.description && (
+                            <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{k.description}</p>
+                          )}
+                          {k.extra_price > 0 && (
+                            <p className="mt-1.5 text-xs text-brand font-semibold">
+                              + {Number(k.extra_price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            </p>
+                          )}
+                        </div>
+                      ))}
                     </div>
+                  ) : (
+                    <p className="whitespace-pre-line leading-relaxed text-sm text-foreground/80">{event.kit_info}</p>
+                  )}
+                  {event.kit_delivery && (
+                    <p className="mt-4 text-xs text-muted-foreground whitespace-pre-line leading-relaxed">
+                      <strong className="text-foreground/80">Entrega do kit:</strong> {event.kit_delivery}
+                    </p>
+                  )}
+                </Block>
+              )}
 
-                    <ul className="space-y-2.5 text-sm">
-                      {event.distance && (
-                        <li className="flex items-center gap-2.5">
-                          <Trophy className="w-4 h-4 text-brand shrink-0" />
-                          <span className="text-foreground/80">Distâncias: <strong className="text-foreground">{event.distance}</strong></span>
-                        </li>
-                      )}
-                      {event.start_time && (
-                        <li className="flex items-center gap-2.5">
-                          <Clock className="w-4 h-4 text-brand shrink-0" />
-                          <span className="text-foreground/80">Largada às <strong className="text-foreground">{event.start_time}</strong></span>
-                        </li>
-                      )}
-                      {event.kit_info && (
-                        <li className="flex items-center gap-2.5">
-                          <Shirt className="w-4 h-4 text-brand shrink-0" />
-                          <span className="text-foreground/80">Kit do atleta incluso</span>
-                        </li>
-                      )}
-                      {event.registration_deadline && (
-                        <li className="flex items-center gap-2.5">
-                          <Calendar className="w-4 h-4 text-brand shrink-0" />
-                          <span className="text-foreground/80">Inscrições até <strong className="text-foreground">{fmt(event.registration_deadline)}</strong></span>
-                        </li>
-                      )}
-                      {slotsLeft !== null && (
-                        <li className="flex items-center gap-2.5">
-                          <CheckCircle2 className="w-4 h-4 text-brand shrink-0" />
-                          <span className="text-foreground/80">
-                            <strong className="text-foreground">{slotsLeft}</strong> vagas restantes
+              {/* VALORES */}
+              {prices.some((d) => (d.price && d.price > 0) || (d.price_lote2 && d.price_lote2 > 0)) && (
+                <Block id="valores" title="Valores">
+                  <ul className="grid sm:grid-cols-2 gap-2">
+                    {prices.map((d, i) => {
+                      const today = new Date().toISOString().slice(0, 10);
+                      const hasLote2 = d.price_lote2 && d.price_lote2 > 0 && d.lote2_starts_at;
+                      const lote2Active = hasLote2 && today >= d.lote2_starts_at;
+                      const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                      const fmtDate = (iso: string) => {
+                        const [y, m, dd] = iso.split("-");
+                        return `${dd}/${m}/${y}`;
+                      };
+                      return (
+                        <li
+                          key={i}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/60 px-4 py-3"
+                        >
+                          <span className="text-sm text-foreground/80">{d.distance}</span>
+                          <span className="text-right">
+                            <span className="font-semibold text-sm">{money(lote2Active ? d.price_lote2 : d.price ?? 0)}</span>
+                            {hasLote2 && (
+                              <span className="block text-[10px] text-muted-foreground">
+                                {lote2Active
+                                  ? `2º lote desde ${fmtDate(d.lote2_starts_at)}`
+                                  : `2º lote ${money(d.price_lote2)} em ${fmtDate(d.lote2_starts_at)}`}
+                              </span>
+                            )}
                           </span>
                         </li>
-                      )}
-                      <li className="flex items-center gap-2.5">
-                        <Users className="w-4 h-4 text-brand shrink-0" />
-                        <span className="text-foreground/80">
-                          <strong className="text-foreground">{signupsCount}</strong> atletas da equipe confirmados
-                        </span>
-                      </li>
-                    </ul>
+                      );
+                    })}
+                  </ul>
+                </Block>
+              )}
 
-                    {Array.isArray(event.distances) && (event.distances as any[]).some((d) => (d.price && d.price > 0) || (d.price_lote2 && d.price_lote2 > 0)) && (
-                      <div className="rounded-xl border border-border/60 bg-background/40 p-4">
-                        <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-muted-foreground mb-2">
-                          Valores da inscrição
+              {/* REGULAMENTO + DOCUMENTOS */}
+              {(event.regulation_url || docs.length > 0) && (
+                <Block id="regulamento" title="Regulamento">
+                  <div className="flex flex-wrap gap-3">
+                    {event.regulation_url && (
+                      <a
+                        href={event.regulation_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card/60 px-4 py-2.5 text-sm font-medium hover:border-brand hover:text-brand transition-colors"
+                      >
+                        <FileText className="w-4 h-4" /> Acessar regulamento
+                      </a>
+                    )}
+                    {docs.map((d, i) => (
+                      <a
+                        key={i}
+                        href={d.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card/60 px-4 py-2.5 text-sm font-medium hover:border-brand hover:text-brand transition-colors"
+                      >
+                        <FileText className="w-4 h-4" /> {d.label} <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                      </a>
+                    ))}
+                  </div>
+                </Block>
+              )}
+
+              {/* PRAZOS / INFOS */}
+              {(event.registration_deadline || event.more_info) && (
+                <Block id="prazos" title="Prazos e informações">
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {event.registration_deadline && (
+                      <div className="rounded-xl border border-border/60 bg-card/60 p-4">
+                        <div className="flex items-center gap-2 text-sm font-semibold">
+                          <Calendar className="w-4 h-4 text-brand" /> Inscrições
                         </div>
-                        <ul className="space-y-2 text-sm">
-                          {(event.distances as any[])
-                            .filter((d) => d.distance)
-                            .map((d, i) => {
-                              const today = new Date().toISOString().slice(0, 10);
-                              const hasLote2 = d.price_lote2 && d.price_lote2 > 0 && d.lote2_starts_at;
-                              const lote2Active = hasLote2 && today >= d.lote2_starts_at;
-                              const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-                              const fmtDate = (iso: string) => { const [y,m,dd] = iso.split("-"); return `${dd}/${m}/${y}`; };
-                              return (
-                                <li key={i} className="flex items-center justify-between gap-3">
-                                  <span className="text-foreground/80">{d.distance}</span>
-                                  <span className="text-right">
-                                    <span className="font-semibold text-foreground">
-                                      {fmt(lote2Active ? d.price_lote2 : (d.price ?? 0))}
-                                    </span>
-                                    {hasLote2 && (
-                                      <span className="block text-[11px] text-muted-foreground mt-0.5">
-                                        {lote2Active
-                                          ? `2º lote (desde ${fmtDate(d.lote2_starts_at)})`
-                                          : `2º lote: ${fmt(d.price_lote2)} a partir de ${fmtDate(d.lote2_starts_at)}`}
-                                      </span>
-                                    )}
-                                  </span>
-                                </li>
-                              );
-                            })}
-                        </ul>
-                        {Array.isArray(event.kit_options) && (event.kit_options as { name: string; extra_price?: number }[]).some((k) => k.extra_price && k.extra_price > 0) && (
-                          <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
-                            Opções de kit podem ter valor adicional, calculado na inscrição.
-                          </p>
-                        )}
+                        <p className="mt-1 text-xs text-muted-foreground">até {fmt(event.registration_deadline)}</p>
                       </div>
                     )}
-
-                    <div className="space-y-2 pt-1">
-                      {internal ? (
-                        <Button
-                          asChild
-                          variant={closed ? "outline" : "brand"}
-                          size="lg"
-                          className="w-full"
-                          disabled={closed}
-                        >
-                          <Link
-                            to={closed ? "#" : `/provas/${event.id}/inscricao`}
-                            onClick={(e) => closed && e.preventDefault()}
-                          >
-                            {closed ? "Encerrado" : "Inscrever-se na prova"}
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button
-                          asChild
-                          variant={closed ? "outline" : "brand"}
-                          size="lg"
-                          className="w-full"
-                          disabled={closed}
-                        >
-                          <a
-                            href={event.registration_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(e) => closed && e.preventDefault()}
-                          >
-                            {closed ? "Encerrado" : "Acessar inscrição"}{" "}
-                            {!closed && <ExternalLink className="w-4 h-4" />}
-                          </a>
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        className="w-full"
-                        onClick={() => setListOpen(true)}
-                      >
-                        <Users className="w-4 h-4" /> Ver lista de inscritos
-                      </Button>
-                    </div>
+                    {slotsLeft !== null && (
+                      <div className="rounded-xl border border-border/60 bg-card/60 p-4">
+                        <div className="flex items-center gap-2 text-sm font-semibold">
+                          <CheckCircle2 className="w-4 h-4 text-brand" /> Vagas restantes
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{slotsLeft} de {event.max_slots}</p>
+                      </div>
+                    )}
                   </div>
-                </div>
+                  {event.more_info && (
+                    <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-foreground/75">
+                      {event.more_info}
+                    </p>
+                  )}
+                </Block>
+              )}
 
-                <div className="rounded-2xl p-5 border border-brand/20 bg-brand/5 text-sm text-foreground/85 leading-relaxed">
-                  <p className="font-display font-semibold text-foreground mb-1">
-                    Preparação sob medida.
-                  </p>
-                  <p>Sua planilha é ajustada com foco nessa prova e o coach acompanha sua evolução até a largada.</p>
+              {/* LOCALIZACAO */}
+              <Block id="local" title="Localização">
+                <p className="flex items-center gap-2 text-sm text-foreground/80">
+                  <MapPin className="w-4 h-4 text-brand shrink-0" /> {event.city}
+                </p>
+                <div className="mt-3 rounded-xl overflow-hidden border border-border/60">
+                  <iframe
+                    title="Mapa da prova"
+                    src={`https://www.google.com/maps?q=${mapsQuery}&output=embed`}
+                    className="w-full h-[240px] border-0"
+                    loading="lazy"
+                  />
                 </div>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:underline"
+                >
+                  Abrir no Google Maps <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </Block>
+            </div>
+
+            {/* SIDEBAR */}
+            <aside className="lg:sticky lg:top-24 space-y-4">
+              <div className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-md p-4 shadow-elegant">
+                <dl className="divide-y divide-border/50 text-sm">
+                  <Row icon={Calendar} label="Data" value={fmt(event.date).toUpperCase()} />
+                  <Row icon={MapPin} label="Local" value={event.city} />
+                  {event.start_time && <Row icon={Clock} label="Largada" value={event.start_time} />}
+                  <div className="flex items-center justify-between gap-3 py-2.5">
+                    <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      <Timer className="w-4 h-4" /> Faltam
+                    </span>
+                    <Countdown date={event.date} time={event.start_time} />
+                  </div>
+                </dl>
+
+                <div className="mt-4 space-y-2">
+                  <Button asChild variant={closed ? "outline" : "brand"} size="lg" className="w-full" disabled={closed}>
+                    {internal ? (
+                      <Link to={closed ? "#" : ctaHref} onClick={(e) => closed && e.preventDefault()}>
+                        {closed ? "Encerrado" : "Inscrever-se"} {!closed && <ArrowRight className="w-4 h-4" />}
+                      </Link>
+                    ) : (
+                      <a href={ctaHref} target="_blank" rel="noreferrer" onClick={(e) => closed && e.preventDefault()}>
+                        {closed ? "Encerrado" : "Inscrever-se"} {!closed && <ExternalLink className="w-4 h-4" />}
+                      </a>
+                    )}
+                  </Button>
+                  <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Lock className="w-3 h-3" /> Pagamento seguro · Pix ou cartão
+                  </p>
+                </div>
+              </div>
+
+              {event.registration_deadline && (
+                <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground text-center">
+                  <Clock className="w-3 h-3" /> Inscrições até {fmt(event.registration_deadline)}
+                </p>
+              )}
+
+              <div className="rounded-2xl border border-border/60 bg-card/60 p-4">
+                <p className="font-display font-semibold text-sm">Já fez sua inscrição?</p>
+                <p className="text-xs text-muted-foreground mb-3">Alguns links rápidos:</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setListOpen(true)}
+                    className="rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-xs hover:border-brand hover:text-brand transition-colors"
+                  >
+                    Lista de inscritos
+                  </button>
+                  <Link
+                    to="/minha-conta"
+                    className="rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-xs hover:border-brand hover:text-brand transition-colors"
+                  >
+                    Minhas inscrições
+                  </Link>
+                  <Link
+                    to="/contato"
+                    className="rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-xs hover:border-brand hover:text-brand transition-colors"
+                  >
+                    Central de ajuda
+                  </Link>
+                </div>
+                <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Users className="w-3.5 h-3.5 text-brand" /> {signupsCount} atletas confirmados
+                </p>
               </div>
             </aside>
           </div>
         </div>
-      </section>
+      </div>
+
 
       <Dialog open={listOpen} onOpenChange={setListOpen}>
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
