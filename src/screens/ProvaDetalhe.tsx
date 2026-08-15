@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "@/lib/router-compat";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/site/Layout";
@@ -22,6 +22,10 @@ import {
   Sparkles,
   CheckCircle2,
   ArrowLeft,
+  ArrowRight,
+  ChevronRight,
+  Timer,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -609,6 +613,58 @@ const ProvaDetalhe = () => {
         </DialogContent>
       </Dialog>
     </Layout>
+  );
+};
+
+const Block = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
+  <section id={id} className="scroll-mt-28">
+    <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-3">{title}</h2>
+    {children}
+  </section>
+);
+
+const Row = ({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) => (
+  <div className="flex items-center justify-between gap-3 py-2.5">
+    <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+      <Icon className="w-4 h-4" /> {label}
+    </span>
+    <span className="text-sm font-semibold text-right truncate">{value}</span>
+  </div>
+);
+
+const Countdown = ({ date, time }: { date: string; time?: string | null }) => {
+  const target = new Date(`${date}T${time && /^\d{2}:\d{2}/.test(time) ? time.slice(0, 5) : "07:00"}:00`).getTime();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const diff = Math.max(target - now, 0);
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const sec = Math.floor((diff % 60000) / 1000);
+  const cell = (v: number, u: string) => (
+    <span className="rounded-md bg-background/60 border border-border/60 px-1.5 py-1 text-xs font-bold tabular-nums">
+      {String(v).padStart(2, "0")}
+      <span className="ml-0.5 text-[9px] font-normal text-muted-foreground">{u}</span>
+    </span>
+  );
+  return (
+    <div className="flex items-center gap-1">
+      {cell(d, "d")}
+      {cell(h, "h")}
+      {cell(m, "m")}
+      {cell(sec, "s")}
+    </div>
   );
 };
 
