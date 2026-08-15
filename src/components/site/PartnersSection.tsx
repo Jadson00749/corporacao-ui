@@ -61,7 +61,7 @@ const PartnerCard = ({ partner }: { partner: Partner }) => {
           src={partner.logo}
           alt={partner.name}
           loading="lazy"
-          className="max-h-12 max-w-[170px] object-contain
+          className="max-h-14 max-w-[190px] object-contain
                      transition-transform duration-500 group-hover:scale-105"
         />
         {partner.category && (
