@@ -139,7 +139,7 @@ export const PartnersSection = () => {
         <div className="md:hidden -mx-4 px-4 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex gap-3 pb-2">
             {partners.map((p) => (
-              <div key={p.id} className="snap-start shrink-0 w-[78%] sm:w-[260px]">
+              <div key={p.id} className="snap-start shrink-0 w-[160px]">
                 <PartnerCard partner={p} />
               </div>
             ))}
