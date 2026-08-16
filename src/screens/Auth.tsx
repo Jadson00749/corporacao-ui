@@ -58,6 +58,16 @@ const Auth = () => {
               <TabsTrigger value="signup">Criar conta</TabsTrigger>
             </TabsList>
 
+            <GoogleSignIn redirectTo={redirectTo} />
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-card px-2 text-muted-foreground">ou continue com e-mail</span>
+              </div>
+            </div>
+
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
