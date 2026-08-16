@@ -54,7 +54,7 @@ export const siteSettings = {
   homeBenefitImages: ["", "", "", "", "", ""],
 
   images: {
-    homeIntro: "/__l5e/assets-v1/0e1edceb-944e-42f1-a174-b5250c9624c9/quem-somos-novo.jpg",
+    homeIntro: "/__l5e/assets-v1/c35e59aa-3c12-41b2-aff5-edce0fec2495/quem-somos-duo.jpg",
     homeTeamAvatars: ["", "", "", ""] as string[],
     sobreCoach1: "",
     sobreCoach2: "",
