@@ -56,52 +56,28 @@ function AuthCallback() {
         return;
       }
 
-      // Cria um perfil mínimo se for o primeiro login.
-      const { data: existingProfile } = await supabase
+      // O perfil é vinculado por user_id. Nunca sobrescrevemos dados existentes:
+      // apenas verificamos se o cadastro está completo.
+      const { data: existingProfile, error: profileReadError } = await supabase
         .from("profiles")
-        .select("id")
+        .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (!existingProfile) {
-        const fullName =
-          user.user_metadata?.full_name ||
-          user.user_metadata?.name ||
-          "";
-
-        const { error: profileError } = await supabase.from("profiles").upsert(
-          {
-            user_id: user.id,
-            email: user.email || "",
-            full_name: fullName,
-            cpf: "",
-            birth_date: null,
-            gender: "",
-            phone: "",
-            whatsapp: "",
-            cep: "",
-            street: "",
-            number: "",
-            complement: "",
-            neighborhood: "",
-            city: "",
-            state: "",
-            team_name: "",
-            accepts_marketing: false,
-            accepted_terms_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id" }
-        );
-
-        if (profileError) {
-          setError("Erro ao criar perfil: " + profileError.message);
-          return;
-        }
+      if (profileReadError) {
+        setError("Erro ao carregar perfil: " + profileReadError.message);
+        return;
       }
 
-      const redirect = localStorage.getItem("auth_redirect") || "/minha-conta";
+      const redirect = localStorage.getItem("auth_redirect") || "";
       try { localStorage.removeItem("auth_redirect"); } catch {}
-      navigate(redirect, { replace: true });
+
+      if (!isProfileComplete(existingProfile)) {
+        navigate("/completar-cadastro", { replace: true });
+        return;
+      }
+
+      navigate(redirect || "/minha-conta", { replace: true });
     };
 
     void handleCallback();
