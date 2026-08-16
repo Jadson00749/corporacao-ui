@@ -410,7 +410,7 @@ const ProvaDetalhe = () => {
                     )}
                   </Button>
                   <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-                    <Lock className="w-3 h-3" /> Pagamento seguro · Pix ou cartão
+                    <Lock className="w-3 h-3" /> Pagamento seguro · Pix
                   </p>
                 </div>
               </div>
