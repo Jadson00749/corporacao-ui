@@ -190,17 +190,8 @@ export const PartnersSection = () => {
           </p>
         </div>
 
-        {/* Mobile: swipeable horizontal scroll */}
-        <div className="md:hidden -mx-4 px-4 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex gap-3 pb-2">
-            {partners.map((p) => (
-              <div key={p.id} className="snap-start shrink-0 w-[160px]">
-                <PartnerCard partner={p} />
-              </div>
-            ))}
-            <div className="shrink-0 w-1" aria-hidden />
-          </div>
-        </div>
+        {/* Mobile: 1 card por vez com scroll-snap */}
+        <MobilePartnersCarousel partners={partners} />
 
         {/* Desktop: infinite horizontal marquee */}
         <div className="hidden md:block group/marquee relative marquee-mask">
