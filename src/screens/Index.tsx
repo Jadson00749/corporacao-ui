@@ -22,6 +22,7 @@ import { HomeTrainingsSection } from "@/components/site/HomeTrainingsSection";
 import { PlansHomeSection } from "@/components/site/PlansHomeSection";
 import { PartnersSection } from "@/components/site/PartnersSection";
 import { GoldSponsorsSection } from "@/components/site/GoldSponsorsSection";
+import { UpcomingRacesSection } from "@/components/site/UpcomingRacesSection";
 import { HomeHighlightCarousel } from "@/components/site/HomeHighlightCarousel";
 import { useSettings, useSettingsLoaded, useWhatsappLink } from "@/contexts/SettingsContext";
 import {
@@ -109,6 +110,15 @@ const Index = () => {
   const featuredEvents = events.filter((e) => e.status !== "closed").slice(0, 3);
   const featuredProducts = products.slice(0, 4);
 
+  const scrollToProvas = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const el = document.getElementById("proximas-provas");
+    if (el) {
+      const y = el.getBoundingClientRect().top + window.scrollY - 70;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    }
+  };
+
   const [showStickyCta, setShowStickyCta] = useState(false);
   useEffect(() => {
     const onScroll = () => setShowStickyCta(window.scrollY > 420);
@@ -171,10 +181,10 @@ const Index = () => {
           className="absolute inset-0 md:hidden"
           style={{
             background:
-              "radial-gradient(120% 70% at 20% 70%, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.15) 75%, transparent 100%)",
+              "radial-gradient(130% 75% at 18% 62%, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.72) 40%, rgba(0,0,0,0.3) 72%, transparent 100%)",
           }}
         />
-        <div aria-hidden className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/90 via-black/30 to-transparent md:from-black/45 md:via-black/10 md:h-48" />
+        <div aria-hidden className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black via-black/55 to-transparent md:from-black/45 md:via-black/10 md:h-48" />
 
 
         {/* Halo verde discreto, lateral */}
@@ -228,19 +238,19 @@ const Index = () => {
               {siteSettings.hero.eyebrow}
             </span>
 
-            <h1 className="font-display font-semibold leading-[1.02] tracking-[-0.025em] text-balance text-[1.7rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem]">
+            <h1 className="font-display font-semibold leading-[1.02] tracking-[-0.025em] text-balance [text-shadow:0_2px_18px_rgba(0,0,0,0.55)] sm:[text-shadow:none] text-[1.7rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem]">
               {siteSettings.hero.title}
-              <span className="block mt-1.5 sm:mt-3 font-light text-white/80 text-[1.2rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem] leading-[1.15]">
+              <span className="block mt-1.5 sm:mt-3 font-light text-white/90 sm:text-white/80 text-[1.25rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem] leading-[1.15]">
                 {siteSettings.hero.titleAccent}
               </span>
             </h1>
 
-            <p className="mt-4 sm:mt-7 text-[13px] sm:text-[15px] md:text-[16px] text-white/70 max-w-[34ch] sm:max-w-[460px] leading-[1.5] sm:leading-[1.7] line-clamp-3 sm:line-clamp-none">
+            <p className="mt-3.5 sm:mt-7 text-[14px] sm:text-[15px] md:text-[16px] text-white/80 sm:text-white/70 max-w-[34ch] sm:max-w-[460px] leading-[1.6] sm:leading-[1.7] [text-shadow:0_1px_10px_rgba(0,0,0,0.6)] sm:[text-shadow:none] line-clamp-3 sm:line-clamp-none">
               {siteSettings.hero.subtitle}
             </p>
 
 
-            <div className="mt-6 sm:mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-3 items-center sm:items-center">
+            <div className="mt-5 sm:mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-2.5 sm:gap-3 items-center sm:items-center">
               <Button
                 asChild
                 variant="brand"
@@ -251,17 +261,18 @@ const Index = () => {
                   {siteSettings.hero.primaryCta} <ArrowRight className="w-4 h-4" />
                 </a>
               </Button>
-              <Link
-                to="/planos"
-                className="group inline-flex items-center justify-center sm:justify-start gap-1.5 text-[12.5px] sm:text-[13.5px] font-medium text-white/50 hover:text-white/80 underline-offset-4 hover:underline transition-colors"
+              <a
+                href="#proximas-provas"
+                onClick={scrollToProvas}
+                className="group inline-flex items-center justify-center sm:justify-start gap-1.5 h-10 sm:h-auto px-4 sm:px-0 rounded-full border border-white/15 sm:border-0 bg-white/[0.06] sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-0 text-[13px] sm:text-[13.5px] font-medium text-white/80 hover:text-white transition-colors"
               >
-                Ver planos
+                Ver próximas provas
                 <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
-              </Link>
+              </a>
             </div>
 
             {/* Prova social humana (mobile + desktop) */}
-            <div className="mt-6 sm:mt-9 flex items-center gap-3 sm:gap-3">
+            <div className="mt-5 sm:mt-9 flex items-center gap-2.5 sm:gap-3">
               <div className="flex -space-x-2">
                 {[avatarLucas, avatarHelo, avatarDuo, avatarFund].map((fallback, i) => {
                   const src = siteSettings.images?.homeTeamAvatars?.[i] || fallback;
@@ -275,46 +286,33 @@ const Index = () => {
                   );
                 })}
               </div>
-              <p className="text-[12.5px] sm:text-[13px] text-white/65 leading-snug">
+              <p className="text-[12.5px] sm:text-[13px] text-white/70 leading-snug">
                 <span className="text-white font-semibold">+120 atletas</span> treinando com a Corporação
               </p>
             </div>
 
-            {/* Stats mobile: grid 2 colunas, sem corte */}
-            <div className="mt-7 sm:hidden grid grid-cols-2 gap-2.5">
-              {(siteSettings.hero?.stats ?? []).map((s, i) => {
-                const Icon = [Users, Calendar, Trophy][i] ?? Users;
-                const mobileLabels = [
-                  "atletas treinando",
-                  "anos criando constância",
-                  "provas realizadas",
-                ];
-                const label = mobileLabels[i] ?? s.label;
-                const stats = siteSettings.hero?.stats ?? [];
-                const isLastOdd = stats.length % 2 === 1 && i === stats.length - 1;
-                return (
-                  <div
-                    key={i}
-                    className={`h-full min-w-0 rounded-2xl border border-white/[0.07] bg-black/55 backdrop-blur-xl px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_24px_48px_-28px_rgba(0,0,0,0.8)] ${
-                      isLastOdd ? "col-span-2" : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Icon className="w-[13px] h-[13px] text-white/40 shrink-0" strokeWidth={1.75} />
-                      <span className="text-[9px] font-semibold tracking-[0.22em] uppercase text-white/40">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
+            {/* Stats mobile: bloco glass único */}
+            <div className="mt-5 sm:hidden rounded-2xl border border-white/[0.09] bg-black/55 backdrop-blur-xl px-1 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_24px_48px_-28px_rgba(0,0,0,0.85)]">
+              <div className="grid grid-cols-3 divide-x divide-white/[0.08]">
+                {(siteSettings.hero?.stats ?? []).map((s, i) => {
+                  const Icon = [Users, Calendar, Trophy][i] ?? Users;
+                  const mobileLabels = ["atletas", "anos de estrada", "provas"];
+                  const label = mobileLabels[i] ?? s.label;
+                  return (
+                    <div key={i} className="min-w-0 px-3 text-center">
+                      <Icon className="mx-auto w-[13px] h-[13px] text-white/35" strokeWidth={1.75} />
+                      <div className="mt-2 font-display text-[1.5rem] font-semibold text-white tracking-[-0.035em] leading-none">
+                        {s.value}
+                      </div>
+                      <div className="mt-1.5 text-[10.5px] text-white/55 leading-tight tracking-[-0.005em]">
+                        {label}
+                      </div>
                     </div>
-                    <div className="mt-3 font-display text-[1.65rem] font-semibold text-white tracking-[-0.035em] leading-none">
-                      {s.value}
-                    </div>
-                    <div className="mt-1.5 text-[11.5px] text-white/60 leading-snug tracking-[-0.005em]">
-                      {label}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
+
 
 
 
@@ -363,6 +361,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* PRÓXIMAS PROVAS - logo após o Hero */}
+      <UpcomingRacesSection />
 
       {/* DESTAQUES EDITÁVEIS - carrossel logo após o Hero */}
       <HomeHighlightCarousel />
@@ -485,53 +486,9 @@ const Index = () => {
       {/* 6. TRAININGS */}
       <HomeTrainingsSection />
 
-      {/* 7. EVENTS */}
-      <section className="relative section-padding bg-background overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-32 right-[-80px] w-[440px] h-[440px] rounded-full opacity-[0.06] blur-[140px]"
-          style={{ background: "radial-gradient(circle, hsl(var(--brand)) 0%, transparent 70%)" }}
-        />
+      {/* 7. EVENTS: agora exibido logo após o hero em <UpcomingRacesSection /> */}
 
-        <div className="container-page relative">
-          <div className="flex flex-wrap gap-6 justify-between items-end mb-12">
-            <SectionHeader
-              eyebrow="Provas em destaque"
-              title="Próximas provas"
-              subtitle="Veja as próximas provas e corra com a gente."
-              align="left"
-              className="!mx-0"
-            />
-            <Link
-              to="/provas"
-              className="group inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:text-brand transition-colors"
-            >
-              Ver todas as provas
-              <span className="w-6 h-px bg-foreground/40 group-hover:w-12 group-hover:bg-brand transition-all duration-300" />
-              <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
-            </Link>
-          </div>
-          {/* Mobile: carrossel horizontal com auto-scroll */}
-          <MobileAutoCarousel>
-            {featuredEvents.map((e) => (
-              <div key={e.id} data-card className="snap-start shrink-0 w-[82%] flex">
-                <EventCard event={e} />
-              </div>
-            ))}
-          </MobileAutoCarousel>
-          {featuredEvents.length > 1 && (
-            <p className="md:hidden mt-2 text-center text-[10px] text-muted-foreground/70 tracking-wider uppercase">
-              Arraste para ver outras provas
-            </p>
-          )}
 
-          {/* Desktop: grid */}
-          <div className="hidden md:grid md:grid-cols-3 gap-6">
-            {featuredEvents.map((e) => <EventCard key={e.id} event={e} />)}
-          </div>
-
-        </div>
-      </section>
 
       {/* PRODUCTS (loja) */}
       <section className="section-padding">
