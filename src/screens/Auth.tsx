@@ -42,8 +42,15 @@ const GoogleSignIn = ({ redirectTo }: { redirectTo: string }) => {
           },
         },
       });
-      if (error) toast.error(error.message);
-    } finally {
+      if (error) {
+        toast.error("Não foi possível iniciar o login com Google: " + error.message);
+        setSubmitting(false);
+      }
+      // em caso de sucesso o navegador é redirecionado ao Google
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Falha inesperada no login com Google."
+      );
       setSubmitting(false);
     }
   };

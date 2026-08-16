@@ -23,19 +23,36 @@ function AuthCallback() {
         return;
       }
 
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      // O client já tem detectSessionInUrl ativo: ele pode consumir o "code"
+      // antes daqui. Só trocamos manualmente se ainda não houver sessão.
+      let { data: { session } } = await supabase.auth.getSession();
+
+      if (!session && code) {
+        const { data: exchanged, error: exchangeError } =
+          await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
-          setError(exchangeError.message);
-          return;
+          // Pode ter sido consumido pelo SDK entre as duas chamadas.
+          const retry = await supabase.auth.getSession();
+          if (!retry.data.session) {
+            setError(exchangeError.message);
+            return;
+          }
+          session = retry.data.session;
+        } else {
+          session = exchanged.session;
         }
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // pequena espera para o listener do SDK terminar de hidratar a sessão
+        await new Promise((r) => setTimeout(r, 400));
+        session = (await supabase.auth.getSession()).data.session;
+      }
+
       const user = session?.user;
 
       if (!user) {
-        setError("Não foi possível autenticar com o Google.");
+        setError("Não foi possível autenticar com o Google. Tente novamente.");
         return;
       }
 
