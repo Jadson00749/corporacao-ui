@@ -39,7 +39,7 @@ const usePartners = () =>
     },
   });
 
-const PartnerCard = ({ partner }: { partner: Partner }) => {
+const PartnerCard = ({ partner, mobile = false }: { partner: Partner; mobile?: boolean }) => {
   const Wrapper: any = partner.url ? "a" : "div";
   const wrapperProps = partner.url
     ? { href: partner.url, target: "_blank", rel: "noreferrer" }
@@ -48,40 +48,94 @@ const PartnerCard = ({ partner }: { partner: Partner }) => {
   return (
     <Wrapper
       {...wrapperProps}
-      className="group relative flex h-[130px] flex-col overflow-hidden rounded-xl
+      className={`group relative flex flex-col overflow-hidden rounded-xl
                  bg-[#f5f5f5] border border-black/5
                  hover:shadow-lg hover:-translate-y-1
-                 transition-all duration-300 ease-out"
+                 transition-all duration-300 ease-out ${mobile ? "h-[176px]" : "h-[130px]"}`}
     >
       {/* Logo area */}
-      <div className="relative flex-1 flex items-center justify-center p-3">
+      <div className={`relative flex-1 flex items-center justify-center ${mobile ? "px-5 py-5" : "p-3"}`}>
         <img
           src={partner.logo}
           alt={partner.name}
           loading="lazy"
-          className="max-h-16 max-w-[180px] object-contain
-                     transition-transform duration-500 group-hover:scale-105"
+          className={`object-contain transition-transform duration-500 group-hover:scale-105 ${
+            mobile ? "max-h-24 w-auto max-w-[80%]" : "max-h-16 max-w-[180px]"
+          }`}
         />
         {partner.category && (
-          <span className="absolute top-2 left-2 inline-flex items-center
+          <span className={`absolute inline-flex items-center
                            rounded-full bg-black/80
-                           text-white px-2 py-[2px] text-[8px] font-semibold
-                           uppercase tracking-[0.16em]">
+                           text-white font-semibold uppercase tracking-[0.16em]
+                           ${mobile ? "top-3 left-3 px-2.5 py-[3px] text-[9px]" : "top-2 left-2 px-2 py-[2px] text-[8px]"}`}>
             {partner.category}
           </span>
         )}
       </div>
 
       {/* Name bar */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-white border-t border-black/5">
-        <h3 className="font-display text-[12px] font-semibold text-black/90 tracking-tight leading-tight truncate">
+      <div className={`flex items-center justify-between gap-2 bg-white border-t border-black/5 ${
+        mobile ? "px-4 py-3" : "px-3 py-2"
+      }`}>
+        <h3 className={`font-display font-semibold text-black/90 tracking-tight leading-tight truncate ${
+          mobile ? "text-[14px]" : "text-[12px]"
+        }`}>
           {partner.name}
         </h3>
         {partner.url && (
-          <ArrowUpRight className="h-3.5 w-3.5 text-black/40 group-hover:text-black/70 transition-all shrink-0" />
+          <ArrowUpRight className={`text-black/40 group-hover:text-black/70 transition-all shrink-0 ${
+            mobile ? "h-4 w-4" : "h-3.5 w-3.5"
+          }`} />
         )}
       </div>
     </Wrapper>
+  );
+};
+
+const MobilePartnersCarousel = ({ partners }: { partners: Partner[] }) => {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+
+  const onScroll = () => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const card = el.querySelector<HTMLElement>("[data-card]");
+    if (!card) return;
+    const step = card.offsetWidth + 12;
+    setActive(Math.min(partners.length - 1, Math.round(el.scrollLeft / step)));
+  };
+
+  return (
+    <div className="md:hidden">
+      <div
+        ref={scrollerRef}
+        onScroll={onScroll}
+        className="overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <div className="flex gap-3 pb-2">
+          {partners.map((p) => (
+            <div key={p.id} data-card className="snap-start shrink-0 w-[84%]">
+              <PartnerCard partner={p} mobile />
+            </div>
+          ))}
+          <div className="shrink-0 w-1" aria-hidden />
+        </div>
+      </div>
+
+      {partners.length > 1 && (
+        <div className="mt-3 flex items-center justify-center gap-1.5">
+          {partners.map((p, i) => (
+            <span
+              key={p.id}
+              aria-hidden
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === active ? "w-5 bg-brand" : "w-1.5 bg-white/25"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
