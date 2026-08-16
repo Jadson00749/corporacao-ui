@@ -32,7 +32,7 @@ import {
   useTestimonials,
 } from "@/hooks/useContent";
 import heroImg from "@/assets/hero-corporacao-team.jpg";
-import quemSomosBg from "@/assets/quem-somos-novo.jpg.asset.json";
+import quemSomosBg from "@/assets/quem-somos-duo.jpg.asset.json";
 import avatarLucas from "@/assets/coach-lucas.jpg";
 import avatarHelo from "@/assets/coach-helo.jpg";
 import avatarDuo from "@/assets/coaches-duo.jpg";
