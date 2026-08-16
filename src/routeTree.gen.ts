@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CompletarCadastroRouteImport } from './routes/completar-cadastro'
 import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as FotosRouteImport } from './routes/fotos'
 import { Route as MinhaContaRouteImport } from './routes/minha-conta'
@@ -57,6 +58,11 @@ const AgendaRoute = AgendaRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompletarCadastroRoute = CompletarCadastroRouteImport.update({
+  id: '/completar-cadastro',
+  path: '/completar-cadastro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContatoRoute = ContatoRouteImport.update({
@@ -190,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/agenda': typeof AgendaRoute
   '/auth': typeof AuthRouteWithChildren
+  '/completar-cadastro': typeof CompletarCadastroRoute
   '/contato': typeof ContatoRoute
   '/fotos': typeof FotosRoute
   '/minha-conta': typeof MinhaContaRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/auth': typeof AuthRouteWithChildren
+  '/completar-cadastro': typeof CompletarCadastroRoute
   '/contato': typeof ContatoRoute
   '/fotos': typeof FotosRoute
   '/minha-conta': typeof MinhaContaRoute
@@ -252,6 +260,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/agenda': typeof AgendaRoute
   '/auth': typeof AuthRouteWithChildren
+  '/completar-cadastro': typeof CompletarCadastroRoute
   '/contato': typeof ContatoRoute
   '/fotos': typeof FotosRoute
   '/minha-conta': typeof MinhaContaRoute
@@ -285,6 +294,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/agenda'
     | '/auth'
+    | '/completar-cadastro'
     | '/contato'
     | '/fotos'
     | '/minha-conta'
@@ -315,6 +325,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/auth'
+    | '/completar-cadastro'
     | '/contato'
     | '/fotos'
     | '/minha-conta'
@@ -346,6 +357,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/agenda'
     | '/auth'
+    | '/completar-cadastro'
     | '/contato'
     | '/fotos'
     | '/minha-conta'
@@ -378,6 +390,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AgendaRoute: typeof AgendaRoute
   AuthRoute: typeof AuthRouteWithChildren
+  CompletarCadastroRoute: typeof CompletarCadastroRoute
   ContatoRoute: typeof ContatoRoute
   FotosRoute: typeof FotosRoute
   MinhaContaRoute: typeof MinhaContaRoute
@@ -419,6 +432,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/completar-cadastro': {
+      id: '/completar-cadastro'
+      path: '/completar-cadastro'
+      fullPath: '/completar-cadastro'
+      preLoaderRoute: typeof CompletarCadastroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contato': {
@@ -648,6 +668,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AgendaRoute: AgendaRoute,
   AuthRoute: AuthRouteWithChildren,
+  CompletarCadastroRoute: CompletarCadastroRoute,
   ContatoRoute: ContatoRoute,
   FotosRoute: FotosRoute,
   MinhaContaRoute: MinhaContaRoute,

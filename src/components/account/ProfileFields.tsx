@@ -10,7 +10,10 @@ import { formatCEP, formatCPF, formatPhone, onlyDigits } from "@/lib/cpf";
  * Bloco reutilizável de campos do perfil (nome, CPF, endereço etc).
  * Usado tanto no cadastro quanto na edição de Meus Dados.
  */
-export const ProfileFields = ({ showPassword = false }: { showPassword?: boolean }) => {
+export const ProfileFields = ({
+  showPassword = false,
+  emailReadOnly = false,
+}: { showPassword?: boolean; emailReadOnly?: boolean }) => {
   const { register, setValue, formState: { errors }, control } = useFormContext<any>();
   const cep = useWatch({ control, name: "cep" });
 
@@ -107,7 +110,8 @@ export const ProfileFields = ({ showPassword = false }: { showPassword?: boolean
 
       <div>
         <Label htmlFor="email">E-mail *</Label>
-        <Input id="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" {...register("email")} className="mt-1" />
+        <Input id="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" readOnly={emailReadOnly} {...register("email")} className={`mt-1 ${emailReadOnly ? "bg-muted cursor-not-allowed" : ""}`} />
+        {emailReadOnly && <p className="text-xs text-muted-foreground mt-1">E-mail vinculado à sua conta Google.</p>}
         {err("email") && <p className="text-xs text-destructive mt-1">{err("email")}</p>}
       </div>
 
