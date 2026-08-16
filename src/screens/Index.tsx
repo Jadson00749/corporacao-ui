@@ -109,6 +109,15 @@ const Index = () => {
   const featuredEvents = events.filter((e) => e.status !== "closed").slice(0, 3);
   const featuredProducts = products.slice(0, 4);
 
+  const scrollToProvas = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const el = document.getElementById("proximas-provas");
+    if (el) {
+      const y = el.getBoundingClientRect().top + window.scrollY - 70;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    }
+  };
+
   const [showStickyCta, setShowStickyCta] = useState(false);
   useEffect(() => {
     const onScroll = () => setShowStickyCta(window.scrollY > 420);
@@ -171,10 +180,10 @@ const Index = () => {
           className="absolute inset-0 md:hidden"
           style={{
             background:
-              "radial-gradient(120% 70% at 20% 70%, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.15) 75%, transparent 100%)",
+              "radial-gradient(130% 75% at 18% 62%, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.72) 40%, rgba(0,0,0,0.3) 72%, transparent 100%)",
           }}
         />
-        <div aria-hidden className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/90 via-black/30 to-transparent md:from-black/45 md:via-black/10 md:h-48" />
+        <div aria-hidden className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black via-black/55 to-transparent md:from-black/45 md:via-black/10 md:h-48" />
 
 
         {/* Halo verde discreto, lateral */}
@@ -228,9 +237,9 @@ const Index = () => {
               {siteSettings.hero.eyebrow}
             </span>
 
-            <h1 className="font-display font-semibold leading-[1.02] tracking-[-0.025em] text-balance text-[1.7rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem]">
+            <h1 className="font-display font-semibold leading-[1.02] tracking-[-0.025em] text-balance [text-shadow:0_2px_18px_rgba(0,0,0,0.55)] sm:[text-shadow:none] text-[1.7rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem]">
               {siteSettings.hero.title}
-              <span className="block mt-1.5 sm:mt-3 font-light text-white/80 text-[1.2rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem] leading-[1.15]">
+              <span className="block mt-1.5 sm:mt-3 font-light text-white/90 sm:text-white/80 text-[1.25rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem] leading-[1.15]">
                 {siteSettings.hero.titleAccent}
               </span>
             </h1>
