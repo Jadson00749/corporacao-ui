@@ -24,10 +24,11 @@ export const siteSettings = {
 
   hero: {
     eyebrow: "Assessoria esportiva, Corporação",
-    title: "Treino feito pra você.",
-    titleAccent: "Com coach acompanhando sua evolução.",
+    title: "Você não treina sozinho.",
+    titleAccent: "Tem um time com você.",
     subtitle:
       "Planilha individualizada no seu app de treino, orientação dos coaches e calendário das provas da região. Uma vez por mês a equipe se encontra no Treinão da Corporação.",
+
     primaryCta: "Quero fazer parte",
     secondaryCta: "Conhecer planos",
     image: "",
