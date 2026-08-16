@@ -34,6 +34,7 @@ import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminTestimonialsRouteImport } from './routes/admin.testimonials'
 import { Route as AdminTrainingsRouteImport } from './routes/admin.trainings'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ProvasIndexRouteImport } from './routes/provas.index'
 import { Route as ProvasIdIndexRouteImport } from './routes/provas.$id.index'
 import { Route as ProvasIdInscricaoRouteImport } from './routes/provas.$id.inscricao'
@@ -163,6 +164,11 @@ const AdminTrainingsRoute = AdminTrainingsRouteImport.update({
   path: '/trainings',
   getParentRoute: () => AdminRoute,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthRoute,
+} as any)
 const ProvasIndexRoute = ProvasIndexRouteImport.update({
   id: '/provas/',
   path: '/provas/',
@@ -183,7 +189,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/agenda': typeof AgendaRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/contato': typeof ContatoRoute
   '/fotos': typeof FotosRoute
   '/minha-conta': typeof MinhaContaRoute
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/testimonials': typeof AdminTestimonialsRoute
   '/admin/trainings': typeof AdminTrainingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/admin/': typeof AdminIndexRoute
   '/provas/': typeof ProvasIndexRoute
   '/provas/$id/inscricao': typeof ProvasIdInscricaoRoute
@@ -212,7 +219,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/contato': typeof ContatoRoute
   '/fotos': typeof FotosRoute
   '/minha-conta': typeof MinhaContaRoute
@@ -233,6 +240,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/testimonials': typeof AdminTestimonialsRoute
   '/admin/trainings': typeof AdminTrainingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/admin': typeof AdminIndexRoute
   '/provas': typeof ProvasIndexRoute
   '/provas/$id/inscricao': typeof ProvasIdInscricaoRoute
@@ -243,7 +251,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/agenda': typeof AgendaRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/contato': typeof ContatoRoute
   '/fotos': typeof FotosRoute
   '/minha-conta': typeof MinhaContaRoute
@@ -264,6 +272,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/testimonials': typeof AdminTestimonialsRoute
   '/admin/trainings': typeof AdminTrainingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/admin/': typeof AdminIndexRoute
   '/provas/': typeof ProvasIndexRoute
   '/provas/$id/inscricao': typeof ProvasIdInscricaoRoute
@@ -296,6 +305,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/testimonials'
     | '/admin/trainings'
+    | '/auth/callback'
     | '/admin/'
     | '/provas/'
     | '/provas/$id/inscricao'
@@ -325,6 +335,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/testimonials'
     | '/admin/trainings'
+    | '/auth/callback'
     | '/admin'
     | '/provas'
     | '/provas/$id/inscricao'
@@ -355,6 +366,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/testimonials'
     | '/admin/trainings'
+    | '/auth/callback'
     | '/admin/'
     | '/provas/'
     | '/provas/$id/inscricao'
@@ -365,7 +377,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AgendaRoute: typeof AgendaRoute
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
   ContatoRoute: typeof ContatoRoute
   FotosRoute: typeof FotosRoute
   MinhaContaRoute: typeof MinhaContaRoute
@@ -556,6 +568,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTrainingsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/provas/': {
       id: '/provas/'
       path: '/provas'
@@ -614,11 +633,21 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface AuthRouteChildren {
+  AuthCallbackRoute: typeof AuthCallbackRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthCallbackRoute: AuthCallbackRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AgendaRoute: AgendaRoute,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
   ContatoRoute: ContatoRoute,
   FotosRoute: FotosRoute,
   MinhaContaRoute: MinhaContaRoute,
