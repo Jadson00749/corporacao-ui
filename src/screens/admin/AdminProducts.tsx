@@ -11,7 +11,7 @@ const AdminProducts = () => (
     inlineToggleLabel="Ativo"
     fields={[
       { key: "name", label: "Nome do produto" },
-      { key: "image", label: "Imagem", type: "image" },
+      { key: "image", label: "Imagem", type: "image", hint: "Recomendado 1080 × 1080 px (quadrada 1:1)." },
       { key: "price", label: "Preço (ex: R$ 120)" },
       { key: "description", label: "Descrição", type: "textarea" },
       { key: "cta_message", label: "Mensagem do botão (WhatsApp)" },

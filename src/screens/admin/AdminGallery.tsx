@@ -8,7 +8,7 @@ const AdminGallery = () => (
     displayKey="title"
     orderBy={{ column: "sort_order" }}
     fields={[
-      { key: "src", label: "Foto", type: "image" },
+      { key: "src", label: "Foto", type: "image", hint: "Recomendado 1200 × 900 px (horizontal 4:3)." },
       { key: "title", label: "Título" },
       { key: "category", label: "Categoria (Provas / Treinos / Comunidade)" },
       { key: "sort_order", label: "Ordem", type: "number" },
