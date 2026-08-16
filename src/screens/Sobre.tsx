@@ -8,10 +8,15 @@ import coachLucas from "@/assets/coach-lucas.jpg";
 import coachHelo from "@/assets/coach-helo.jpg";
 import coachesRunning from "@/assets/sobre-medalhistas.jpg";
 import logoCorporacao from "@/assets/logo-corporacao.png";
-import gallery1 from "@/assets/gallery-1.jpg";
-import gallery3 from "@/assets/gallery-3.jpg";
-import gallery5 from "@/assets/gallery-5.jpg";
-import racesTeam from "@/assets/benefit-races-team.jpg";
+import com1 from "@/assets/comunidade-1.jpg.asset.json";
+import com2 from "@/assets/comunidade-2.jpg.asset.json";
+import com3 from "@/assets/comunidade-3.jpg.asset.json";
+import com4 from "@/assets/comunidade-4.jpg.asset.json";
+
+const gallery1 = com3.url;
+const gallery3 = com4.url;
+const gallery5 = com2.url;
+const racesTeam = com1.url;
 
 const highlights = [
   "Treinos presenciais",
@@ -202,8 +207,8 @@ const QuemSomos = () => {
             <div className="grid grid-cols-6 grid-rows-6 gap-3 md:gap-4 h-[520px] md:h-[640px]">
               <div className="col-span-4 row-span-4 relative rounded-2xl overflow-hidden shadow-card group">
                 <img
-                  src={img?.sobreRaces || racesTeam}
-                  alt="Equipe da Corporação reunida em prova"
+                  src={racesTeam}
+                  alt="Equipe da Corporação reunida após a prova"
                   loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                 />
@@ -215,8 +220,8 @@ const QuemSomos = () => {
 
               <div className="col-span-2 row-span-3 relative rounded-2xl overflow-hidden shadow-card group">
                 <img
-                  src={img?.sobreGallery?.[0] || gallery1}
-                  alt="Treino em grupo"
+                  src={gallery1}
+                  alt="Dupla de atletas correndo junta"
                   loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                 />
@@ -224,8 +229,8 @@ const QuemSomos = () => {
 
               <div className="col-span-2 row-span-3 relative rounded-2xl overflow-hidden shadow-card group">
                 <img
-                  src={img?.sobreGallery?.[1] || gallery5}
-                  alt="Atletas da Corporação"
+                  src={gallery5}
+                  alt="Atleta da Corporação sorrindo no treino"
                   loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                 />
@@ -233,8 +238,8 @@ const QuemSomos = () => {
 
               <div className="col-span-3 row-span-2 relative rounded-2xl overflow-hidden shadow-card group">
                 <img
-                  src={img?.sobreGallery?.[2] || gallery3}
-                  alt="Corredores em treino"
+                  src={gallery3}
+                  alt="Atleta comemorando no alto do mirante"
                   loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                 />
