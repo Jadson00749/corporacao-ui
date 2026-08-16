@@ -280,40 +280,42 @@ const Index = () => {
               </p>
             </div>
 
-            {/* Stats mobile: swipe horizontal premium */}
-            <div className="mt-10 sm:hidden">
-              <MobileAutoCarousel intervalMs={4600}>
-                {(siteSettings.hero?.stats ?? []).map((s, i) => {
-                  const Icon = [Users, Calendar, Trophy][i] ?? Users;
-                  const mobileLabels = [
-                    "atletas treinando",
-                    "anos criando constância",
-                    "provas realizadas",
-                  ];
-                  const label = mobileLabels[i] ?? s.label;
-                  return (
-                    <div
-                      key={i}
-                      data-card
-                      className="snap-start shrink-0 basis-[64%] rounded-2xl border border-white/[0.07] bg-black/55 backdrop-blur-xl px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_24px_48px_-28px_rgba(0,0,0,0.8)]"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-[14px] h-[14px] text-white/40" strokeWidth={1.75} />
-                        <span className="text-[9.5px] font-semibold tracking-[0.22em] uppercase text-white/40">
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                      </div>
-                      <div className="mt-5 font-display text-[2rem] font-semibold text-white tracking-[-0.035em] leading-none">
-                        {s.value}
-                      </div>
-                      <div className="mt-2 text-[12px] text-white/60 leading-snug tracking-[-0.005em]">
-                        {label}
-                      </div>
+            {/* Stats mobile: grid 2 colunas, sem corte */}
+            <div className="mt-7 sm:hidden grid grid-cols-2 gap-2.5">
+              {(siteSettings.hero?.stats ?? []).map((s, i) => {
+                const Icon = [Users, Calendar, Trophy][i] ?? Users;
+                const mobileLabels = [
+                  "atletas treinando",
+                  "anos criando constância",
+                  "provas realizadas",
+                ];
+                const label = mobileLabels[i] ?? s.label;
+                const stats = siteSettings.hero?.stats ?? [];
+                const isLastOdd = stats.length % 2 === 1 && i === stats.length - 1;
+                return (
+                  <div
+                    key={i}
+                    className={`h-full min-w-0 rounded-2xl border border-white/[0.07] bg-black/55 backdrop-blur-xl px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_24px_48px_-28px_rgba(0,0,0,0.8)] ${
+                      isLastOdd ? "col-span-2" : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Icon className="w-[13px] h-[13px] text-white/40 shrink-0" strokeWidth={1.75} />
+                      <span className="text-[9px] font-semibold tracking-[0.22em] uppercase text-white/40">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
                     </div>
-                  );
-                })}
-              </MobileAutoCarousel>
+                    <div className="mt-3 font-display text-[1.65rem] font-semibold text-white tracking-[-0.035em] leading-none">
+                      {s.value}
+                    </div>
+                    <div className="mt-1.5 text-[11.5px] text-white/60 leading-snug tracking-[-0.005em]">
+                      {label}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+
 
 
 
