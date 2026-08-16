@@ -264,11 +264,18 @@ const Index = () => {
               <a
                 href="#proximas-provas"
                 onClick={scrollToProvas}
-                className="group inline-flex items-center justify-center sm:justify-start gap-1.5 h-10 sm:h-auto px-4 sm:px-0 rounded-full border border-white/15 sm:border-0 bg-white/[0.06] sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-0 text-[13px] sm:text-[13.5px] font-medium text-white/80 hover:text-white transition-colors"
+                className="md:hidden group inline-flex items-center justify-center sm:justify-start gap-1.5 h-10 sm:h-auto px-4 sm:px-0 rounded-full border border-white/15 sm:border-0 bg-white/[0.06] sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-0 text-[13px] sm:text-[13.5px] font-medium text-white/80 hover:text-white transition-colors"
               >
                 Ver próximas provas
                 <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
               </a>
+              <Link
+                to="/provas"
+                className="hidden md:inline-flex items-center justify-start gap-1.5 h-auto px-0 text-[13.5px] font-medium text-white/80 hover:text-white transition-colors group"
+              >
+                Ver próximas provas
+                <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+              </Link>
             </div>
 
             {/* Prova social humana (mobile + desktop) */}
@@ -362,8 +369,10 @@ const Index = () => {
         </div>
       </section>
 
-      {/* PRÓXIMAS PROVAS - logo após o Hero */}
-      <UpcomingRacesSection />
+      {/* PRÓXIMAS PROVAS - logo após o Hero (apenas mobile) */}
+      <div className="md:hidden">
+        <UpcomingRacesSection />
+      </div>
 
       {/* DESTAQUES EDITÁVEIS - carrossel logo após o Hero */}
       <HomeHighlightCarousel />
