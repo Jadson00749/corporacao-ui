@@ -207,7 +207,7 @@ const QuemSomos = () => {
             <div className="grid grid-cols-6 grid-rows-6 gap-3 md:gap-4 h-[520px] md:h-[640px]">
               <div className="col-span-4 row-span-4 relative rounded-2xl overflow-hidden shadow-card group">
                 <img
-                  src={img?.sobreRaces || racesTeam}
+                  src={racesTeam}
                   alt="Equipe da Corporação reunida em prova"
                   loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
@@ -220,7 +220,7 @@ const QuemSomos = () => {
 
               <div className="col-span-2 row-span-3 relative rounded-2xl overflow-hidden shadow-card group">
                 <img
-                  src={img?.sobreGallery?.[0] || gallery1}
+                  src={gallery1}
                   alt="Treino em grupo"
                   loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
@@ -229,7 +229,7 @@ const QuemSomos = () => {
 
               <div className="col-span-2 row-span-3 relative rounded-2xl overflow-hidden shadow-card group">
                 <img
-                  src={img?.sobreGallery?.[1] || gallery5}
+                  src={gallery5}
                   alt="Atletas da Corporação"
                   loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
@@ -238,7 +238,7 @@ const QuemSomos = () => {
 
               <div className="col-span-3 row-span-2 relative rounded-2xl overflow-hidden shadow-card group">
                 <img
-                  src={img?.sobreGallery?.[2] || gallery3}
+                  src={gallery3}
                   alt="Corredores em treino"
                   loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
