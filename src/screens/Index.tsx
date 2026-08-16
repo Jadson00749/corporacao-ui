@@ -235,12 +235,12 @@ const Index = () => {
               </span>
             </h1>
 
-            <p className="mt-4 sm:mt-7 text-[13px] sm:text-[15px] md:text-[16px] text-white/70 max-w-[34ch] sm:max-w-[460px] leading-[1.5] sm:leading-[1.7] line-clamp-3 sm:line-clamp-none">
+            <p className="mt-3.5 sm:mt-7 text-[14px] sm:text-[15px] md:text-[16px] text-white/80 sm:text-white/70 max-w-[34ch] sm:max-w-[460px] leading-[1.6] sm:leading-[1.7] [text-shadow:0_1px_10px_rgba(0,0,0,0.6)] sm:[text-shadow:none] line-clamp-3 sm:line-clamp-none">
               {siteSettings.hero.subtitle}
             </p>
 
 
-            <div className="mt-6 sm:mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-3 items-center sm:items-center">
+            <div className="mt-5 sm:mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-2.5 sm:gap-3 items-center sm:items-center">
               <Button
                 asChild
                 variant="brand"
@@ -251,17 +251,18 @@ const Index = () => {
                   {siteSettings.hero.primaryCta} <ArrowRight className="w-4 h-4" />
                 </a>
               </Button>
-              <Link
-                to="/planos"
-                className="group inline-flex items-center justify-center sm:justify-start gap-1.5 text-[12.5px] sm:text-[13.5px] font-medium text-white/50 hover:text-white/80 underline-offset-4 hover:underline transition-colors"
+              <a
+                href="#proximas-provas"
+                onClick={scrollToProvas}
+                className="group inline-flex items-center justify-center sm:justify-start gap-1.5 h-10 sm:h-auto px-4 sm:px-0 rounded-full border border-white/15 sm:border-0 bg-white/[0.06] sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-0 text-[13px] sm:text-[13.5px] font-medium text-white/80 hover:text-white transition-colors"
               >
-                Ver planos
+                Ver próximas provas
                 <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
-              </Link>
+              </a>
             </div>
 
             {/* Prova social humana (mobile + desktop) */}
-            <div className="mt-6 sm:mt-9 flex items-center gap-3 sm:gap-3">
+            <div className="mt-5 sm:mt-9 flex items-center gap-2.5 sm:gap-3">
               <div className="flex -space-x-2">
                 {[avatarLucas, avatarHelo, avatarDuo, avatarFund].map((fallback, i) => {
                   const src = siteSettings.images?.homeTeamAvatars?.[i] || fallback;
@@ -275,46 +276,33 @@ const Index = () => {
                   );
                 })}
               </div>
-              <p className="text-[12.5px] sm:text-[13px] text-white/65 leading-snug">
+              <p className="text-[12.5px] sm:text-[13px] text-white/70 leading-snug">
                 <span className="text-white font-semibold">+120 atletas</span> treinando com a Corporação
               </p>
             </div>
 
-            {/* Stats mobile: grid 2 colunas, sem corte */}
-            <div className="mt-7 sm:hidden grid grid-cols-2 gap-2.5">
-              {(siteSettings.hero?.stats ?? []).map((s, i) => {
-                const Icon = [Users, Calendar, Trophy][i] ?? Users;
-                const mobileLabels = [
-                  "atletas treinando",
-                  "anos criando constância",
-                  "provas realizadas",
-                ];
-                const label = mobileLabels[i] ?? s.label;
-                const stats = siteSettings.hero?.stats ?? [];
-                const isLastOdd = stats.length % 2 === 1 && i === stats.length - 1;
-                return (
-                  <div
-                    key={i}
-                    className={`h-full min-w-0 rounded-2xl border border-white/[0.07] bg-black/55 backdrop-blur-xl px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_24px_48px_-28px_rgba(0,0,0,0.8)] ${
-                      isLastOdd ? "col-span-2" : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Icon className="w-[13px] h-[13px] text-white/40 shrink-0" strokeWidth={1.75} />
-                      <span className="text-[9px] font-semibold tracking-[0.22em] uppercase text-white/40">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
+            {/* Stats mobile: bloco glass único */}
+            <div className="mt-5 sm:hidden rounded-2xl border border-white/[0.09] bg-black/55 backdrop-blur-xl px-1 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_24px_48px_-28px_rgba(0,0,0,0.85)]">
+              <div className="grid grid-cols-3 divide-x divide-white/[0.08]">
+                {(siteSettings.hero?.stats ?? []).map((s, i) => {
+                  const Icon = [Users, Calendar, Trophy][i] ?? Users;
+                  const mobileLabels = ["atletas", "anos de estrada", "provas"];
+                  const label = mobileLabels[i] ?? s.label;
+                  return (
+                    <div key={i} className="min-w-0 px-3 text-center">
+                      <Icon className="mx-auto w-[13px] h-[13px] text-white/35" strokeWidth={1.75} />
+                      <div className="mt-2 font-display text-[1.5rem] font-semibold text-white tracking-[-0.035em] leading-none">
+                        {s.value}
+                      </div>
+                      <div className="mt-1.5 text-[10.5px] text-white/55 leading-tight tracking-[-0.005em]">
+                        {label}
+                      </div>
                     </div>
-                    <div className="mt-3 font-display text-[1.65rem] font-semibold text-white tracking-[-0.035em] leading-none">
-                      {s.value}
-                    </div>
-                    <div className="mt-1.5 text-[11.5px] text-white/60 leading-snug tracking-[-0.005em]">
-                      {label}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
+
 
 
 
