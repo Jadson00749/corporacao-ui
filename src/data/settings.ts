@@ -23,11 +23,11 @@ export const siteSettings = {
   },
 
   hero: {
-    eyebrow: "Assessoria esportiva, Corporação",
+    eyebrow: "TREINO EM GRUPO • CORRIDA & EVOLUÇÃO",
     title: "Você não treina sozinho.",
     titleAccent: "Tem um time com você.",
     subtitle:
-      "Planilha individualizada no seu app de treino, orientação dos coaches e calendário das provas da região. Uma vez por mês a equipe se encontra no Treinão da Corporação.",
+      "Treino em grupo, musculação integrada e acompanhamento de verdade para transformar sua rotina em resultado.",
 
     primaryCta: "Quero fazer parte",
     secondaryCta: "Conhecer planos",
