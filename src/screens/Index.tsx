@@ -22,6 +22,7 @@ import { HomeTrainingsSection } from "@/components/site/HomeTrainingsSection";
 import { PlansHomeSection } from "@/components/site/PlansHomeSection";
 import { PartnersSection } from "@/components/site/PartnersSection";
 import { GoldSponsorsSection } from "@/components/site/GoldSponsorsSection";
+import { UpcomingRacesSection } from "@/components/site/UpcomingRacesSection";
 import { HomeHighlightCarousel } from "@/components/site/HomeHighlightCarousel";
 import { useSettings, useSettingsLoaded, useWhatsappLink } from "@/contexts/SettingsContext";
 import {
@@ -360,6 +361,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* PRÓXIMAS PROVAS - logo após o Hero */}
+      <UpcomingRacesSection />
 
       {/* DESTAQUES EDITÁVEIS - carrossel logo após o Hero */}
       <HomeHighlightCarousel />
