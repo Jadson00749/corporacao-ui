@@ -10,7 +10,10 @@ import { formatCEP, formatCPF, formatPhone, onlyDigits } from "@/lib/cpf";
  * Bloco reutilizável de campos do perfil (nome, CPF, endereço etc).
  * Usado tanto no cadastro quanto na edição de Meus Dados.
  */
-export const ProfileFields = ({ showPassword = false }: { showPassword?: boolean }) => {
+export const ProfileFields = ({
+  showPassword = false,
+  emailReadOnly = false,
+}: { showPassword?: boolean; emailReadOnly?: boolean }) => {
   const { register, setValue, formState: { errors }, control } = useFormContext<any>();
   const cep = useWatch({ control, name: "cep" });
 
