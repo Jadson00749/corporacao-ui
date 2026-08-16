@@ -55,10 +55,10 @@ export const Navbar = () => {
           : "bg-gradient-to-b from-black/40 via-black/10 to-transparent backdrop-blur-[2px]"
       )}
     >
-      <div className="container-page flex h-14 md:h-[88px] items-center justify-between">
+      <div className="container-page flex h-[52px] md:h-[88px] items-center justify-between gap-3">
         <Link to="/" className="flex items-center gap-2 md:gap-3 group" aria-label={siteSettings.brand.name}>
           <LogoMark
-            className="w-9 h-9 md:w-11 md:h-11"
+            className="w-8 h-8 md:w-11 md:h-11 shrink-0"
             alt={`${siteSettings.brand.name} logo`}
           />
           <span className={cn(
@@ -136,14 +136,14 @@ export const Navbar = () => {
           <div className="hidden md:flex"><ThemeToggle onDark={!scrolled && !open} /></div>
           <button
             className={cn(
-              "min-h-11 min-w-11 inline-flex items-center justify-center rounded-md transition-colors",
+              "min-h-10 min-w-10 md:min-h-11 md:min-w-11 inline-flex items-center justify-center rounded-md transition-colors",
               scrolled || open ? "text-foreground" : "text-white"
             )}
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Fechar menu" : "Abrir menu"}
             aria-expanded={open}
           >
-            {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {open ? <X className="w-5 h-5 md:w-6 md:h-6" /> : <Menu className="w-5 h-5 md:w-6 md:h-6" />}
           </button>
         </div>
       </div>
