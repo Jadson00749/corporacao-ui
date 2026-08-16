@@ -31,7 +31,8 @@ import {
   useProducts,
   useTestimonials,
 } from "@/hooks/useContent";
-import heroImg from "@/assets/hero-corporacao-team.jpg";
+import heroAsset from "@/assets/hero-corporacao-portico.jpg.asset.json";
+const heroImg = heroAsset.url;
 import quemSomosBg from "@/assets/quem-somos-duo.jpg.asset.json";
 import avatarLucas from "@/assets/coach-lucas.jpg";
 import avatarHelo from "@/assets/coach-helo.jpg";
