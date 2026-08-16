@@ -127,7 +127,7 @@ const Index = () => {
       />
 
       {/* HERO */}
-      <section className="relative min-h-[100svh] flex items-end overflow-hidden bg-[#070707]">
+      <section className="relative min-h-[86svh] sm:min-h-[100svh] flex items-end overflow-hidden bg-[#070707]">
         {/* Imagem de fundo: leve blur no mobile p/ legibilidade */}
         <div className="absolute inset-0 overflow-hidden">
           {(settingsLoaded || !siteSettings.hero.image) && (
@@ -138,7 +138,7 @@ const Index = () => {
               fetchPriority="high"
               decoding="sync"
               loading="eager"
-              className="absolute inset-0 w-full h-full object-cover object-[68%_center] animate-hero-zoom [filter:contrast(1.08)_saturate(1.05)_blur(3px)] md:[filter:contrast(1.05)_saturate(1.08)] animate-fade-in"
+              className="absolute inset-0 w-full h-full object-cover object-[68%_center] animate-hero-zoom [filter:contrast(1.14)_saturate(1.04)_brightness(0.92)_blur(1.5px)] md:[filter:contrast(1.05)_saturate(1.08)] animate-fade-in"
               width={1920}
               height={1280}
             />
@@ -148,7 +148,7 @@ const Index = () => {
 
 
         {/* Overlay base no mobile + gradiente lateral no desktop */}
-        <div aria-hidden className="absolute inset-0 bg-black/55 md:hidden" />
+        <div aria-hidden className="absolute inset-0 bg-black/50 md:hidden" />
         <div
           aria-hidden
           className="absolute inset-0 hidden md:block"
@@ -209,7 +209,7 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="container-page relative pt-28 sm:pt-32 pb-36 sm:pb-24 md:pb-28 z-10">
+        <div className="container-page relative pt-20 sm:pt-32 pb-14 sm:pb-24 md:pb-28 z-10">
           <div className="relative max-w-2xl text-white animate-fade-up [animation-fill-mode:both]">
             {/* Selo lateral vertical (desktop) */}
             <div className="hidden md:flex flex-col items-start gap-3 absolute -left-10 top-2 bottom-2">
@@ -220,7 +220,7 @@ const Index = () => {
             </div>
 
             {/* Eyebrow refinado */}
-            <span className="inline-flex items-center gap-2.5 text-[10px] sm:text-[11px] font-semibold tracking-[0.28em] sm:tracking-[0.32em] uppercase text-white/70 mb-5 sm:mb-7">
+            <span className="inline-flex items-center gap-2.5 text-[10px] sm:text-[11px] font-semibold tracking-[0.28em] sm:tracking-[0.32em] uppercase text-white/70 mb-3.5 sm:mb-7">
               <span className="relative flex w-1.5 h-1.5">
                 <span className="absolute inset-0 rounded-full bg-brand animate-ping opacity-60" />
                 <span className="relative w-1.5 h-1.5 rounded-full bg-brand shadow-[0_0_10px_hsl(var(--brand))]" />
@@ -228,19 +228,19 @@ const Index = () => {
               {siteSettings.hero.eyebrow}
             </span>
 
-            <h1 className="font-display font-semibold leading-[1.02] tracking-[-0.025em] text-balance text-[1.85rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem]">
+            <h1 className="font-display font-semibold leading-[1.02] tracking-[-0.025em] text-balance text-[1.7rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem]">
               {siteSettings.hero.title}
-              <span className="block mt-2 sm:mt-3 font-light text-white/80 text-[1.3rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem] leading-[1.15]">
+              <span className="block mt-1.5 sm:mt-3 font-light text-white/80 text-[1.2rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem] leading-[1.15]">
                 {siteSettings.hero.titleAccent}
               </span>
             </h1>
 
-            <p className="mt-5 sm:mt-7 text-[13.5px] sm:text-[15px] md:text-[16px] text-white/65 max-w-md sm:max-w-[460px] leading-[1.55] sm:leading-[1.7]">
+            <p className="mt-4 sm:mt-7 text-[13px] sm:text-[15px] md:text-[16px] text-white/70 max-w-[34ch] sm:max-w-[460px] leading-[1.5] sm:leading-[1.7] line-clamp-3 sm:line-clamp-none">
               {siteSettings.hero.subtitle}
             </p>
 
 
-            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-4 sm:gap-3 sm:items-center">
+            <div className="mt-6 sm:mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-3 items-center sm:items-center">
               <Button
                 asChild
                 variant="brand"
@@ -253,7 +253,7 @@ const Index = () => {
               </Button>
               <Link
                 to="/planos"
-                className="group inline-flex items-center justify-center sm:justify-start gap-1.5 text-[13.5px] font-medium text-white/70 hover:text-white transition-colors"
+                className="group inline-flex items-center justify-center sm:justify-start gap-1.5 text-[12.5px] sm:text-[13.5px] font-medium text-white/50 hover:text-white/80 underline-offset-4 hover:underline transition-colors"
               >
                 Ver planos
                 <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
@@ -261,21 +261,21 @@ const Index = () => {
             </div>
 
             {/* Prova social humana (mobile + desktop) */}
-            <div className="mt-7 sm:mt-9 flex items-center gap-3">
+            <div className="mt-6 sm:mt-9 flex items-center gap-3 sm:gap-3">
               <div className="flex -space-x-2">
                 {[avatarLucas, avatarHelo, avatarDuo, avatarFund].map((fallback, i) => {
                   const src = siteSettings.images?.homeTeamAvatars?.[i] || fallback;
                   return (
                     <div
                       key={i}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-black/60 overflow-hidden ring-1 ring-white/10"
+                      className="w-8 h-8 sm:w-8 sm:h-8 rounded-full border-2 border-black/60 overflow-hidden ring-1 ring-white/10"
                     >
                       <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" />
                     </div>
                   );
                 })}
               </div>
-              <p className="text-[12px] sm:text-[13px] text-white/65 leading-snug">
+              <p className="text-[12.5px] sm:text-[13px] text-white/65 leading-snug">
                 <span className="text-white font-semibold">+120 atletas</span> treinando com a Corporação
               </p>
             </div>
