@@ -13,6 +13,7 @@ import { SEO } from "@/components/site/SEO";
 import { ProfileFields } from "@/components/account/ProfileFields";
 import { signupSchema, SignupValues } from "@/lib/profileSchema";
 import { onlyDigits } from "@/lib/cpf";
+import { LogoMark } from "@/components/site/LogoMark";
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -59,7 +60,7 @@ const GoogleSignIn = ({ redirectTo }: { redirectTo: string }) => {
     <Button
       type="button"
       variant="outline"
-      className="w-full"
+      className="w-full h-12 rounded-xl border-2 border-border bg-card hover:bg-accent hover:border-[hsl(121_100%_59%)]/40 hover:shadow-[0_0_20px_-4px_hsl(121_100%_59%/_0.22)] transition-all duration-300 text-base font-medium"
       size="lg"
       onClick={handleGoogle}
       disabled={submitting}
@@ -96,45 +97,101 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 py-12">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-muted/40 via-background to-background flex items-center justify-center p-4 py-12">
       <SEO title="Entrar ou criar conta | Corporação Assessoria" description="Acesse sua conta para se inscrever em corridas." />
-      <div className="w-full max-w-2xl">
-        <Link to="/" className="text-sm text-muted-foreground hover:text-brand mb-6 inline-block">
-          ← Voltar ao site
+      <div className="w-full max-w-lg">
+        <Link
+          to="/"
+          className="group inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-brand mb-6 transition-colors"
+        >
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-card border border-border group-hover:border-brand/40 transition-colors">
+            ←
+          </span>
+          Voltar ao site
         </Link>
-        <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-card">
-          <h1 className="font-display text-2xl font-bold mb-1">Sua conta</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            Faça login ou crie sua conta para se inscrever em corridas e treinos.
-          </p>
 
-          <Tabs defaultValue={redirectTo ? "signup" : "login"}>
-            <TabsList className="grid grid-cols-2 w-full mb-6">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Criar conta</TabsTrigger>
+        <div className="bg-card border border-border rounded-3xl p-7 sm:p-10 shadow-[0_16px_60px_-20px_rgba(0,0,0,0.35)] backdrop-blur-sm relative overflow-hidden">
+          {/* subtle top brand accent */}
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[hsl(121_100%_59%)]/80 via-[hsl(121_100%_59%)]/40 to-transparent" />
+
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-[hsl(121_100%_59%)]/10 blur-2xl" />
+              <LogoMark className="relative h-16 w-16 sm:h-20 sm:w-20" interactive />
+            </div>
+            <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-5">
+              Acesse sua conta
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-3 max-w-sm leading-relaxed">
+              Entre para se inscrever em provas e treinos, acompanhar suas inscrições e gerenciar seus dados.
+            </p>
+          </div>
+
+          <Tabs defaultValue={redirectTo ? "signup" : "login"} className="w-full">
+            <TabsList className="grid grid-cols-2 w-full mb-8 p-1.5 h-auto bg-muted/70 rounded-2xl border border-border">
+              <TabsTrigger
+                value="login"
+                className="rounded-xl py-2.5 text-sm font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/60 transition-all"
+              >
+                Entrar
+              </TabsTrigger>
+              <TabsTrigger
+                value="signup"
+                className="rounded-xl py-2.5 text-sm font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/60 transition-all"
+              >
+                Criar conta
+              </TabsTrigger>
             </TabsList>
 
             <GoogleSignIn redirectTo={redirectTo} />
-            <div className="relative my-6">
+
+            <div className="relative my-7">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
+                <span className="w-full border-t border-border/70" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-card px-2 text-muted-foreground">ou continue com e-mail</span>
+                <span className="bg-card px-3 text-muted-foreground uppercase tracking-wider font-medium">ou continue com e-mail</span>
               </div>
             </div>
 
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1" />
+            <TabsContent value="login" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-sm font-medium">E-mail</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-12 rounded-xl border-border/70 bg-background/50 focus-visible:ring-[hsl(121_100%_59%)]/40"
+                    placeholder="seu@email.com"
+                  />
                 </div>
-                <div>
-                  <Label htmlFor="password">Senha</Label>
-                  <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1" />
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-sm font-medium">Senha</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 rounded-xl border-border/70 bg-background/50 focus-visible:ring-[hsl(121_100%_59%)]/40"
+                    placeholder="••••••••"
+                  />
                 </div>
-                <Button type="submit" variant="brand" className="w-full" size="lg" disabled={submitting}>
+                <Button
+                  type="submit"
+                  variant="brand"
+                  className="w-full h-12 rounded-xl text-base font-semibold shadow-[0_0_24px_-8px_hsl(121_100%_59%/_0.4)] hover:shadow-[0_0_30px_-6px_hsl(121_100%_59%/_0.55)] transition-shadow duration-300"
+                  size="lg"
+                  disabled={submitting}
+                >
                   {submitting ? "Entrando..." : "Entrar"}
                 </Button>
                 <button
@@ -150,14 +207,14 @@ const Auth = () => {
                     if (error) toast.error(error.message);
                     else toast.success("Link de recuperação enviado para seu e-mail!");
                   }}
-                  className="text-sm text-muted-foreground hover:text-brand underline w-full text-center"
+                  className="text-sm text-muted-foreground hover:text-brand hover:underline underline-offset-4 w-full text-center transition-colors"
                 >
                   Esqueci minha senha
                 </button>
               </form>
             </TabsContent>
 
-            <TabsContent value="signup">
+            <TabsContent value="signup" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
               <SignupForm onDone={() => {
                 const dest = redirectTo || "/minha-conta";
                 navigate(dest, { replace: true });
@@ -165,6 +222,10 @@ const Auth = () => {
             </TabsContent>
           </Tabs>
         </div>
+
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          Ao entrar, você concorda com nossas políticas de privacidade e termos de uso.
+        </p>
       </div>
     </div>
   );
@@ -238,14 +299,14 @@ const SignupForm = ({ onDone }: { onDone: () => void }) => {
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-5">
-        <div className="bg-secondary/50 rounded-lg p-4 text-sm text-foreground/80">
+        <div className="bg-secondary/50 rounded-xl p-4 text-sm text-foreground/80 border border-border/40">
           Para se inscrever em corridas, preencha o formulário abaixo. Os campos com <span className="text-destructive">*</span> são obrigatórios.
         </div>
 
         <ProfileFields showPassword />
 
-        <div className="pt-4 border-t border-border">
-          <label className="flex items-start gap-2 text-sm">
+        <div className="pt-4 border-t border-border/70">
+          <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" {...methods.register("accepted_terms" as any)} className="mt-1" />
             <span>
               Estou de acordo com as políticas de segurança e privacidade. <span className="text-destructive">*</span>
@@ -254,7 +315,7 @@ const SignupForm = ({ onDone }: { onDone: () => void }) => {
           {termsErr && <p className="text-xs text-destructive mt-1">{termsErr}</p>}
         </div>
 
-        <Button type="submit" variant="brand" size="lg" className="w-full" disabled={submitting}>
+        <Button type="submit" variant="brand" size="lg" className="w-full h-12 rounded-xl text-base font-semibold shadow-[0_0_24px_-8px_hsl(121_100%_59%/_0.4)] hover:shadow-[0_0_30px_-6px_hsl(121_100%_59%/_0.55)] transition-shadow duration-300" disabled={submitting}>
           {submitting ? "Criando conta..." : "Criar minha conta"}
         </Button>
       </form>
