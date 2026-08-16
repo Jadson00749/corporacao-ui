@@ -13,7 +13,7 @@ const AdminHighlights = () => (
       { key: "eyebrow", label: "Etiqueta superior (ex: PRÓXIMA PROVA, NOVIDADE)" },
       { key: "title", label: "Título principal" },
       { key: "subtitle", label: "Subtítulo / descrição curta", type: "textarea" },
-      { key: "image", label: "Imagem", type: "image" },
+      { key: "image", label: "Imagem", type: "image", hint: "Banner do destaque. Recomendado 1920 × 1080 px (horizontal 16:9)." },
       {
         key: "image_position",
         label: "Enquadramento da foto no banner",

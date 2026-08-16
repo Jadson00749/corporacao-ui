@@ -11,7 +11,7 @@ const AdminPartners = () => (
     inlineToggleLabel="Ativo"
     fields={[
       { key: "name", label: "Nome do parceiro" },
-      { key: "logo", label: "Logo (imagem)", type: "image" },
+      { key: "logo", label: "Logo (imagem)", type: "image", hint: "Recomendado 400 × 200 px (PNG com fundo transparente ou branco)." },
       { key: "url", label: "Link / site (opcional)" },
       { key: "category", label: "Categoria (ex: Viagens, Suplementos, Alimentação)" },
       { key: "description", label: "Descrição curta (aparece nos destaques)", type: "textarea" },

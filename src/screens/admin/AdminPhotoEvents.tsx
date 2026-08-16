@@ -13,7 +13,7 @@ const AdminPhotoEvents = () => (
       { key: "title", label: "Nome do evento" },
       { key: "date", label: "Data", type: "date" },
       { key: "location", label: "Local / cidade" },
-      { key: "cover_image", label: "Imagem de capa", type: "image" },
+      { key: "cover_image", label: "Imagem de capa", type: "image", hint: "Recomendado 1920 × 1080 px (horizontal 16:9)." },
       { key: "description", label: "Descrição curta", type: "textarea" },
       { key: "photo_link", label: "Link oficial das fotos (URL externa)" },
       { key: "status", label: "Status (Fotos disponíveis / Em breve / Encerrado)" },
