@@ -37,6 +37,7 @@ import { Route as AdminTestimonialsRouteImport } from './routes/admin.testimonia
 import { Route as AdminTrainingsRouteImport } from './routes/admin.trainings'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ProvasIndexRouteImport } from './routes/provas.index'
+import { Route as ApiPublicUpdateHeroRouteImport } from './routes/api/public/update-hero'
 import { Route as ProvasIdIndexRouteImport } from './routes/provas.$id.index'
 import { Route as ProvasIdInscricaoRouteImport } from './routes/provas.$id.inscricao'
 
@@ -180,6 +181,11 @@ const ProvasIndexRoute = ProvasIndexRouteImport.update({
   path: '/provas/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicUpdateHeroRoute = ApiPublicUpdateHeroRouteImport.update({
+  id: '/api/public/update-hero',
+  path: '/api/public/update-hero',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProvasIdIndexRoute = ProvasIdIndexRouteImport.update({
   id: '/provas/$id/',
   path: '/provas/$id/',
@@ -220,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/admin/': typeof AdminIndexRoute
   '/provas/': typeof ProvasIndexRoute
+  '/api/public/update-hero': typeof ApiPublicUpdateHeroRoute
   '/provas/$id/inscricao': typeof ProvasIdInscricaoRoute
   '/provas/$id/': typeof ProvasIdIndexRoute
 }
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/admin': typeof AdminIndexRoute
   '/provas': typeof ProvasIndexRoute
+  '/api/public/update-hero': typeof ApiPublicUpdateHeroRoute
   '/provas/$id/inscricao': typeof ProvasIdInscricaoRoute
   '/provas/$id': typeof ProvasIdIndexRoute
 }
@@ -284,6 +292,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/admin/': typeof AdminIndexRoute
   '/provas/': typeof ProvasIndexRoute
+  '/api/public/update-hero': typeof ApiPublicUpdateHeroRoute
   '/provas/$id/inscricao': typeof ProvasIdInscricaoRoute
   '/provas/$id/': typeof ProvasIdIndexRoute
 }
@@ -318,6 +327,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/admin/'
     | '/provas/'
+    | '/api/public/update-hero'
     | '/provas/$id/inscricao'
     | '/provas/$id/'
   fileRoutesByTo: FileRoutesByTo
@@ -349,6 +359,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/admin'
     | '/provas'
+    | '/api/public/update-hero'
     | '/provas/$id/inscricao'
     | '/provas/$id'
   id:
@@ -381,6 +392,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/admin/'
     | '/provas/'
+    | '/api/public/update-hero'
     | '/provas/$id/inscricao'
     | '/provas/$id/'
   fileRoutesById: FileRoutesById
@@ -400,6 +412,7 @@ export interface RootRouteChildren {
   SobreRoute: typeof SobreRoute
   TreinosRoute: typeof TreinosRoute
   ProvasIndexRoute: typeof ProvasIndexRoute
+  ApiPublicUpdateHeroRoute: typeof ApiPublicUpdateHeroRoute
   ProvasIdInscricaoRoute: typeof ProvasIdInscricaoRoute
   ProvasIdIndexRoute: typeof ProvasIdIndexRoute
 }
@@ -602,6 +615,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProvasIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/update-hero': {
+      id: '/api/public/update-hero'
+      path: '/api/public/update-hero'
+      fullPath: '/api/public/update-hero'
+      preLoaderRoute: typeof ApiPublicUpdateHeroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/provas/$id/': {
       id: '/provas/$id/'
       path: '/provas/$id'
@@ -678,6 +698,7 @@ const rootRouteChildren: RootRouteChildren = {
   SobreRoute: SobreRoute,
   TreinosRoute: TreinosRoute,
   ProvasIndexRoute: ProvasIndexRoute,
+  ApiPublicUpdateHeroRoute: ApiPublicUpdateHeroRoute,
   ProvasIdInscricaoRoute: ProvasIdInscricaoRoute,
   ProvasIdIndexRoute: ProvasIdIndexRoute,
 }
