@@ -8,10 +8,15 @@ import coachLucas from "@/assets/coach-lucas.jpg";
 import coachHelo from "@/assets/coach-helo.jpg";
 import coachesRunning from "@/assets/sobre-medalhistas.jpg";
 import logoCorporacao from "@/assets/logo-corporacao.png";
-import gallery1 from "@/assets/gallery-1.jpg";
-import gallery3 from "@/assets/gallery-3.jpg";
-import gallery5 from "@/assets/gallery-5.jpg";
-import racesTeam from "@/assets/benefit-races-team.jpg";
+import com1 from "@/assets/comunidade-1.jpg.asset.json";
+import com2 from "@/assets/comunidade-2.jpg.asset.json";
+import com3 from "@/assets/comunidade-3.jpg.asset.json";
+import com4 from "@/assets/comunidade-4.jpg.asset.json";
+
+const gallery1 = com3.url;
+const gallery3 = com4.url;
+const gallery5 = com2.url;
+const racesTeam = com1.url;
 
 const highlights = [
   "Treinos presenciais",
