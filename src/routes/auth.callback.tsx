@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@/lib/router-compat";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { isProfileComplete } from "@/lib/profileComplete";
 
 export const Route = createFileRoute("/auth/callback")({
   component: AuthCallback,
