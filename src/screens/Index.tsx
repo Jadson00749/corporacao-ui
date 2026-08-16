@@ -486,53 +486,9 @@ const Index = () => {
       {/* 6. TRAININGS */}
       <HomeTrainingsSection />
 
-      {/* 7. EVENTS */}
-      <section className="relative section-padding bg-background overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-32 right-[-80px] w-[440px] h-[440px] rounded-full opacity-[0.06] blur-[140px]"
-          style={{ background: "radial-gradient(circle, hsl(var(--brand)) 0%, transparent 70%)" }}
-        />
+      {/* 7. EVENTS: agora exibido logo após o hero em <UpcomingRacesSection /> */}
 
-        <div className="container-page relative">
-          <div className="flex flex-wrap gap-6 justify-between items-end mb-12">
-            <SectionHeader
-              eyebrow="Provas em destaque"
-              title="Próximas provas"
-              subtitle="Veja as próximas provas e corra com a gente."
-              align="left"
-              className="!mx-0"
-            />
-            <Link
-              to="/provas"
-              className="group inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:text-brand transition-colors"
-            >
-              Ver todas as provas
-              <span className="w-6 h-px bg-foreground/40 group-hover:w-12 group-hover:bg-brand transition-all duration-300" />
-              <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
-            </Link>
-          </div>
-          {/* Mobile: carrossel horizontal com auto-scroll */}
-          <MobileAutoCarousel>
-            {featuredEvents.map((e) => (
-              <div key={e.id} data-card className="snap-start shrink-0 w-[82%] flex">
-                <EventCard event={e} />
-              </div>
-            ))}
-          </MobileAutoCarousel>
-          {featuredEvents.length > 1 && (
-            <p className="md:hidden mt-2 text-center text-[10px] text-muted-foreground/70 tracking-wider uppercase">
-              Arraste para ver outras provas
-            </p>
-          )}
 
-          {/* Desktop: grid */}
-          <div className="hidden md:grid md:grid-cols-3 gap-6">
-            {featuredEvents.map((e) => <EventCard key={e.id} event={e} />)}
-          </div>
-
-        </div>
-      </section>
 
       {/* PRODUCTS (loja) */}
       <section className="section-padding">
