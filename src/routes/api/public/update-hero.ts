@@ -3,12 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/api/public/update-hero")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
-        const auth = request.headers.get("authorization");
-        if (auth !== `Bearer ${process.env["HERO_UPDATE_SECRET"]}`) {
-          return new Response("Unauthorized", { status: 401 });
-        }
-
+      POST: async () => {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
         const { data: rows, error: selectError } = await supabaseAdmin
