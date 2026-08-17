@@ -322,12 +322,12 @@ const ProvaInscricao = () => {
           <span className="text-muted-foreground">Modalidade</span>
           <span className="font-medium text-right">{distance || "—"}</span>
         </div>
-        {kitOptions.length > 0 && (
-          <div className="flex justify-between gap-3">
-            <span className="text-muted-foreground">Kit</span>
-            <span className="font-medium text-right">{kitOption || "—"}</span>
-          </div>
-        )}
+          {kitOptions.length > 0 && (
+            <div className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Kit</span>
+              <span className="font-medium text-right">{selectedKits.join(", ") || "—"}</span>
+            </div>
+          )}
         {(gender || bracket) && (
           <div className="flex justify-between gap-3">
             <span className="text-muted-foreground">Categoria</span>
@@ -502,12 +502,12 @@ const ProvaInscricao = () => {
                             <h3 className="text-sm uppercase tracking-wide text-muted-foreground mb-3">Kit do atleta</h3>
                             <div className="grid sm:grid-cols-2 gap-2">
                               {kitOptions.map((k) => {
-                                const active = kitOption === k.name;
+                                const active = selectedKits.includes(k.name);
                                 return (
                                   <button
                                     key={k.name}
                                     type="button"
-                                    onClick={() => setKitOption(k.name)}
+                                    onClick={() => setSelectedKits((prev) => active ? prev.filter((n) => n !== k.name) : [...prev, k.name])}
                                     className={[
                                       "text-left rounded-xl px-4 py-3 border transition-all flex items-center gap-3",
                                       active
