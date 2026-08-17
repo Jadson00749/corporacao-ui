@@ -16,6 +16,7 @@ export const ProfileFields = ({
   emailReadOnly = false,
 }: { showPassword?: boolean; emailReadOnly?: boolean }) => {
   const { register, setValue, formState: { errors }, control } = useFormContext<any>();
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const cep = useWatch({ control, name: "cep" });
 
   // ViaCEP autofill
