@@ -96,7 +96,7 @@ const ProvaInscricao = () => {
   const [distance, setDistance] = useState("");
   const [gender, setGender] = useState("");
   const [bracket, setBracket] = useState("");
-  const [kitOption, setKitOption] = useState("");
+  const [selectedKits, setSelectedKits] = useState<string[]>([]);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [teamName, setTeamName] = useState("");
@@ -110,7 +110,7 @@ const ProvaInscricao = () => {
   useEffect(() => { if (distance && errors.distance) setErrors((e) => ({ ...e, distance: false })); }, [distance]);
   useEffect(() => { if (gender && errors.gender) setErrors((e) => ({ ...e, gender: false })); }, [gender]);
   useEffect(() => { if (bracket && errors.bracket) setErrors((e) => ({ ...e, bracket: false })); }, [bracket]);
-  useEffect(() => { if (kitOption && errors.kitOption) setErrors((e) => ({ ...e, kitOption: false })); }, [kitOption]);
+  useEffect(() => { if (selectedKits.length && errors.kitOption) setErrors((e) => ({ ...e, kitOption: false })); }, [selectedKits]);
   useEffect(() => { if (acceptedTerms && errors.terms) setErrors((e) => ({ ...e, terms: false })); }, [acceptedTerms]);
 
   useEffect(() => {
@@ -198,7 +198,7 @@ const ProvaInscricao = () => {
   useEffect(() => { if (distances.length === 1) setDistance(distances[0].distance); }, [distances]);
   useEffect(() => { if (genders.length === 1) setGender(genders[0]); }, [genders]);
   useEffect(() => { if (ageBrackets.length === 1) setBracket(`${ageBrackets[0].min}-${ageBrackets[0].max}`); }, [ageBrackets]);
-  useEffect(() => { if (kitOptions.length === 1) setKitOption(kitOptions[0].name); }, [kitOptions]);
+  useEffect(() => { if (kitOptions.length === 1) setSelectedKits([kitOptions[0].name]); }, [kitOptions]);
   useEffect(() => {
     if (ageBrackets.length && profile?.birth_date) {
       const age = calcAge(profile.birth_date);
