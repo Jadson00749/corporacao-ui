@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BRAZIL_STATES } from "@/data/brazilStates";
 import { formatCEP, formatCPF, formatPhone, onlyDigits } from "@/lib/cpf";
+import { Eye, EyeOff } from "lucide-react";
 
 /**
  * Bloco reutilizável de campos do perfil (nome, CPF, endereço etc).
