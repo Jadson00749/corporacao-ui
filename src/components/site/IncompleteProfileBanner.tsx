@@ -9,7 +9,7 @@ import { AlertCircle } from "lucide-react";
  * Aviso discreto exibido enquanto o perfil estiver incompleto.
  * Não bloqueia navegação e some sozinho quando o cadastro é concluído.
  */
-export const IncompleteProfileBanner = () => {
+export const IncompleteProfileBanner = ({ className = "" }: { className?: string }) => {
   const { user, loading } = useAuth();
   const { pathname } = useLocation();
   const { data: profile, isLoading } = useProfile();
@@ -19,8 +19,8 @@ export const IncompleteProfileBanner = () => {
   if (pathname.startsWith("/completar-cadastro")) return null;
 
   return (
-    <div className="border-b border-brand/25 bg-brand/10">
-      <div className="container-page py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+    <div className={"border-brand/25 bg-brand/10 " + className}>
+      <div className="px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         <AlertCircle className="w-4 h-4 text-brand shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-tight">Complete seu cadastro</p>
