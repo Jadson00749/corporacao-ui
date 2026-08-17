@@ -217,8 +217,9 @@ const ProvaInscricao = () => {
   const priceOf = (d: any) => (isLote2(d) ? (d.price_lote2 ?? 0) : (d?.price ?? 0));
   const lote2Active = isLote2(distanceObj);
   const distancePrice = priceOf(distanceObj);
-  const kitExtra = kitOptions.find((k) => k.name === kitOption)?.extra_price ?? 0;
-  const total = distancePrice + kitExtra;
+  const kitExtra = kitOptions
+    .filter((k) => selectedKits.includes(k.name))
+    .reduce((sum, k) => sum + (k.extra_price ?? 0), 0);
 
   const categoryLabel = useMemo(() => {
     const parts = [distance, gender, bracket && `${bracket} anos`].filter(Boolean);
@@ -242,7 +243,7 @@ const ProvaInscricao = () => {
     const newErrors: Record<string, boolean> = {};
     const missing: string[] = [];
     if (distances.length > 0 && !distance) { newErrors.distance = true; missing.push("Modalidade"); }
-    if (kitOptions.length > 0 && !kitOption) { newErrors.kitOption = true; missing.push("Kit"); }
+    if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missing.push("Kit"); }
     if (missing.length) {
       setErrors(newErrors);
       toast.error("Selecione para continuar", { description: missing.join(" · "), position: "top-center" });
@@ -260,7 +261,7 @@ const ProvaInscricao = () => {
     if (distances.length > 0 && !distance) { newErrors.distance = true; missingLabels.push("Distância"); }
     if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo"); }
     if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Faixa etária"); }
-    if (kitOptions.length > 0 && !kitOption) { newErrors.kitOption = true; missingLabels.push("Opção de kit"); }
+    if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Opção de kit"); }
     if (!acceptedTerms) { newErrors.terms = true; missingLabels.push("Aceitar os termos"); }
 
     if (missingLabels.length) {
@@ -285,7 +286,7 @@ const ProvaInscricao = () => {
       category: categoryLabel,
       status: "pendente",
       notes,
-      kit_option: kitOption,
+      kit_option: selectedKits.length ? JSON.stringify(selectedKits) : "",
       coupon_code: appliedCoupon?.code || "",
       team_name: teamName,
       accepted_event_terms_at: new Date().toISOString(),
