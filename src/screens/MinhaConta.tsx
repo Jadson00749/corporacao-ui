@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { Calendar, MapPin, LogOut, MessageCircle } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
 import { WelcomeDialog } from "@/components/site/WelcomeDialog";
+import { IncompleteProfileBanner } from "@/components/site/IncompleteProfileBanner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +59,7 @@ const MinhaConta = () => {
       <WelcomeDialog firstName={profile?.full_name?.split(" ")[0]} />
       <section className="section-padding pt-32">
         <div className="container-page max-w-4xl">
+          <IncompleteProfileBanner className="mb-6 rounded-2xl border" />
           <div className="flex items-center justify-between mb-6">
             <div>
               {profile?.full_name ? (
