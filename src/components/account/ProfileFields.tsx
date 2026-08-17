@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BRAZIL_STATES } from "@/data/brazilStates";
 import { formatCEP, formatCPF, formatPhone, onlyDigits } from "@/lib/cpf";
+import { Eye, EyeOff } from "lucide-react";
 
 /**
  * Bloco reutilizável de campos do perfil (nome, CPF, endereço etc).
@@ -15,6 +16,7 @@ export const ProfileFields = ({
   emailReadOnly = false,
 }: { showPassword?: boolean; emailReadOnly?: boolean }) => {
   const { register, setValue, formState: { errors }, control } = useFormContext<any>();
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const cep = useWatch({ control, name: "cep" });
 
   // ViaCEP autofill
@@ -118,7 +120,17 @@ export const ProfileFields = ({
       {showPassword && (
         <div>
           <Label htmlFor="password">Senha de acesso *</Label>
-          <Input id="password" type="password" autoComplete="new-password" {...register("password")} className="mt-1" />
+          <div className="relative">
+            <Input id="password" type={passwordVisible ? "text" : "password"} autoComplete="new-password" {...register("password")} className="mt-1 pr-10" />
+            <button
+              type="button"
+              onClick={() => setPasswordVisible((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(121_100%_59%)]/40 rounded-md p-1"
+              aria-label={passwordVisible ? "Ocultar senha" : "Mostrar senha"}
+            >
+              {passwordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
           {err("password") && <p className="text-xs text-destructive mt-1">{err("password")}</p>}
           <p className="text-xs text-muted-foreground mt-1">Mínimo 8 caracteres.</p>
         </div>
