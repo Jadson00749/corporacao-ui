@@ -21,6 +21,8 @@ type Row = {
   team_name: string;
   events: { id: string; name: string; date: string; city: string } | null;
   profiles: { full_name: string; cpf: string; email: string; whatsapp: string; team_name: string; city: string; state: string } | null;
+};
+
 const formatKitOption = (value: string) => {
   if (!value) return "";
   try {
