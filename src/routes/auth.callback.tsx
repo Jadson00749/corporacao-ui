@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@/lib/router-compat";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
-import { isProfileComplete } from "@/lib/profileComplete";
 
 export const Route = createFileRoute("/auth/callback")({
   component: AuthCallback,
@@ -57,26 +56,8 @@ function AuthCallback() {
         return;
       }
 
-      // O perfil é vinculado por user_id. Nunca sobrescrevemos dados existentes:
-      // apenas verificamos se o cadastro está completo.
-      const { data: existingProfile, error: profileReadError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (profileReadError) {
-        setError("Erro ao carregar perfil: " + profileReadError.message);
-        return;
-      }
-
       const redirect = localStorage.getItem("auth_redirect") || "";
       try { localStorage.removeItem("auth_redirect"); } catch {}
-
-      if (!isProfileComplete(existingProfile)) {
-        navigate("/completar-cadastro", { replace: true });
-        return;
-      }
 
       navigate(redirect || "/minha-conta", { replace: true });
     };
