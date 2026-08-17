@@ -220,6 +220,7 @@ const ProvaInscricao = () => {
   const kitExtra = kitOptions
     .filter((k) => selectedKits.includes(k.name))
     .reduce((sum, k) => sum + (k.extra_price ?? 0), 0);
+  const total = distancePrice + kitExtra;
 
   const categoryLabel = useMemo(() => {
     const parts = [distance, gender, bracket && `${bracket} anos`].filter(Boolean);
