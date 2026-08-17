@@ -96,7 +96,7 @@ const ProvaInscricao = () => {
   const [distance, setDistance] = useState("");
   const [gender, setGender] = useState("");
   const [bracket, setBracket] = useState("");
-  const [kitOption, setKitOption] = useState("");
+  const [selectedKits, setSelectedKits] = useState<string[]>([]);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [teamName, setTeamName] = useState("");
@@ -110,7 +110,7 @@ const ProvaInscricao = () => {
   useEffect(() => { if (distance && errors.distance) setErrors((e) => ({ ...e, distance: false })); }, [distance]);
   useEffect(() => { if (gender && errors.gender) setErrors((e) => ({ ...e, gender: false })); }, [gender]);
   useEffect(() => { if (bracket && errors.bracket) setErrors((e) => ({ ...e, bracket: false })); }, [bracket]);
-  useEffect(() => { if (kitOption && errors.kitOption) setErrors((e) => ({ ...e, kitOption: false })); }, [kitOption]);
+  useEffect(() => { if (selectedKits.length && errors.kitOption) setErrors((e) => ({ ...e, kitOption: false })); }, [selectedKits]);
   useEffect(() => { if (acceptedTerms && errors.terms) setErrors((e) => ({ ...e, terms: false })); }, [acceptedTerms]);
 
   useEffect(() => {
@@ -198,7 +198,7 @@ const ProvaInscricao = () => {
   useEffect(() => { if (distances.length === 1) setDistance(distances[0].distance); }, [distances]);
   useEffect(() => { if (genders.length === 1) setGender(genders[0]); }, [genders]);
   useEffect(() => { if (ageBrackets.length === 1) setBracket(`${ageBrackets[0].min}-${ageBrackets[0].max}`); }, [ageBrackets]);
-  useEffect(() => { if (kitOptions.length === 1) setKitOption(kitOptions[0].name); }, [kitOptions]);
+  useEffect(() => { if (kitOptions.length === 1) setSelectedKits([kitOptions[0].name]); }, [kitOptions]);
   useEffect(() => {
     if (ageBrackets.length && profile?.birth_date) {
       const age = calcAge(profile.birth_date);
@@ -217,7 +217,9 @@ const ProvaInscricao = () => {
   const priceOf = (d: any) => (isLote2(d) ? (d.price_lote2 ?? 0) : (d?.price ?? 0));
   const lote2Active = isLote2(distanceObj);
   const distancePrice = priceOf(distanceObj);
-  const kitExtra = kitOptions.find((k) => k.name === kitOption)?.extra_price ?? 0;
+  const kitExtra = kitOptions
+    .filter((k) => selectedKits.includes(k.name))
+    .reduce((sum, k) => sum + (k.extra_price ?? 0), 0);
   const total = distancePrice + kitExtra;
 
   const categoryLabel = useMemo(() => {
@@ -242,7 +244,7 @@ const ProvaInscricao = () => {
     const newErrors: Record<string, boolean> = {};
     const missing: string[] = [];
     if (distances.length > 0 && !distance) { newErrors.distance = true; missing.push("Modalidade"); }
-    if (kitOptions.length > 0 && !kitOption) { newErrors.kitOption = true; missing.push("Kit"); }
+    if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missing.push("Kit"); }
     if (missing.length) {
       setErrors(newErrors);
       toast.error("Selecione para continuar", { description: missing.join(" · "), position: "top-center" });
@@ -260,7 +262,7 @@ const ProvaInscricao = () => {
     if (distances.length > 0 && !distance) { newErrors.distance = true; missingLabels.push("Distância"); }
     if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo"); }
     if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Faixa etária"); }
-    if (kitOptions.length > 0 && !kitOption) { newErrors.kitOption = true; missingLabels.push("Opção de kit"); }
+    if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Opção de kit"); }
     if (!acceptedTerms) { newErrors.terms = true; missingLabels.push("Aceitar os termos"); }
 
     if (missingLabels.length) {
@@ -285,7 +287,7 @@ const ProvaInscricao = () => {
       category: categoryLabel,
       status: "pendente",
       notes,
-      kit_option: kitOption,
+      kit_option: selectedKits.length ? JSON.stringify(selectedKits) : "",
       coupon_code: appliedCoupon?.code || "",
       team_name: teamName,
       accepted_event_terms_at: new Date().toISOString(),
@@ -320,12 +322,12 @@ const ProvaInscricao = () => {
           <span className="text-muted-foreground">Modalidade</span>
           <span className="font-medium text-right">{distance || "—"}</span>
         </div>
-        {kitOptions.length > 0 && (
-          <div className="flex justify-between gap-3">
-            <span className="text-muted-foreground">Kit</span>
-            <span className="font-medium text-right">{kitOption || "—"}</span>
-          </div>
-        )}
+          {kitOptions.length > 0 && (
+            <div className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Kit</span>
+              <span className="font-medium text-right">{selectedKits.join(", ") || "—"}</span>
+            </div>
+          )}
         {(gender || bracket) && (
           <div className="flex justify-between gap-3">
             <span className="text-muted-foreground">Categoria</span>
@@ -408,7 +410,7 @@ const ProvaInscricao = () => {
 
                   <Button asChild variant="brand" size="lg" className="w-full">
                     <a
-                      href={buildWhats(`Olá! Fiz minha inscrição na prova ${event.name} e gostaria de enviar o comprovante do PIX.`)}
+                      href={buildWhats(`Olá! Fiz minha inscrição na prova ${event.name} na categoria ${categoryLabel}${selectedKits.length ? " com kit " + selectedKits.join(", ") : ""} e gostaria de enviar o comprovante do PIX.`)}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -500,12 +502,12 @@ const ProvaInscricao = () => {
                             <h3 className="text-sm uppercase tracking-wide text-muted-foreground mb-3">Kit do atleta</h3>
                             <div className="grid sm:grid-cols-2 gap-2">
                               {kitOptions.map((k) => {
-                                const active = kitOption === k.name;
+                                const active = selectedKits.includes(k.name);
                                 return (
                                   <button
                                     key={k.name}
                                     type="button"
-                                    onClick={() => setKitOption(k.name)}
+                                    onClick={() => setSelectedKits((prev) => active ? prev.filter((n) => n !== k.name) : [...prev, k.name])}
                                     className={[
                                       "text-left rounded-xl px-4 py-3 border transition-all flex items-center gap-3",
                                       active
@@ -513,6 +515,12 @@ const ProvaInscricao = () => {
                                         : "border-border bg-secondary/30 hover:bg-secondary/60",
                                     ].join(" ")}
                                   >
+                                    <div className={[
+                                      "w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors",
+                                      active ? "bg-brand border-brand text-brand-foreground" : "border-border bg-background",
+                                    ].join(" ")}>
+                                      {active && <Check className="w-3.5 h-3.5" />}
+                                    </div>
                                     <Shirt className={`w-4 h-4 shrink-0 ${active ? "text-brand" : "text-muted-foreground"}`} />
                                     <span className="flex-1 font-medium">{k.name}</span>
                                     {k.extra_price ? <span className="text-sm text-brand font-semibold">+{brl(k.extra_price)}</span> : null}
