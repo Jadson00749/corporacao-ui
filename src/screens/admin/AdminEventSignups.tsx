@@ -21,6 +21,13 @@ type Row = {
   team_name: string;
   events: { id: string; name: string; date: string; city: string } | null;
   profiles: { full_name: string; cpf: string; email: string; whatsapp: string; team_name: string; city: string; state: string } | null;
+const formatKitOption = (value: string) => {
+  if (!value) return "";
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.join(", ");
+  } catch {}
+  return value;
 };
 
 const AdminEventSignups = () => {
@@ -92,7 +99,7 @@ const AdminEventSignups = () => {
     const rows = filtered.map((r) => [
       r.events?.name || "", r.events?.date || "",
       r.profiles?.full_name || "", r.profiles?.cpf || "", r.profiles?.email || "",
-      r.profiles?.whatsapp || "", r.category, r.kit_option || "", r.coupon_code || "",
+      r.profiles?.whatsapp || "", r.category, formatKitOption(r.kit_option || ""), r.coupon_code || "",
       r.team_name || r.profiles?.team_name || "",
       `${r.profiles?.city || ""} ${r.profiles?.state || ""}`.trim(),
       r.status, new Date(r.created_at).toLocaleString("pt-BR"),
@@ -165,7 +172,7 @@ const AdminEventSignups = () => {
                     <div>{r.category || "-"}</div>
                     {(r.kit_option || r.team_name || r.coupon_code) && (
                       <div className="text-xs text-muted-foreground">
-                        {r.kit_option && <>Kit: {r.kit_option} </>}
+                        {r.kit_option && <>Kit: {formatKitOption(r.kit_option)} </>}
                         {r.team_name && <>· Equipe: {r.team_name} </>}
                         {r.coupon_code && <>· Cupom: {r.coupon_code}</>}
                       </div>
