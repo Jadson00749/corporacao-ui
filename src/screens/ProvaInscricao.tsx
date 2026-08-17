@@ -515,6 +515,12 @@ const ProvaInscricao = () => {
                                         : "border-border bg-secondary/30 hover:bg-secondary/60",
                                     ].join(" ")}
                                   >
+                                    <div className={[
+                                      "w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors",
+                                      active ? "bg-brand border-brand text-brand-foreground" : "border-border bg-background",
+                                    ].join(" ")}>
+                                      {active && <Check className="w-3.5 h-3.5" />}
+                                    </div>
                                     <Shirt className={`w-4 h-4 shrink-0 ${active ? "text-brand" : "text-muted-foreground"}`} />
                                     <span className="flex-1 font-medium">{k.name}</span>
                                     {k.extra_price ? <span className="text-sm text-brand font-semibold">+{brl(k.extra_price)}</span> : null}
