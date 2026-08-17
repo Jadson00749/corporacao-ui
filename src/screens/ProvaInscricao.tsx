@@ -410,7 +410,7 @@ const ProvaInscricao = () => {
 
                   <Button asChild variant="brand" size="lg" className="w-full">
                     <a
-                      href={buildWhats(`Olá! Fiz minha inscrição na prova ${event.name} e gostaria de enviar o comprovante do PIX.`)}
+                      href={buildWhats(`Olá! Fiz minha inscrição na prova ${event.name} na categoria ${categoryLabel}${selectedKits.length ? " com kit " + selectedKits.join(", ") : ""} e gostaria de enviar o comprovante do PIX.`)}
                       target="_blank"
                       rel="noreferrer"
                     >
