@@ -27,12 +27,10 @@ import {
   Dumbbell,
   Trophy,
   Users,
-  Gift,
   AlertCircle,
   CheckCircle2,
   UserRound,
   ClipboardList,
-  Clock,
 } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
 import { WelcomeDialog } from "@/components/site/WelcomeDialog";
