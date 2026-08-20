@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useMySignups } from "@/hooks/useProfile";
 import { useTrainings, useEvents } from "@/hooks/useContent";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { Layout } from "@/components/site/Layout";
 import { SEO } from "@/components/site/SEO";
 import { Button } from "@/components/ui/button";
