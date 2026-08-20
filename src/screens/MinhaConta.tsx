@@ -290,7 +290,6 @@ const MinhaConta = () => {
               label="Indique um amigo"
               loading={false}
               empty={false}
-              className="md:col-span-2 lg:col-span-1"
               highlight
             >
               <div className="space-y-3">
@@ -303,24 +302,6 @@ const MinhaConta = () => {
                 <Button variant="outline" size="sm" className="w-full" onClick={() => toast.info("Em breve você poderá indicar amigos!")}>
                   Quero indicar
                 </Button>
-              </div>
-            </DashboardCard>
-
-            {/* Loyalty / rewards placeholder (visual only) */}
-            <DashboardCard
-              icon={<Gift className="w-5 h-5" />}
-              label="Benefícios"
-              loading={false}
-              empty={false}
-              className="lg:hidden"
-            >
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Acompanhe pontos, descontos e benefícios exclusivos da Corporação.
-                </p>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="w-4 h-4" /> Em breve
-                </div>
               </div>
             </DashboardCard>
           </div>
