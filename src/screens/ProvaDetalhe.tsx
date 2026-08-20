@@ -28,6 +28,8 @@ import {
   Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BannerFrame } from "@/components/site/BannerFrame";
+
 
 type PublicSignup = { full_name: string; city: string; team_name: string; category: string; status: string; gender: string; age: number | null };
 type GenderFilter = "all" | "F" | "M";
