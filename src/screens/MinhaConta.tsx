@@ -565,6 +565,4 @@ const ProfileEditor = ({ profile }: { profile: any }) => {
   );
 };
 
-import { cn } from "@/lib/utils";
-
 export default MinhaConta;
