@@ -182,14 +182,18 @@ const ProvaDetalhe = () => {
             {/* COLUNA PRINCIPAL */}
             <div className="min-w-0 space-y-8">
               {/* BANNER */}
-              <div className="relative rounded-2xl overflow-hidden border border-border/60 bg-card">
+              <div className="rounded-2xl overflow-hidden border border-border/60 bg-card">
                 {banner ? (
-                  <img src={banner} alt={`Banner ${event.name}`} className="w-full h-[220px] md:h-[340px] object-cover" />
+                  <BannerFrame
+                    src={banner}
+                    alt={`Banner ${event.name}`}
+                    loading="eager"
+                    className="aspect-[16/9] sm:aspect-[2/1] md:aspect-[21/9]"
+                  />
                 ) : (
-                  <div className="w-full h-[220px] md:h-[340px] bg-gradient-dark" />
+                  <div className="w-full aspect-[16/9] md:aspect-[21/9] bg-gradient-dark" />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-5 md:p-7">
+                <div className="p-5 md:p-7">
                   <span
                     className={cn(
                       "inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border backdrop-blur-sm",
@@ -207,6 +211,7 @@ const ProvaDetalhe = () => {
                   </p>
                 </div>
               </div>
+
 
               {/* SOBRE */}
               {event.description && (
