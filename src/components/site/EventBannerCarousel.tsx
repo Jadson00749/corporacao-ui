@@ -42,23 +42,29 @@ export const EventBannerCarousel = ({ events }: Props) => {
   return (
     <section className="relative">
       <div className="container-page pt-8 md:pt-12">
-        <div className="relative rounded-2xl overflow-hidden shadow-card border border-border h-[420px] md:h-[480px]">
+        <div className="relative rounded-2xl overflow-hidden shadow-card border border-border bg-[#0b0b0b] aspect-[16/10] sm:aspect-[2/1] md:aspect-[21/9]">
           {open.map((ev, i) => {
             const bg = ev.bannerImage || ev.image || getEventBannerFallback(ev.id);
             return (
-              <img
+              <div
                 key={ev.id}
-                src={bg}
-                alt={`Banner ${ev.name}`}
                 className={cn(
-                  "absolute inset-0 w-full h-full object-cover transition-opacity duration-700",
+                  "absolute inset-0 transition-opacity duration-700",
                   i === index ? "opacity-100" : "opacity-0"
                 )}
-              />
+              >
+                <img src={bg} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40" />
+                <img
+                  src={bg}
+                  alt={`Banner ${ev.name}`}
+                  className="relative w-full h-full object-contain"
+                />
+              </div>
             );
           })}
 
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent md:bg-gradient-to-r md:from-black/85 md:via-black/45 md:to-transparent" />
+
 
           <div className="relative h-full flex flex-col justify-end p-6 md:p-12 max-w-3xl">
             <span className="inline-block w-fit text-xs font-semibold tracking-wider uppercase px-3 py-1 rounded-full bg-success text-white mb-4">

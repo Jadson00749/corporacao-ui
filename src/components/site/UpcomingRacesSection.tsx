@@ -4,6 +4,8 @@ import { useEvents } from "@/hooks/useContent";
 import { getEventBannerFallback } from "@/lib/eventBannerFallback";
 import { eventStatusLabel, type RaceEvent } from "@/data/events";
 import { cn } from "@/lib/utils";
+import { BannerFrame } from "@/components/site/BannerFrame";
+
 
 const formatDate = (iso: string) =>
   new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", {
@@ -35,14 +37,8 @@ const RaceCard = ({ event }: { event: RaceEvent }) => {
         closed && "opacity-70 pointer-events-none"
       )}
     >
-      <div className="relative aspect-[16/10] overflow-hidden">
-        <img
-          src={banner}
-          alt={`Banner ${event.name}`}
-          loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.06]"
-        />
-        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
+      <BannerFrame src={banner} alt={`Banner ${event.name}`} className="aspect-[16/9]" imgClassName="transition-transform duration-[1200ms] ease-out group-hover:scale-[1.03]">
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         <span
           className={cn(
             "absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-[0.22em] backdrop-blur-md",
@@ -52,7 +48,8 @@ const RaceCard = ({ event }: { event: RaceEvent }) => {
           {event.status === "open" && <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />}
           {eventStatusLabel[event.status]}
         </span>
-      </div>
+      </BannerFrame>
+
 
       <div className="flex flex-1 flex-col p-5">
         <h3 className="font-display text-[1.05rem] sm:text-xl font-semibold leading-snug text-white line-clamp-2 group-hover:text-brand transition-colors">

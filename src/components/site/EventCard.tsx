@@ -3,6 +3,8 @@ import { Calendar, MapPin, ArrowRight } from "lucide-react";
 import { RaceEvent, eventStatusLabel } from "@/data/events";
 import { cn } from "@/lib/utils";
 import { getEventBannerFallback } from "@/lib/eventBannerFallback";
+import { BannerFrame } from "@/components/site/BannerFrame";
+
 
 const statusStyle: Record<RaceEvent["status"], string> = {
   open: "bg-success/15 text-success border-success/30",
@@ -29,14 +31,13 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
         closed && "opacity-70 pointer-events-none"
       )}
     >
-      <div className="relative aspect-[16/10] overflow-hidden">
-        <img
-          src={banner}
-          alt={`Banner ${event.name}`}
-          loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.06]"
-        />
-        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+      <BannerFrame
+        src={banner}
+        alt={`Banner ${event.name}`}
+        className="aspect-[16/9] transition-transform duration-[1200ms] ease-out"
+        imgClassName="transition-transform duration-[1200ms] ease-out group-hover:scale-[1.03]"
+      >
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
         <span
           className={cn(
             "absolute top-3 left-3 inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.22em] uppercase px-2.5 py-1 rounded-full border backdrop-blur-sm",
@@ -48,7 +49,8 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
           )}
           {eventStatusLabel[event.status]}
         </span>
-      </div>
+      </BannerFrame>
+
 
       <div className="p-6">
         <div className="flex items-start justify-between gap-3 mb-2">
