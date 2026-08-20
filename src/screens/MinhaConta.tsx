@@ -156,7 +156,7 @@ const MinhaConta = () => {
           </div>
 
           {/* Dashboard cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
             {/* Next training */}
             <DashboardCard
               icon={<Dumbbell className="w-5 h-5" />}
