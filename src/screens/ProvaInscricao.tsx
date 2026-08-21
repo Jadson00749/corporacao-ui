@@ -344,9 +344,8 @@ const ProvaInscricao = () => {
     setErrors({});
 
     setSubmitting(true);
-    const { error } = await supabase.from("event_signups").insert({
-      user_id: user.id,
-      event_id: event.id,
+
+    const payload = {
       category: categoryLabel,
       status: "pendente",
       notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: valor fixo ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
@@ -354,18 +353,58 @@ const ProvaInscricao = () => {
       coupon_code: appliedCoupon?.code || "",
       team_name: teamName,
       accepted_event_terms_at: new Date().toISOString(),
-    });
+    };
+
+    // Já existe inscrição desta pessoa nesta prova/categoria?
+    const { data: existing, error: findError } = await supabase
+      .from("event_signups")
+      .select("id, status")
+      .eq("user_id", user.id)
+      .eq("event_id", event.id)
+      .eq("category", categoryLabel)
+      .maybeSingle();
+
+    if (findError) {
+      setSubmitting(false);
+      toast.error(findError.message);
+      return;
+    }
+
+    if (existing && existing.status === "confirmada") {
+      setSubmitting(false);
+      toast.error("Você já está inscrito nesta categoria.");
+      return;
+    }
+
+    let error = null as { code?: string; message: string } | null;
+    if (existing) {
+      // Retoma o rascunho pendente/cancelado: atualiza, nunca duplica
+      const res = await supabase.from("event_signups").update(payload).eq("id", existing.id);
+      error = res.error;
+      if (!error) setSignupId(existing.id);
+    } else {
+      const res = await supabase
+        .from("event_signups")
+        .insert({ user_id: user.id, event_id: event.id, ...payload })
+        .select("id")
+        .maybeSingle();
+      error = res.error;
+      if (!error && res.data?.id) setSignupId(res.data.id);
+    }
+
     setSubmitting(false);
     if (error) {
-      if (error.code === "23505") toast.error("Você já está inscrito nessa categoria.");
+      if (error.code === "23505") toast.error("Você já está inscrito nesta categoria.");
       else toast.error(error.message);
       return;
     }
     qc.invalidateQueries({ queryKey: ["my_signups"] });
+    qc.invalidateQueries({ queryKey: ["event_signup_existing", id, user.id] });
     setDone(true);
     setStep(2);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
 
   if (loading || !user) return null;
 
