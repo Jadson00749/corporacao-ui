@@ -16,6 +16,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
+import { activeLote, currentPrice } from "@/lib/eventPricing";
+import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 
 type Distance = { distance: string; price?: number };
 type AgeBracket = { min: number; max: number };
