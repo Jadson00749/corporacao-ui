@@ -43,6 +43,17 @@ const normalizeGender = (g: string): "F" | "M" | "O" => {
   return "O";
 };
 
+/** Usa o gênero do perfil; se vier vazio, tenta identificar pelo texto da categoria. */
+const signupGender = (s: { gender?: string; category?: string }): "F" | "M" | "O" => {
+  const fromProfile = normalizeGender(s.gender || "");
+  if (fromProfile !== "O") return fromProfile;
+  const cat = (s.category || "").toLowerCase();
+  if (/femin/.test(cat)) return "F";
+  if (/mascul/.test(cat)) return "M";
+  return "O";
+};
+
+
 // Extrai a distância (ex: "10K") da categoria "10K · Masculino"
 const extractDistance = (category: string): string => {
   if (!category) return "Distância não informada";
@@ -472,7 +483,7 @@ const ProvaDetalhe = () => {
           {!loadingSignups && signups.length > 0 && (() => {
             const totals = signups.reduce(
               (acc, s) => {
-                const g = normalizeGender(s.gender);
+                const g = signupGender(s);
                 if (g === "F") acc.F += 1;
                 else if (g === "M") acc.M += 1;
                 return acc;
@@ -483,7 +494,7 @@ const ProvaDetalhe = () => {
             const filtered =
               genderFilter === "all"
                 ? signups
-                : signups.filter((s) => normalizeGender(s.gender) === genderFilter);
+                : signups.filter((s) => signupGender(s) === genderFilter);
 
             // Agrupa por distância e depois por faixa etária
             const grouped: Record<string, Record<string, PublicSignup[]>> = {};

@@ -20,7 +20,24 @@ type Row = {
   coupon_code: string;
   team_name: string;
   events: { id: string; name: string; date: string; city: string } | null;
-  profiles: { full_name: string; cpf: string; email: string; whatsapp: string; team_name: string; city: string; state: string } | null;
+  profiles: { full_name: string; cpf: string; email: string; whatsapp: string; team_name: string; city: string; state: string; gender: string } | null;
+};
+
+const normalizeGender = (g?: string | null): "F" | "M" | "O" => {
+  const s = (g || "").trim().toLowerCase();
+  if (s.startsWith("f")) return "F";
+  if (s.startsWith("m")) return "M";
+  return "O";
+};
+
+/** Gênero real do perfil; fallback no texto da categoria apenas se o perfil estiver vazio. */
+const rowGender = (r: Row): "F" | "M" | "O" => {
+  const fromProfile = normalizeGender(r.profiles?.gender);
+  if (fromProfile !== "O") return fromProfile;
+  const cat = (r.category || "").toLowerCase();
+  if (/femin/.test(cat)) return "F";
+  if (/mascul/.test(cat)) return "M";
+  return "O";
 };
 
 const formatKitOption = (value: string) => {
@@ -32,10 +49,12 @@ const formatKitOption = (value: string) => {
   return value;
 };
 
+
 const AdminEventSignups = () => {
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [genderFilter, setGenderFilter] = useState<"all" | "F" | "M">("all");
 
   const { data: events = [] } = useQuery({
     queryKey: ["admin_events_list"],
@@ -59,7 +78,7 @@ const AdminEventSignups = () => {
       if (userIds.length) {
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("user_id,full_name,cpf,email,whatsapp,team_name,city,state")
+          .select("user_id,full_name,cpf,email,whatsapp,team_name,city,state,gender")
           .in("user_id", userIds);
         const map = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
         rows.forEach((r) => { r.profiles = map.get(r.user_id) ?? null; });
@@ -68,7 +87,8 @@ const AdminEventSignups = () => {
     },
   });
 
-  const filtered = useMemo(() => {
+  // Base (sem o filtro de gênero) para contadores consistentes com a lista
+  const baseFiltered = useMemo(() => {
     return signups.filter((r) => {
       if (eventFilter !== "all" && r.event_id !== eventFilter) return false;
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
@@ -80,6 +100,25 @@ const AdminEventSignups = () => {
       return true;
     });
   }, [signups, search, eventFilter, statusFilter]);
+
+  const counts = useMemo(() => {
+    return baseFiltered.reduce(
+      (acc, r) => {
+        const g = rowGender(r);
+        if (g === "F") acc.F += 1;
+        else if (g === "M") acc.M += 1;
+        acc.all += 1;
+        return acc;
+      },
+      { all: 0, F: 0, M: 0 }
+    );
+  }, [baseFiltered]);
+
+  const filtered = useMemo(
+    () => (genderFilter === "all" ? baseFiltered : baseFiltered.filter((r) => rowGender(r) === genderFilter)),
+    [baseFiltered, genderFilter]
+  );
+
 
   const updateStatus = async (id: string, status: string) => {
     const { error } = await supabase.from("event_signups").update({ status }).eq("id", id);
@@ -139,6 +178,28 @@ const AdminEventSignups = () => {
             <SelectItem value="cancelada">Cancelada</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {([
+          ["all", "Todos", counts.all],
+          ["F", "Feminino", counts.F],
+          ["M", "Masculino", counts.M],
+        ] as const).map(([value, label, count]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setGenderFilter(value as "all" | "F" | "M")}
+            className={[
+              "rounded-full border px-4 py-1.5 text-sm transition-colors",
+              genderFilter === value
+                ? "border-brand bg-brand text-brand-foreground font-semibold"
+                : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground",
+            ].join(" ")}
+          >
+            {label} ({count})
+          </button>
+        ))}
       </div>
 
       {isLoading ? (

@@ -41,6 +41,26 @@ const calcAge = (birth?: string | null) => {
   return a;
 };
 
+/** Idade esportiva: ano da prova - ano de nascimento (ignora mês/dia). */
+const sportAge = (birth?: string | null, eventDate?: string | null) => {
+  if (!birth || !eventDate) return null;
+  const by = Number(String(birth).slice(0, 4));
+  const ey = Number(String(eventDate).slice(0, 4));
+  if (!Number.isFinite(by) || !Number.isFinite(ey)) return null;
+  return ey - by;
+};
+
+/** Converte profiles.gender ("feminino"/"F"/...) para o rótulo usado no evento. */
+const genderLabelFrom = (raw?: string | null, options: string[] = []) => {
+  const s = (raw || "").trim().toLowerCase();
+  if (!s) return "";
+  const target = s.startsWith("f") ? "f" : s.startsWith("m") ? "m" : "";
+  if (!target) return "";
+  const match = options.find((o) => o.trim().toLowerCase().startsWith(target));
+  return match || (target === "f" ? "Feminino" : "Masculino");
+};
+
+
 const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -210,20 +230,26 @@ const ProvaInscricao = () => {
 
   // Auto-pick when there's only one option
   useEffect(() => { if (distances.length === 1) setDistance(distances[0].distance); }, [distances]);
-  useEffect(() => { if (genders.length === 1) setGender(genders[0]); }, [genders]);
-  useEffect(() => { if (ageBrackets.length === 1) setBracket(`${ageBrackets[0].min}-${ageBrackets[0].max}`); }, [ageBrackets]);
   useEffect(() => { if (kitOptions.length === 1) setSelectedKits([kitOptions[0].name]); }, [kitOptions]);
-  useEffect(() => {
-    if (ageBrackets.length && profile?.birth_date) {
-      const age = calcAge(profile.birth_date);
-      if (age !== null) {
-        const match = ageBrackets.find((b) => age >= b.min && age <= b.max);
-        if (match) setBracket(`${match.min}-${match.max}`);
-      }
-    }
-  }, [ageBrackets, profile]);
+
+  // Sexo automático a partir do cadastro (profiles.gender)
+  const profileGender = useMemo(() => genderLabelFrom(profile?.gender, genders), [profile?.gender, genders]);
+  useEffect(() => { setGender(profileGender); }, [profileGender]);
+
+  // Idade esportiva (ano da prova - ano de nascimento) e faixa etária automática
+  const categoryAge = useMemo(
+    () => sportAge(profile?.birth_date, (event as any)?.date),
+    [profile?.birth_date, event]
+  );
+  const autoBracket = useMemo(() => {
+    if (categoryAge == null || !ageBrackets.length) return "";
+    const match = ageBrackets.find((b) => categoryAge >= b.min && categoryAge <= b.max);
+    return match ? `${match.min}-${match.max}` : "";
+  }, [categoryAge, ageBrackets]);
+  useEffect(() => { setBracket(autoBracket); }, [autoBracket]);
 
   const profileComplete = profile && profile.full_name && profile.cpf && profile.whatsapp && profile.cep;
+
 
   const distanceObj = distances.find((d) => d.distance === distance);
   const senior = isSenior(profile?.birth_date);
@@ -278,8 +304,8 @@ const ProvaInscricao = () => {
     const newErrors: Record<string, boolean> = {};
     const missingLabels: string[] = [];
     if (distances.length > 0 && !distance) { newErrors.distance = true; missingLabels.push("Distância"); }
-    if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo"); }
-    if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Faixa etária"); }
+    if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo (complete no seu cadastro)"); }
+    if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Data de nascimento (complete no seu cadastro)"); }
     if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Opção de kit"); }
     if (!acceptedTerms) { newErrors.terms = true; missingLabels.push("Aceitar os termos"); }
 
@@ -436,7 +462,7 @@ const ProvaInscricao = () => {
 
                   <Button asChild variant="brand" size="lg" className="w-full">
                     <a
-                      href={buildWhats(`Olá! Fiz minha inscrição na prova ${event.name} na categoria ${categoryLabel}${selectedKits.length ? " com kit " + selectedKits.join(", ") : ""} e gostaria de enviar o comprovante do PIX.`)}
+                      href={buildWhats(`Olá! Sou ${profile?.full_name || "atleta"} e fiz minha inscrição na ${event.name} na categoria ${categoryLabel}${selectedKits.length ? " com kit " + selectedKits.join(", ") : ""}. Gostaria de enviar o comprovante do PIX.`)}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -607,39 +633,43 @@ const ProvaInscricao = () => {
                           </dl>
                         </div>
 
-                        {(genders.length > 1 || ageBrackets.length > 1) && (
+                        {(genders.length > 0 || ageBrackets.length > 0) && (
                           <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-3">
-                            <h3 className="text-sm uppercase tracking-wide text-muted-foreground">Categoria</h3>
-                            <div className="grid sm:grid-cols-2 gap-3">
-                              {genders.length > 1 && (
-                                <div>
-                                  <Label className={errors.gender ? "text-destructive" : ""}>Sexo *</Label>
-                                  <Select value={gender} onValueChange={setGender}>
-                                    <SelectTrigger data-invalid={errors.gender || undefined} className={`mt-1 ${errors.gender ? "border-destructive ring-2 ring-destructive/50" : ""}`}><SelectValue placeholder="Sexo" /></SelectTrigger>
-                                    <SelectContent>
-                                      {genders.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
+                            <h3 className="text-sm uppercase tracking-wide text-muted-foreground">Categoria (automática)</h3>
+                            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                              {genders.length > 0 && (
+                                <div data-invalid={errors.gender || undefined}>
+                                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Sexo</dt>
+                                  <dd className={`font-medium ${errors.gender ? "text-destructive" : ""}`}>
+                                    {gender || "não informado no cadastro"}
+                                  </dd>
                                 </div>
                               )}
-                              {ageBrackets.length > 1 && (
-                                <div>
-                                  <Label className={errors.bracket ? "text-destructive" : ""}>Faixa etária *</Label>
-                                  <Select value={bracket} onValueChange={setBracket}>
-                                    <SelectTrigger data-invalid={errors.bracket || undefined} className={`mt-1 ${errors.bracket ? "border-destructive ring-2 ring-destructive/50" : ""}`}><SelectValue placeholder="Faixa" /></SelectTrigger>
-                                    <SelectContent>
-                                      {ageBrackets.map((b) => (
-                                        <SelectItem key={`${b.min}-${b.max}`} value={`${b.min}-${b.max}`}>
-                                          {b.min} a {b.max} anos
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                              {ageBrackets.length > 0 && (
+                                <div data-invalid={errors.bracket || undefined}>
+                                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Faixa etária</dt>
+                                  <dd className={`font-medium ${errors.bracket ? "text-destructive" : ""}`}>
+                                    {bracket ? `${bracket.replace("-", " a ")} anos` : "não informada no cadastro"}
+                                    {categoryAge != null && bracket && (
+                                      <span className="text-muted-foreground font-normal"> · {categoryAge} anos no ano da prova</span>
+                                    )}
+                                  </dd>
                                 </div>
                               )}
                             </div>
+                            {(!gender && genders.length > 0) || (!bracket && ageBrackets.length > 0) ? (
+                              <p className="text-sm text-destructive">
+                                Faltam dados no seu cadastro (sexo e/ou data de nascimento).{" "}
+                                <Link to="/minha-conta" className="underline text-brand">Complete seu cadastro</Link> para continuar.
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                Definida automaticamente pelo seu cadastro. A idade considerada é o ano da prova menos o ano de nascimento.
+                              </p>
+                            )}
                           </div>
                         )}
+
 
                         <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
                           <div>

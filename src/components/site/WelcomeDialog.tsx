@@ -27,7 +27,7 @@ export const WelcomeDialog = ({ firstName }: Props) => {
         <div className="relative aspect-[4/3] w-full bg-muted">
           <img
             src={settings.images?.welcome || fundadores}
-            alt="Lucas e Heloisa Teixeira, fundadores da Corporação Assessoria Esportiva"
+            alt="Lucas e Heloiza Teixeira, fundadores da Corporação Assessoria Esportiva"
             className="w-full h-full object-cover object-top"
           />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background/95 via-background/60 to-transparent h-24" />
@@ -54,7 +54,7 @@ export const WelcomeDialog = ({ firstName }: Props) => {
           </div>
 
           <div className="pt-2 border-t border-border">
-            <p className="text-sm font-display font-semibold">Lucas e Heloisa Teixeira</p>
+            <p className="text-sm font-display font-semibold">Lucas e Heloiza Teixeira</p>
             <p className="text-xs text-muted-foreground">Fundadores, Corporação Assessoria Esportiva</p>
           </div>
 
