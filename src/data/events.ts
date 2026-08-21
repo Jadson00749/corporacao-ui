@@ -29,6 +29,8 @@ export type RaceEvent = {
   status: EventStatus;
   image?: string;
   bannerImage?: string;
+  bannerMobileImage?: string;
+  bannerAspectRatio?: string;
   internalSignup?: boolean;
   regulationUrl?: string;
   kitInfo?: string;

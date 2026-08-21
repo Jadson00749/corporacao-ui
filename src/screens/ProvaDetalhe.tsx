@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BannerFrame } from "@/components/site/BannerFrame";
+import { bannerAspectClass } from "@/lib/bannerAspect";
 import { PublicSignupList, type PublicSignup } from "@/components/site/PublicSignupList";
 
 
@@ -114,6 +115,8 @@ const ProvaDetalhe = () => {
 
   const closed = event.status === "closed";
   const banner = event.banner_image || event.image;
+  const mobileBanner = (event as any).banner_mobile_image || banner;
+  const bannerRatio = (event as any).banner_aspect_ratio as string | undefined;
   const internal = event.internal_signup;
   const badge = statusBadge[event.status] ?? statusBadge.open;
   const slotsLeft = event.max_slots ? Math.max(event.max_slots - signupsCount, 0) : null;
@@ -162,15 +165,25 @@ const ProvaDetalhe = () => {
               {/* BANNER */}
               <div className="rounded-2xl overflow-hidden border border-border/60 bg-card">
                 {banner ? (
-                  <BannerFrame
-                    src={banner}
-                    alt={`Banner ${event.name}`}
-                    loading="eager"
-                    className="aspect-[16/9] sm:aspect-[2/1] md:aspect-[21/9]"
-                  />
+                  <>
+                    {/* Mobile: usa arte específica quando existir */}
+                    <BannerFrame
+                      src={mobileBanner}
+                      alt={`Banner ${event.name}`}
+                      loading="eager"
+                      className={cn("md:hidden", bannerAspectClass(bannerRatio))}
+                    />
+                    <BannerFrame
+                      src={banner}
+                      alt={`Banner ${event.name}`}
+                      loading="eager"
+                      className={cn("hidden md:block", bannerAspectClass(bannerRatio))}
+                    />
+                  </>
                 ) : (
                   <div className="w-full aspect-[16/9] md:aspect-[21/9] bg-gradient-dark" />
                 )}
+
                 <div className="p-5 md:p-7">
                   <span
                     className={cn(
