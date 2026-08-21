@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BannerFrame } from "@/components/site/BannerFrame";
+import { bannerAspectClass } from "@/lib/bannerAspect";
 import { PublicSignupList, type PublicSignup } from "@/components/site/PublicSignupList";
 
 
@@ -114,6 +115,8 @@ const ProvaDetalhe = () => {
 
   const closed = event.status === "closed";
   const banner = event.banner_image || event.image;
+  const mobileBanner = (event as any).banner_mobile_image || banner;
+  const bannerRatio = (event as any).banner_aspect_ratio as string | undefined;
   const internal = event.internal_signup;
   const badge = statusBadge[event.status] ?? statusBadge.open;
   const slotsLeft = event.max_slots ? Math.max(event.max_slots - signupsCount, 0) : null;
@@ -168,13 +171,13 @@ const ProvaDetalhe = () => {
                       src={mobileBanner}
                       alt={`Banner ${event.name}`}
                       loading="eager"
-                      className={cn("md:hidden", bannerAspectClass(event.banner_aspect_ratio))}
+                      className={cn("md:hidden", bannerAspectClass(bannerRatio))}
                     />
                     <BannerFrame
                       src={banner}
                       alt={`Banner ${event.name}`}
                       loading="eager"
-                      className={cn("hidden md:block", bannerAspectClass(event.banner_aspect_ratio))}
+                      className={cn("hidden md:block", bannerAspectClass(bannerRatio))}
                     />
                   </>
                 ) : (

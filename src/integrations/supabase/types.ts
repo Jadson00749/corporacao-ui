@@ -104,6 +104,8 @@ export type Database = {
           active: boolean
           age_brackets: Json
           banner_image: string | null
+          banner_mobile_image?: string | null
+          banner_aspect_ratio?: string | null
           card_image_position: string
           city: string
           coupons: Json
@@ -136,6 +138,8 @@ export type Database = {
           active?: boolean
           age_brackets?: Json
           banner_image?: string | null
+          banner_mobile_image?: string | null
+          banner_aspect_ratio?: string | null
           card_image_position?: string
           city: string
           coupons?: Json
@@ -168,6 +172,8 @@ export type Database = {
           active?: boolean
           age_brackets?: Json
           banner_image?: string | null
+          banner_mobile_image?: string | null
+          banner_aspect_ratio?: string | null
           card_image_position?: string
           city?: string
           coupons?: Json
