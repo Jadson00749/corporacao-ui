@@ -23,8 +23,10 @@ import {
   hasSeniorPrice,
   isSenior,
   isSeniorOnlyDistance,
+  isKidsDistance,
 } from "@/lib/eventPricing";
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
+
 import { PixPayment } from "@/components/site/PixPayment";
 
 type Distance = { distance: string; price?: number };
