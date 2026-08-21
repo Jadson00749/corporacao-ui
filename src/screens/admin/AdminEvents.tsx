@@ -59,18 +59,14 @@ const AdminEvents = () => {
   });
 
   const openEdit = async (r: any) => {
-    const { data: pay } = await supabase
-      .from("event_payment_details")
-      .select("pix_key, pix_recipient, payment_instructions")
-      .eq("event_id", r.id)
-      .maybeSingle();
     setEditing({
       ...r,
-      pix_key: pay?.pix_key ?? "",
-      pix_recipient: pay?.pix_recipient ?? "",
-      payment_instructions: pay?.payment_instructions ?? "",
+      pix_key: r.pix_key ?? "",
+      pix_recipient: r.pix_recipient ?? "",
+      payment_instructions: r.payment_instructions ?? "",
     });
   };
+
 
   const save = async () => {
     const badLote = (editing?.distances ?? []).find(
