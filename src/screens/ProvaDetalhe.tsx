@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { activeLote, currentPrice, formatBRL } from "@/lib/eventPricing";
+import { activeLote, currentPrice, formatBRL, isSeniorOnlyDistance } from "@/lib/eventPricing";
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 import {
   Calendar,
@@ -147,7 +147,9 @@ const ProvaDetalhe = () => {
   const slotsLeft = event.max_slots ? Math.max(event.max_slots - signupsCount, 0) : null;
 
   const kits = (Array.isArray(event.kit_options) ? (event.kit_options as any[]) : []).filter((k) => k?.name);
-  const prices = (Array.isArray(event.distances) ? (event.distances as any[]) : []).filter((d) => d?.distance);
+  const prices = (Array.isArray(event.distances) ? (event.distances as any[]) : []).filter(
+    (d) => d?.distance && !isSeniorOnlyDistance(d.distance)
+  );
   const docs = (Array.isArray(event.documents) ? (event.documents as { label: string; url: string }[]) : []).filter(
     (d) => d.url && d.label
   );
@@ -295,7 +297,12 @@ const ProvaDetalhe = () => {
                       </li>
                     ))}
                   </ul>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Atletas com 60 anos ou mais têm 50% de desconto aplicado automaticamente na
+                    inscrição, conforme a data de nascimento do cadastro.
+                  </p>
                 </Block>
+
               )}
 
               {/* REGULAMENTO + DOCUMENTOS */}

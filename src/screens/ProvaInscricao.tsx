@@ -16,7 +16,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
-import { activeLote, currentPrice } from "@/lib/eventPricing";
+import {
+  activeLote,
+  currentPrice,
+  applySeniorDiscount,
+  isSenior,
+  isSeniorOnlyDistance,
+  SENIOR_DISCOUNT_RATE,
+} from "@/lib/eventPricing";
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 
 type Distance = { distance: string; price?: number };
@@ -149,9 +156,14 @@ const ProvaInscricao = () => {
 
   const distances = useMemo<Distance[]>(() => {
     if (!event) return [];
-    const arr = ((event.distances as Distance[]) || []).filter((d) => d?.distance?.trim());
+    const arr = ((event.distances as Distance[]) || []).filter(
+      (d) => d?.distance?.trim() && !isSeniorOnlyDistance(d.distance)
+    );
     if (arr.length) return arr;
-    return (event.distance || "").split(/[•|,/]/).map((s: string) => ({ distance: s.trim() })).filter((d: Distance) => d.distance);
+    return (event.distance || "")
+      .split(/[•|,/]/)
+      .map((s: string) => ({ distance: s.trim() }))
+      .filter((d: Distance) => d.distance && !isSeniorOnlyDistance(d.distance));
   }, [event]);
 
   const groups = useMemo<string[]>(() => {
@@ -214,10 +226,14 @@ const ProvaInscricao = () => {
   const profileComplete = profile && profile.full_name && profile.cpf && profile.whatsapp && profile.cep;
 
   const distanceObj = distances.find((d) => d.distance === distance);
-  const priceOf = (d: any) => currentPrice(d ?? {});
+  const senior = isSenior(profile?.birth_date);
+  const basePriceOf = (d: any) => currentPrice(d ?? {});
+  const priceOf = (d: any) => applySeniorDiscount(basePriceOf(d), senior);
   const loteOf = (d: any) => activeLote(d ?? {});
   const currentLote = loteOf(distanceObj);
-  const distancePrice = priceOf(distanceObj);
+  const baseDistancePrice = basePriceOf(distanceObj);
+  const distancePrice = applySeniorDiscount(baseDistancePrice, senior);
+  const seniorDiscount = baseDistancePrice - distancePrice;
   const kitExtra = kitOptions
     .filter((k) => selectedKits.includes(k.name))
     .reduce((sum, k) => sum + (k.extra_price ?? 0), 0);
@@ -287,7 +303,7 @@ const ProvaInscricao = () => {
       event_id: event.id,
       category: categoryLabel,
       status: "pendente",
-      notes,
+      notes: senior ? [notes, "[Benefício 60+ aplicado: -50%]"].filter(Boolean).join(" ") : notes,
       kit_option: selectedKits.length ? JSON.stringify(selectedKits) : "",
       coupon_code: appliedCoupon?.code || "",
       team_name: teamName,
@@ -340,16 +356,23 @@ const ProvaInscricao = () => {
       {total > 0 && (
         <div className="border-t border-border pt-3 space-y-1 text-sm">
           <div className="flex justify-between">
-            <span>Inscrição <span className="text-xs text-muted-foreground">({currentLote}º lote)</span></span>
-            <span>{brl(distancePrice)}</span>
+            <span>Valor do lote atual <span className="text-xs text-muted-foreground">({currentLote}º lote)</span></span>
+            <span>{brl(baseDistancePrice)}</span>
           </div>
+          {seniorDiscount > 0 && (
+            <div className="flex justify-between text-success font-medium">
+              <span>Benefício 60+</span>
+              <span>-{Math.round(SENIOR_DISCOUNT_RATE * 100)}% ({brl(-seniorDiscount).replace("-", "-")})</span>
+            </div>
+          )}
           {kitExtra > 0 && <div className="flex justify-between"><span>Kit</span><span>+{brl(kitExtra)}</span></div>}
           <div className="flex justify-between font-bold text-base pt-2 border-t border-border">
-            <span>Total</span><span className="text-brand">{brl(total)}</span>
+            <span>Valor final</span><span className="text-brand">{brl(total)}</span>
           </div>
           <p className="text-xs text-muted-foreground pt-1">Pagamento via PIX após a confirmação.</p>
         </div>
       )}
+
     </div>
   );
 
@@ -434,6 +457,18 @@ const ProvaInscricao = () => {
                           <p className="text-sm text-muted-foreground mt-1">Selecione a modalidade e o kit para ver o valor da inscrição.</p>
                         </div>
 
+                        {senior && (
+                          <div className="rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-sm">
+                            <span className="font-semibold text-success">Benefício 60+ aplicado</span>{" "}
+                            <span className="text-muted-foreground">
+                              — {Math.round(SENIOR_DISCOUNT_RATE * 100)}% de desconto automático sobre o valor do lote
+                              vigente, conforme sua data de nascimento no cadastro.
+                            </span>
+                          </div>
+                        )}
+
+
+
                         {distances.length > 0 && (
                           <div
                             data-invalid={errors.distance || undefined}
@@ -464,6 +499,7 @@ const ProvaInscricao = () => {
                             <div className="space-y-2">
                               {visibleDistances.map((d: any) => {
                                 const active = distance === d.distance;
+                                const base = basePriceOf(d);
                                 const price = priceOf(d);
                                 return (
                                   <div key={d.distance} className="space-y-1">
@@ -478,9 +514,12 @@ const ProvaInscricao = () => {
                                     ].join(" ")}
                                   >
                                     <span className="font-semibold">{cleanDistanceLabel(d.distance)}</span>
-                                    {price > 0 && (
+                                    {base > 0 && (
                                       <span className="text-sm">
                                         <span className="text-muted-foreground mr-1">{loteOf(d)}º lote</span>
+                                        {senior && (
+                                          <span className="text-muted-foreground line-through mr-1">{brl(base)}</span>
+                                        )}
                                         <span className="font-bold text-brand">{brl(price)}</span>
                                       </span>
                                     )}
@@ -489,6 +528,7 @@ const ProvaInscricao = () => {
                                   </div>
                                 );
                               })}
+
                               {visibleDistances.length === 0 && (
                                 <p className="text-sm text-muted-foreground">Nenhuma modalidade nessa categoria.</p>
                               )}
