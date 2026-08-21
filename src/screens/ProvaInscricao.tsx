@@ -212,10 +212,9 @@ const ProvaInscricao = () => {
   const profileComplete = profile && profile.full_name && profile.cpf && profile.whatsapp && profile.cep;
 
   const distanceObj = distances.find((d) => d.distance === distance);
-  const today = new Date().toISOString().slice(0, 10);
-  const isLote2 = (d: any) => !!(d && d.price_lote2 > 0 && d.lote2_starts_at && today >= d.lote2_starts_at);
-  const priceOf = (d: any) => (isLote2(d) ? (d.price_lote2 ?? 0) : (d?.price ?? 0));
-  const lote2Active = isLote2(distanceObj);
+  const priceOf = (d: any) => currentPrice(d ?? {});
+  const loteOf = (d: any) => activeLote(d ?? {});
+  const currentLote = loteOf(distanceObj);
   const distancePrice = priceOf(distanceObj);
   const kitExtra = kitOptions
     .filter((k) => selectedKits.includes(k.name))
