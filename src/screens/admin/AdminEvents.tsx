@@ -117,21 +117,35 @@ const AdminEvents = () => {
     refetch();
   };
 
+  const BANNER_BUCKET = "corporacao-bucket";
+
+  const uploadToBanners = async (file: File, folder: string) => {
+    const safe = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const path = `${folder}/${Date.now()}-${safe}`;
+    const { error } = await supabase.storage
+      .from(BANNER_BUCKET)
+      .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
+    if (error) {
+      toast.error(error.message);
+      return null;
+    }
+    return supabase.storage.from(BANNER_BUCKET).getPublicUrl(path).data.publicUrl;
+  };
+
   const uploadBanner = async (file: File) => {
-    const path = `events/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const { error } = await supabase.storage.from("site-images").upload(path, file);
-    if (error) return toast.error(error.message);
-    const { data } = supabase.storage.from("site-images").getPublicUrl(path);
-    setEditing({ ...editing, banner_image: data.publicUrl });
+    const url = await uploadToBanners(file, "events/banners");
+    if (!url) return;
+    setEditing({ ...editing, banner_image: url });
+    toast.success("Banner enviado");
   };
 
   const uploadMobileBanner = async (file: File) => {
-    const path = `events/mobile-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const { error } = await supabase.storage.from("site-images").upload(path, file);
-    if (error) return toast.error(error.message);
-    const { data } = supabase.storage.from("site-images").getPublicUrl(path);
-    setEditing({ ...editing, banner_mobile_image: data.publicUrl });
+    const url = await uploadToBanners(file, "events/banners/mobile");
+    if (!url) return;
+    setEditing({ ...editing, banner_mobile_image: url });
+    toast.success("Arte mobile enviada");
   };
+
 
   const uploadDocument = async (idx: number, file: File) => {
     const path = `events/docs/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
