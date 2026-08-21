@@ -230,20 +230,26 @@ const ProvaInscricao = () => {
 
   // Auto-pick when there's only one option
   useEffect(() => { if (distances.length === 1) setDistance(distances[0].distance); }, [distances]);
-  useEffect(() => { if (genders.length === 1) setGender(genders[0]); }, [genders]);
-  useEffect(() => { if (ageBrackets.length === 1) setBracket(`${ageBrackets[0].min}-${ageBrackets[0].max}`); }, [ageBrackets]);
   useEffect(() => { if (kitOptions.length === 1) setSelectedKits([kitOptions[0].name]); }, [kitOptions]);
-  useEffect(() => {
-    if (ageBrackets.length && profile?.birth_date) {
-      const age = calcAge(profile.birth_date);
-      if (age !== null) {
-        const match = ageBrackets.find((b) => age >= b.min && age <= b.max);
-        if (match) setBracket(`${match.min}-${match.max}`);
-      }
-    }
-  }, [ageBrackets, profile]);
+
+  // Sexo automático a partir do cadastro (profiles.gender)
+  const profileGender = useMemo(() => genderLabelFrom(profile?.gender, genders), [profile?.gender, genders]);
+  useEffect(() => { setGender(profileGender); }, [profileGender]);
+
+  // Idade esportiva (ano da prova - ano de nascimento) e faixa etária automática
+  const categoryAge = useMemo(
+    () => sportAge(profile?.birth_date, (event as any)?.date),
+    [profile?.birth_date, event]
+  );
+  const autoBracket = useMemo(() => {
+    if (categoryAge == null || !ageBrackets.length) return "";
+    const match = ageBrackets.find((b) => categoryAge >= b.min && categoryAge <= b.max);
+    return match ? `${match.min}-${match.max}` : "";
+  }, [categoryAge, ageBrackets]);
+  useEffect(() => { setBracket(autoBracket); }, [autoBracket]);
 
   const profileComplete = profile && profile.full_name && profile.cpf && profile.whatsapp && profile.cep;
+
 
   const distanceObj = distances.find((d) => d.distance === distance);
   const senior = isSenior(profile?.birth_date);
