@@ -41,6 +41,26 @@ const calcAge = (birth?: string | null) => {
   return a;
 };
 
+/** Idade esportiva: ano da prova - ano de nascimento (ignora mês/dia). */
+const sportAge = (birth?: string | null, eventDate?: string | null) => {
+  if (!birth || !eventDate) return null;
+  const by = Number(String(birth).slice(0, 4));
+  const ey = Number(String(eventDate).slice(0, 4));
+  if (!Number.isFinite(by) || !Number.isFinite(ey)) return null;
+  return ey - by;
+};
+
+/** Converte profiles.gender ("feminino"/"F"/...) para o rótulo usado no evento. */
+const genderLabelFrom = (raw?: string | null, options: string[] = []) => {
+  const s = (raw || "").trim().toLowerCase();
+  if (!s) return "";
+  const target = s.startsWith("f") ? "f" : s.startsWith("m") ? "m" : "";
+  if (!target) return "";
+  const match = options.find((o) => o.trim().toLowerCase().startsWith(target));
+  return match || (target === "f" ? "Feminino" : "Masculino");
+};
+
+
 const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
