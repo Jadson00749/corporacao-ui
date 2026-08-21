@@ -54,6 +54,7 @@ const AdminEventSignups = () => {
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [genderFilter, setGenderFilter] = useState<"all" | "F" | "M">("all");
 
   const { data: events = [] } = useQuery({
     queryKey: ["admin_events_list"],
@@ -77,7 +78,7 @@ const AdminEventSignups = () => {
       if (userIds.length) {
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("user_id,full_name,cpf,email,whatsapp,team_name,city,state")
+          .select("user_id,full_name,cpf,email,whatsapp,team_name,city,state,gender")
           .in("user_id", userIds);
         const map = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
         rows.forEach((r) => { r.profiles = map.get(r.user_id) ?? null; });
@@ -86,7 +87,8 @@ const AdminEventSignups = () => {
     },
   });
 
-  const filtered = useMemo(() => {
+  // Base (sem o filtro de gênero) para contadores consistentes com a lista
+  const baseFiltered = useMemo(() => {
     return signups.filter((r) => {
       if (eventFilter !== "all" && r.event_id !== eventFilter) return false;
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
@@ -98,6 +100,25 @@ const AdminEventSignups = () => {
       return true;
     });
   }, [signups, search, eventFilter, statusFilter]);
+
+  const counts = useMemo(() => {
+    return baseFiltered.reduce(
+      (acc, r) => {
+        const g = rowGender(r);
+        if (g === "F") acc.F += 1;
+        else if (g === "M") acc.M += 1;
+        acc.all += 1;
+        return acc;
+      },
+      { all: 0, F: 0, M: 0 }
+    );
+  }, [baseFiltered]);
+
+  const filtered = useMemo(
+    () => (genderFilter === "all" ? baseFiltered : baseFiltered.filter((r) => rowGender(r) === genderFilter)),
+    [baseFiltered, genderFilter]
+  );
+
 
   const updateStatus = async (id: string, status: string) => {
     const { error } = await supabase.from("event_signups").update({ status }).eq("id", id);
