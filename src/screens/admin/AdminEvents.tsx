@@ -390,10 +390,14 @@ const AdminEvents = () => {
                       {(() => {
                         const sizes: string[] = Array.isArray((k as any).sizes) ? (k as any).sizes : [];
                         const hasShirt = sizes.length > 0 || (k as any).has_shirt === true;
-                        const toggleSize = (s: string) =>
+                        const allSizes = [...DEFAULT_SIZES, ...sizes.filter((x) => !DEFAULT_SIZES.includes(x))];
+                        const toggleSize = (s: string) => {
+                          const next = sizes.includes(s) ? sizes.filter((x) => x !== s) : [...sizes, s];
                           updateItem("kit_options", i, {
-                            sizes: sizes.includes(s) ? sizes.filter((x) => x !== s) : [...DEFAULT_SIZES, ...sizes.filter((x) => !DEFAULT_SIZES.includes(x))].filter((x) => sizes.includes(x) || x === s),
+                            has_shirt: true,
+                            sizes: allSizes.filter((x) => next.includes(x)),
                           });
+                        };
                         return (
                           <>
                             <label className="flex items-center gap-2 text-sm cursor-pointer">
