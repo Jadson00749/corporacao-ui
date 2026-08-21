@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Pencil, Trash2, Plus, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { isKidsDistance } from "@/lib/eventPricing";
+import { EventBannerConfig } from "@/components/admin/EventBannerConfig";
 
 
 type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null; price_lote3?: number; lote3_starts_at?: string | null; price_60_plus?: number };
@@ -30,7 +31,7 @@ const DEFAULT_DISTANCE_OPTIONS = ["5K", "10K", "10,5K", "21K", "42K"];
 const emptyEvent = () => ({
   name: "", date: "", city: "", distance: "", description: "",
   registration_url: "", status: "open", internal_signup: true,
-  banner_image: "", image: "", active: true, sort_order: 0,
+  banner_image: "", banner_mobile_image: "", banner_aspect_ratio: "9:16", image: "", active: true, sort_order: 0,
   regulation_url: "", kit_info: "", kit_delivery: "", more_info: "",
   registration_deadline: "",
   start_time: "", pix_key: "", pix_recipient: "", payment_instructions: "",
@@ -61,6 +62,8 @@ const AdminEvents = () => {
   const openEdit = async (r: any) => {
     setEditing({
       ...r,
+      banner_aspect_ratio: r.banner_aspect_ratio ?? "9:16",
+      banner_mobile_image: r.banner_mobile_image ?? "",
       pix_key: r.pix_key ?? "",
       pix_recipient: r.pix_recipient ?? "",
       payment_instructions: r.payment_instructions ?? "",
@@ -120,6 +123,14 @@ const AdminEvents = () => {
     if (error) return toast.error(error.message);
     const { data } = supabase.storage.from("site-images").getPublicUrl(path);
     setEditing({ ...editing, banner_image: data.publicUrl });
+  };
+
+  const uploadMobileBanner = async (file: File) => {
+    const path = `events/mobile-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+    const { error } = await supabase.storage.from("site-images").upload(path, file);
+    if (error) return toast.error(error.message);
+    const { data } = supabase.storage.from("site-images").getPublicUrl(path);
+    setEditing({ ...editing, banner_mobile_image: data.publicUrl });
   };
 
   const uploadDocument = async (idx: number, file: File) => {
