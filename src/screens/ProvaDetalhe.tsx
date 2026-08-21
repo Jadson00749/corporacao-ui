@@ -183,7 +183,7 @@ const ProvaDetalhe = () => {
     <Layout>
       <SEO title={`${event.name} | Provas`} description={event.description?.slice(0, 160)} />
 
-      <div className="pt-24 pb-16">
+      <div className="pt-24 pb-16 lg:pb-16 pb-[calc(4rem+72px)]">
         <div className="container-page">
           {/* BREADCRUMB */}
           <nav className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
@@ -685,6 +685,21 @@ const ProvaDetalhe = () => {
 
         </DialogContent>
       </Dialog>
+
+      {/* CTA fixo no mobile */}
+      {!closed && (
+        <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          {internal ? (
+            <Button asChild variant="brand" size="lg" className="w-full">
+              <Link to={ctaHref}>Inscrever-se</Link>
+            </Button>
+          ) : (
+            <Button asChild variant="brand" size="lg" className="w-full">
+              <a href={ctaHref} target="_blank" rel="noreferrer">Inscrever-se</a>
+            </Button>
+          )}
+        </div>
+      )}
     </Layout>
   );
 };
