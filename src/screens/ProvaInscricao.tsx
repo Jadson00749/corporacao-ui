@@ -257,13 +257,15 @@ const ProvaInscricao = () => {
   const distanceObj = distances.find((d) => d.distance === distance);
   const senior = isSenior(profile?.birth_date);
   const basePriceOf = (d: any) => currentPrice(d ?? {});
-  const priceOf = (d: any) => effectivePrice(d ?? {}, senior);
-  const seniorApplied = (d: any) => senior && hasSeniorPrice(d ?? {});
+  const seniorForDistance = (d: any) => senior && !isKidsDistance(d?.distance);
+  const priceOf = (d: any) => effectivePrice(d ?? {}, seniorForDistance(d));
+  const seniorApplied = (d: any) => seniorForDistance(d) && hasSeniorPrice(d ?? {});
   const loteOf = (d: any) => activeLote(d ?? {});
   const currentLote = loteOf(distanceObj);
   const baseDistancePrice = basePriceOf(distanceObj);
   const distancePrice = priceOf(distanceObj);
   const seniorFixed = seniorApplied(distanceObj);
+
   const kitExtra = kitOptions
     .filter((k) => selectedKits.includes(k.name))
     .reduce((sum, k) => sum + (k.extra_price ?? 0), 0);
