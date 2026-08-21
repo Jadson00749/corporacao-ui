@@ -180,10 +180,10 @@ const AdminEventSignups = () => {
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
+            <SelectItem value="all">Ativas (pendente + confirmada)</SelectItem>
             <SelectItem value="pendente">Em andamento</SelectItem>
             <SelectItem value="confirmada">Aprovada</SelectItem>
-            <SelectItem value="cancelada">Cancelada</SelectItem>
+            <SelectItem value="cancelada">Canceladas (histórico)</SelectItem>
           </SelectContent>
         </Select>
       </div>
