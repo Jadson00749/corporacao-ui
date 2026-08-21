@@ -121,6 +121,7 @@ const MinhaConta = () => {
     <Layout>
       <SEO title="Minha Corporação | Corporação Assessoria" description="Gerencie seus dados, treinos, provas e inscrições." />
       <WelcomeDialog firstName={firstName} />
+      <OnboardingTour />
       <section className="section-padding pt-28 md:pt-32">
         <div className="container-page max-w-6xl">
           {/* Header */}
