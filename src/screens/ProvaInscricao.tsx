@@ -23,8 +23,10 @@ import {
   hasSeniorPrice,
   isSenior,
   isSeniorOnlyDistance,
+  isKidsDistance,
 } from "@/lib/eventPricing";
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
+
 import { PixPayment } from "@/components/site/PixPayment";
 
 type Distance = { distance: string; price?: number };
@@ -255,13 +257,15 @@ const ProvaInscricao = () => {
   const distanceObj = distances.find((d) => d.distance === distance);
   const senior = isSenior(profile?.birth_date);
   const basePriceOf = (d: any) => currentPrice(d ?? {});
-  const priceOf = (d: any) => effectivePrice(d ?? {}, senior);
-  const seniorApplied = (d: any) => senior && hasSeniorPrice(d ?? {});
+  const seniorForDistance = (d: any) => senior && !isKidsDistance(d?.distance);
+  const priceOf = (d: any) => effectivePrice(d ?? {}, seniorForDistance(d));
+  const seniorApplied = (d: any) => seniorForDistance(d) && hasSeniorPrice(d ?? {});
   const loteOf = (d: any) => activeLote(d ?? {});
   const currentLote = loteOf(distanceObj);
   const baseDistancePrice = basePriceOf(distanceObj);
   const distancePrice = priceOf(distanceObj);
   const seniorFixed = seniorApplied(distanceObj);
+
   const kitExtra = kitOptions
     .filter((k) => selectedKits.includes(k.name))
     .reduce((sum, k) => sum + (k.extra_price ?? 0), 0);
@@ -345,7 +349,7 @@ const ProvaInscricao = () => {
       event_id: event.id,
       category: categoryLabel,
       status: "pendente",
-      notes: senior ? [notes, "[Benefício 60+ aplicado: -50%]"].filter(Boolean).join(" ") : notes,
+      notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: valor fixo ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
       kit_option: selectedKits.length ? JSON.stringify(selectedKits) : "",
       coupon_code: appliedCoupon?.code || "",
       team_name: teamName,
@@ -487,14 +491,15 @@ const ProvaInscricao = () => {
                           <p className="text-sm text-muted-foreground mt-1">Selecione a modalidade e o kit para ver o valor da inscrição.</p>
                         </div>
 
-                        {senior && visibleDistances.some((d: any) => hasSeniorPrice(d)) && (
+                        {distanceObj && seniorApplied(distanceObj) && (
                           <div className="rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-sm">
                             <span className="font-semibold text-success">Benefício 60+ aplicado</span>{" "}
                             <span className="text-muted-foreground">
-                              — valor especial definido pela organização, conforme sua data de nascimento no cadastro.
+                              — valor especial definido para a modalidade {cleanDistanceLabel(distanceObj.distance)}.
                             </span>
                           </div>
                         )}
+
 
 
 

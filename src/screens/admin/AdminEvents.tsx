@@ -9,6 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Pencil, Trash2, Plus, X, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { isKidsDistance } from "@/lib/eventPricing";
+
 
 type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null; price_lote3?: number; lote3_starts_at?: string | null; price_60_plus?: number };
 type AgeBracket = { min: number; max: number };
@@ -74,6 +76,13 @@ const AdminEvents = () => {
     if (badLote) {
       return toast.error(`Distância "${badLote.distance || "sem nome"}": a data do 3º lote deve ser posterior à do 2º lote.`);
     }
+    const kidsWithSenior = (editing?.distances ?? []).find(
+      (d: Distance) => isKidsDistance(d.distance) && typeof d.price_60_plus === "number" && d.price_60_plus > 0
+    );
+    if (kidsWithSenior) {
+      return toast.error(`Modalidade "${kidsWithSenior.distance || "KIDS"}": não é permitido configurar valor 60+ para distâncias KIDS/Infantil.`);
+    }
+
     const payload: any = { ...editing };
     delete payload.created_at; delete payload.updated_at;
     const pix_key = payload.pix_key ?? "";
@@ -312,18 +321,25 @@ const AdminEvents = () => {
                           )}
                         </div>
                       </div>
-                      <div className="rounded-md border border-success/40 bg-success/5 p-2 space-y-1">
+                      <div className={`rounded-md border border-success/40 bg-success/5 p-2 space-y-1 ${isKidsDistance(d.distance) ? "opacity-60" : ""}`}>
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Benefício 60+ (opcional)</p>
                         <Label className="text-[11px]">Valor para participantes 60+ (R$)</Label>
                         <Input
                           type="number"
                           step="0.01"
-                          placeholder="Ex: 49,95"
-                          value={d.price_60_plus ?? ""}
+                          placeholder={isKidsDistance(d.distance) ? "Não aplicável em KIDS" : "Ex: 49,95"}
+                          disabled={isKidsDistance(d.distance)}
+                          value={isKidsDistance(d.distance) ? "" : (d.price_60_plus ?? "")}
                           onChange={(e) => updateItem("distances", i, { price_60_plus: e.target.value === "" ? undefined : parseFloat(e.target.value) || 0 })}
                         />
-                        <p className="text-[10px] text-muted-foreground">Se preenchido, atletas com 60 anos ou mais pagam exatamente este valor, sem mudar na virada de lote. Em branco, pagam o lote vigente.</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {isKidsDistance(d.distance)
+                            ? "O benefício 60+ não é aplicado em modalidades KIDS/Infantil."
+                            : "Se preenchido, atletas com 60 anos ou mais pagam exatamente este valor, sem mudar na virada de lote. Em branco, pagam o lote vigente."}
+                        </p>
                       </div>
+
+
                     </div>
                   ))}
                   <Button variant="outline" size="sm" onClick={() => addItem("distances", { distance: "", price: 0 })}><Plus className="w-4 h-4" /> Adicionar distância</Button>
