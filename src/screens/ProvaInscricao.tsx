@@ -129,6 +129,8 @@ const ProvaInscricao = () => {
   const [gender, setGender] = useState("");
   const [bracket, setBracket] = useState("");
   const [selectedKits, setSelectedKits] = useState<string[]>([]);
+  const [shirtSize, setShirtSize] = useState("");
+  const [sizeChartKit, setSizeChartKit] = useState<KitOption | null>(null);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [teamName, setTeamName] = useState("");
