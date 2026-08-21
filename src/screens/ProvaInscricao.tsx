@@ -90,7 +90,7 @@ const cleanDistanceLabel = (name: string) => {
 
 
 const Stepper = ({ current }: { current: number }) => (
-  <div className="flex items-start justify-center gap-2 sm:gap-4 mb-8">
+  <div className="flex items-start justify-center gap-1 sm:gap-4 mb-6 sm:mb-8">
     {STEPS.map((label, i) => {
       const state = i < current ? "done" : i === current ? "active" : "todo";
       return (
