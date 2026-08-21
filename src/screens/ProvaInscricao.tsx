@@ -156,9 +156,14 @@ const ProvaInscricao = () => {
 
   const distances = useMemo<Distance[]>(() => {
     if (!event) return [];
-    const arr = ((event.distances as Distance[]) || []).filter((d) => d?.distance?.trim());
+    const arr = ((event.distances as Distance[]) || []).filter(
+      (d) => d?.distance?.trim() && !isSeniorOnlyDistance(d.distance)
+    );
     if (arr.length) return arr;
-    return (event.distance || "").split(/[•|,/]/).map((s: string) => ({ distance: s.trim() })).filter((d: Distance) => d.distance);
+    return (event.distance || "")
+      .split(/[•|,/]/)
+      .map((s: string) => ({ distance: s.trim() }))
+      .filter((d: Distance) => d.distance && !isSeniorOnlyDistance(d.distance));
   }, [event]);
 
   const groups = useMemo<string[]>(() => {
