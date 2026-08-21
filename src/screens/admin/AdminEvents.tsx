@@ -280,17 +280,30 @@ const AdminEvents = () => {
                         <Button variant="outline" size="icon" onClick={() => removeItem("distances", i)}><X className="w-4 h-4" /></Button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <Label className="text-[11px]">Preço 1º lote (R$)</Label>
+                        <div className="rounded-md border border-border/50 p-2 space-y-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">1º lote</p>
+                          <Label className="text-[11px]">Valor (R$)</Label>
                           <Input type="number" step="0.01" placeholder="0,00" value={d.price ?? 0} onChange={(e) => updateItem("distances", i, { price: parseFloat(e.target.value) || 0 })} />
                         </div>
-                        <div>
-                          <Label className="text-[11px]">Preço 2º lote (R$)</Label>
+                        <div className="rounded-md border border-border/50 p-2 space-y-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">2º lote (opcional)</p>
+                          <Label className="text-[11px]">Valor (R$)</Label>
                           <Input type="number" step="0.01" placeholder="opcional" value={d.price_lote2 ?? ""} onChange={(e) => updateItem("distances", i, { price_lote2: e.target.value === "" ? undefined : parseFloat(e.target.value) || 0 })} />
-                        </div>
-                        <div>
-                          <Label className="text-[11px]">2º lote começa em</Label>
+                          <Label className="text-[11px]">Início do 2º lote</Label>
                           <Input type="date" value={d.lote2_starts_at ?? ""} onChange={(e) => updateItem("distances", i, { lote2_starts_at: e.target.value || null })} />
+                        </div>
+                        <div className="rounded-md border border-border/50 p-2 space-y-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">3º lote (opcional)</p>
+                          <Label className="text-[11px]">Valor (R$)</Label>
+                          <Input type="number" step="0.01" placeholder="opcional" value={d.price_lote3 ?? ""} onChange={(e) => updateItem("distances", i, { price_lote3: e.target.value === "" ? undefined : parseFloat(e.target.value) || 0 })} />
+                          <Label className="text-[11px]">Início do 3º lote</Label>
+                          <Input type="date" min={d.lote2_starts_at ?? undefined} value={d.lote3_starts_at ?? ""} onChange={(e) => updateItem("distances", i, { lote3_starts_at: e.target.value || null })} />
+                          {d.lote3_starts_at && d.lote2_starts_at && d.lote3_starts_at < d.lote2_starts_at && (
+                            <p className="text-[10px] text-destructive">A data do 3º lote não pode ser anterior à do 2º lote.</p>
+                          )}
+                          {d.lote3_starts_at && !d.lote2_starts_at && (
+                            <p className="text-[10px] text-destructive">Defina primeiro a data do 2º lote.</p>
+                          )}
                         </div>
                       </div>
                     </div>
