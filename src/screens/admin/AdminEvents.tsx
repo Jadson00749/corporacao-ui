@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Pencil, Trash2, Plus, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 
-type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null };
+type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null; price_lote3?: number; lote3_starts_at?: string | null };
 type AgeBracket = { min: number; max: number };
 type KitOption = { name: string; extra_price?: number };
 type Coupon = { code: string; description?: string };
@@ -271,7 +271,7 @@ const AdminEvents = () => {
                     })}
                   </div>
                   <p className="text-xs text-muted-foreground mb-2">
-                    Defina o preço do 1º lote e, se quiser virada automática, preencha o preço do 2º lote + a data em que ele passa a valer. A partir dessa data, o site mostra automaticamente o novo preço.
+                    Defina o preço do 1º lote e, se quiser virada automática, preencha o 2º e (opcionalmente) o 3º lote com preço + data em que passam a valer. A partir de cada data, o site mostra automaticamente o novo preço.
                   </p>
                   {editing.distances.map((d: Distance, i: number) => (
                     <div key={i} className="rounded-lg border border-border/60 p-3 mb-2 space-y-2 bg-background/30">
