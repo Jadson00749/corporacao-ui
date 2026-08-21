@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BannerFrame } from "@/components/site/BannerFrame";
-import { bannerAspectClass, DESKTOP_BANNER_CLASS } from "@/lib/bannerAspect";
+import { bannerAspectClass } from "@/lib/bannerAspect";
 import { PublicSignupList, type PublicSignup } from "@/components/site/PublicSignupList";
 
 
@@ -173,12 +173,14 @@ const ProvaDetalhe = () => {
                       loading="eager"
                       className={cn("md:hidden", bannerAspectClass(bannerRatio))}
                     />
-                    <BannerFrame
+                    {/* Desktop: proporção natural da arte, encaixada no card */}
+                    <img
                       src={banner}
                       alt={`Banner ${event.name}`}
                       loading="eager"
-                      className={cn("hidden md:block", DESKTOP_BANNER_CLASS)}
+                      className="hidden md:block w-full h-auto"
                     />
+
                   </>
                 ) : (
                   <div className="w-full aspect-[16/9] md:aspect-[21/9] bg-gradient-dark" />
