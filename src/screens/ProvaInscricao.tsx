@@ -90,12 +90,12 @@ const cleanDistanceLabel = (name: string) => {
 
 
 const Stepper = ({ current }: { current: number }) => (
-  <div className="flex items-start justify-center gap-2 sm:gap-4 mb-8">
+  <div className="flex items-start justify-center gap-1 sm:gap-4 mb-6 sm:mb-8">
     {STEPS.map((label, i) => {
       const state = i < current ? "done" : i === current ? "active" : "todo";
       return (
         <div key={label} className="flex items-start">
-          <div className="flex flex-col items-center w-20 sm:w-28">
+          <div className="flex flex-col items-center w-[72px] sm:w-28">
             <div
               className={[
                 "w-9 h-9 rounded-full grid place-items-center text-sm font-bold border-2 transition-colors",
@@ -108,7 +108,7 @@ const Stepper = ({ current }: { current: number }) => (
             >
               {state === "done" ? <Check className="w-4 h-4" /> : i + 1}
             </div>
-            <span className={`mt-2 text-xs sm:text-sm ${state === "todo" ? "text-muted-foreground" : "font-semibold"}`}>{label}</span>
+            <span className={`mt-2 text-[11px] leading-tight text-center sm:text-sm ${state === "todo" ? "text-muted-foreground" : "font-semibold"}`}>{label}</span>
           </div>
           {i < STEPS.length - 1 && <div className="h-[2px] w-8 sm:w-24 bg-border mt-[18px]" />}
         </div>
@@ -633,11 +633,11 @@ const ProvaInscricao = () => {
                             {pendingSignup.category ? ` (${pendingSignup.category})` : ""}
                           </p>
                         </div>
-                        <div className="flex gap-2 shrink-0">
-                          <Button variant="brand" size="sm" onClick={() => resumeSignup(pendingSignup)}>
+                        <div className="grid grid-cols-1 sm:flex gap-2 shrink-0">
+                          <Button variant="brand" className="w-full sm:w-auto min-h-11" onClick={() => resumeSignup(pendingSignup)}>
                             Continuar inscrição
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setResumeDismissed(true)}>
+                          <Button variant="ghost" className="w-full sm:w-auto min-h-11" onClick={() => setResumeDismissed(true)}>
                             Começar do zero
                           </Button>
                         </div>
@@ -702,19 +702,19 @@ const ProvaInscricao = () => {
                                     type="button"
                                     onClick={() => setDistance(d.distance)}
                                     className={[
-                                      "w-full text-left rounded-xl px-4 py-3 border transition-all flex items-center justify-between gap-3",
+                                      "w-full min-h-[56px] text-left rounded-xl px-4 py-3 border transition-all flex items-center justify-between gap-3",
                                       active
                                         ? "border-brand bg-brand/10 ring-1 ring-brand/40"
                                         : "border-border bg-secondary/30 hover:bg-secondary/60",
                                     ].join(" ")}
                                   >
-                                    <span className="font-semibold">{cleanDistanceLabel(d.distance)}</span>
+                                    <span className="min-w-0 flex-1 font-semibold break-words">{cleanDistanceLabel(d.distance)}</span>
                                     {(fixed60 ? price > 0 : base > 0) && (
-                                      <span className="text-sm">
+                                      <span className="shrink-0 text-right text-sm leading-tight">
                                         {fixed60 ? (
-                                          <span className="text-success mr-1">60+</span>
+                                          <span className="block text-success text-xs">60+</span>
                                         ) : (
-                                          <span className="text-muted-foreground mr-1">{loteOf(d)}º lote</span>
+                                          <span className="block text-muted-foreground text-xs">{loteOf(d)}º lote</span>
                                         )}
                                         <span className="font-bold text-brand">{brl(price)}</span>
                                       </span>
@@ -748,7 +748,7 @@ const ProvaInscricao = () => {
                                     type="button"
                                     onClick={() => setSelectedKits((prev) => active ? prev.filter((n) => n !== k.name) : [...prev, k.name])}
                                     className={[
-                                      "text-left rounded-xl px-4 py-3 border transition-all flex items-center gap-3",
+                                      "text-left min-h-[56px] rounded-xl px-4 py-3 border transition-all flex items-center gap-3",
                                       active
                                         ? "border-brand bg-brand/10 ring-1 ring-brand/40"
                                         : "border-border bg-secondary/30 hover:bg-secondary/60",
@@ -761,8 +761,8 @@ const ProvaInscricao = () => {
                                       {active && <Check className="w-3.5 h-3.5" />}
                                     </div>
                                     <Shirt className={`w-4 h-4 shrink-0 ${active ? "text-brand" : "text-muted-foreground"}`} />
-                                    <span className="flex-1 font-medium">{k.name}</span>
-                                    {k.extra_price ? <span className="text-sm text-brand font-semibold">+{brl(k.extra_price)}</span> : null}
+                                    <span className="min-w-0 flex-1 font-medium break-words">{k.name}</span>
+                                    {k.extra_price ? <span className="shrink-0 text-sm text-brand font-semibold">+{brl(k.extra_price)}</span> : null}
                                   </button>
                                 );
                               })}
@@ -815,9 +815,11 @@ const ProvaInscricao = () => {
 
 
 
-                        <Button onClick={goStep2} variant="brand" size="lg" className="w-full sm:w-auto sm:min-w-56">
-                          Continuar
-                        </Button>
+                        <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                          <Button onClick={goStep2} variant="brand" size="lg" className="w-full min-h-12 sm:w-auto sm:min-w-56">
+                            Continuar
+                          </Button>
+                        </div>
                       </>
                     )}
 
@@ -893,8 +895,8 @@ const ProvaInscricao = () => {
                             <div>
                               <Label>Cupom (opcional)</Label>
                               <div className="flex gap-2 mt-1">
-                                <Input value={couponInput} onChange={(e) => setCouponInput(e.target.value)} placeholder="Tem um cupom? Informe aqui" />
-                                <Button type="button" variant="outline" onClick={applyCoupon}>Aplicar</Button>
+                                <Input className="min-w-0 flex-1" value={couponInput} onChange={(e) => setCouponInput(e.target.value)} placeholder="Tem um cupom?" />
+                                <Button type="button" variant="outline" className="shrink-0 min-h-11" onClick={applyCoupon}>Aplicar</Button>
                               </div>
                               {appliedCoupon && (
                                 <p className="text-xs text-success mt-1 flex items-center gap-1">
@@ -910,9 +912,9 @@ const ProvaInscricao = () => {
                           </div>
                         </div>
 
-                        <div data-invalid={errors.terms || undefined} className={`flex items-start gap-2 rounded-lg p-2 ${errors.terms ? "ring-2 ring-destructive/60 bg-destructive/5" : ""}`}>
-                          <Checkbox id="terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(!!v)} className={`mt-0.5 ${errors.terms ? "border-destructive" : ""}`} />
-                          <label htmlFor="terms" className={`text-sm cursor-pointer ${errors.terms ? "text-destructive font-medium" : ""}`}>
+                        <div data-invalid={errors.terms || undefined} className={`flex items-start gap-3 rounded-lg p-3 ${errors.terms ? "ring-2 ring-destructive/60 bg-destructive/5" : ""}`}>
+                          <Checkbox id="terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(!!v)} className={`mt-0.5 h-5 w-5 shrink-0 ${errors.terms ? "border-destructive" : ""}`} />
+                          <label htmlFor="terms" className={`text-sm leading-relaxed cursor-pointer ${errors.terms ? "text-destructive font-medium" : ""}`}>
                             Estou de acordo com os{" "}
                             {event.regulation_url ? (
                               <a href={event.regulation_url} target="_blank" rel="noreferrer" className="text-brand underline">termos e regulamento</a>
@@ -920,11 +922,11 @@ const ProvaInscricao = () => {
                           </label>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <Button variant="outline" size="lg" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                        <div className="sticky bottom-0 z-30 -mx-4 flex flex-col-reverse gap-2 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:flex-row sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                          <Button variant="outline" size="lg" className="min-h-12" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
                             <ChevronLeft className="w-4 h-4" /> Voltar
                           </Button>
-                          <Button onClick={submit} disabled={submitting || !profileComplete} variant="brand" size="lg" className="flex-1">
+                          <Button onClick={submit} disabled={submitting || !profileComplete} variant="brand" size="lg" className="min-h-12 flex-1">
                             {submitting ? "Enviando..." : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
                           </Button>
                         </div>

@@ -151,8 +151,8 @@ export const Navbar = () => {
       {/* Mobile menu */}
       {open && (
         <div
-          className="lg:hidden bg-background border-t border-border animate-fade-in overflow-y-auto"
-          style={{ maxHeight: "calc(100dvh - 3.5rem)", paddingBottom: "env(safe-area-inset-bottom)" }}
+          className="lg:hidden bg-background border-t border-border animate-fade-in overflow-y-auto overscroll-contain max-h-[calc(100dvh-52px)] md:max-h-[calc(100dvh-88px)]"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           <nav className="container-page py-4 flex flex-col gap-1">
             {navItems.map((item) => (
@@ -172,6 +172,10 @@ export const Navbar = () => {
                 {item.label}
               </NavLink>
             ))}
+            <div className="mt-3 flex items-center justify-between rounded-md bg-secondary/50 px-3 py-2 md:hidden">
+              <span className="text-sm text-muted-foreground">Tema</span>
+              <ThemeToggle />
+            </div>
             <Button asChild variant="outline" size="lg" className="mt-3">
               <Link to={user ? "/minha-conta" : "/auth"}>
                 <User className="w-4 h-4" /> {user ? "Minha conta" : "Entrar / Criar conta"}
