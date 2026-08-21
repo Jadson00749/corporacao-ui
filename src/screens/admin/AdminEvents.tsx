@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Pencil, Trash2, Plus, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 
-type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null };
+type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null; price_lote3?: number; lote3_starts_at?: string | null };
 type AgeBracket = { min: number; max: number };
 type KitOption = { name: string; extra_price?: number };
 type Coupon = { code: string; description?: string };
@@ -68,6 +68,12 @@ const AdminEvents = () => {
   };
 
   const save = async () => {
+    const badLote = (editing?.distances ?? []).find(
+      (d: Distance) => d.lote3_starts_at && (!d.lote2_starts_at || d.lote3_starts_at < d.lote2_starts_at)
+    );
+    if (badLote) {
+      return toast.error(`Distância "${badLote.distance || "sem nome"}": a data do 3º lote deve ser posterior à do 2º lote.`);
+    }
     const payload: any = { ...editing };
     delete payload.created_at; delete payload.updated_at;
     const pix_key = payload.pix_key ?? "";
@@ -271,7 +277,7 @@ const AdminEvents = () => {
                     })}
                   </div>
                   <p className="text-xs text-muted-foreground mb-2">
-                    Defina o preço do 1º lote e, se quiser virada automática, preencha o preço do 2º lote + a data em que ele passa a valer. A partir dessa data, o site mostra automaticamente o novo preço.
+                    Defina o preço do 1º lote e, se quiser virada automática, preencha o 2º e (opcionalmente) o 3º lote com preço + data em que passam a valer. A partir de cada data, o site mostra automaticamente o novo preço.
                   </p>
                   {editing.distances.map((d: Distance, i: number) => (
                     <div key={i} className="rounded-lg border border-border/60 p-3 mb-2 space-y-2 bg-background/30">
@@ -280,17 +286,30 @@ const AdminEvents = () => {
                         <Button variant="outline" size="icon" onClick={() => removeItem("distances", i)}><X className="w-4 h-4" /></Button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <Label className="text-[11px]">Preço 1º lote (R$)</Label>
+                        <div className="rounded-md border border-border/50 p-2 space-y-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">1º lote</p>
+                          <Label className="text-[11px]">Valor (R$)</Label>
                           <Input type="number" step="0.01" placeholder="0,00" value={d.price ?? 0} onChange={(e) => updateItem("distances", i, { price: parseFloat(e.target.value) || 0 })} />
                         </div>
-                        <div>
-                          <Label className="text-[11px]">Preço 2º lote (R$)</Label>
+                        <div className="rounded-md border border-border/50 p-2 space-y-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">2º lote (opcional)</p>
+                          <Label className="text-[11px]">Valor (R$)</Label>
                           <Input type="number" step="0.01" placeholder="opcional" value={d.price_lote2 ?? ""} onChange={(e) => updateItem("distances", i, { price_lote2: e.target.value === "" ? undefined : parseFloat(e.target.value) || 0 })} />
-                        </div>
-                        <div>
-                          <Label className="text-[11px]">2º lote começa em</Label>
+                          <Label className="text-[11px]">Início do 2º lote</Label>
                           <Input type="date" value={d.lote2_starts_at ?? ""} onChange={(e) => updateItem("distances", i, { lote2_starts_at: e.target.value || null })} />
+                        </div>
+                        <div className="rounded-md border border-border/50 p-2 space-y-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">3º lote (opcional)</p>
+                          <Label className="text-[11px]">Valor (R$)</Label>
+                          <Input type="number" step="0.01" placeholder="opcional" value={d.price_lote3 ?? ""} onChange={(e) => updateItem("distances", i, { price_lote3: e.target.value === "" ? undefined : parseFloat(e.target.value) || 0 })} />
+                          <Label className="text-[11px]">Início do 3º lote</Label>
+                          <Input type="date" min={d.lote2_starts_at ?? undefined} value={d.lote3_starts_at ?? ""} onChange={(e) => updateItem("distances", i, { lote3_starts_at: e.target.value || null })} />
+                          {d.lote3_starts_at && d.lote2_starts_at && d.lote3_starts_at < d.lote2_starts_at && (
+                            <p className="text-[10px] text-destructive">A data do 3º lote não pode ser anterior à do 2º lote.</p>
+                          )}
+                          {d.lote3_starts_at && !d.lote2_starts_at && (
+                            <p className="text-[10px] text-destructive">Defina primeiro a data do 2º lote.</p>
+                          )}
                         </div>
                       </div>
                     </div>

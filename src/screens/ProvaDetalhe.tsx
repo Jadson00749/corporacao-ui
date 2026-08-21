@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { activeLote, currentPrice, formatBRL } from "@/lib/eventPricing";
+import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 import {
   Calendar,
   MapPin,
@@ -272,37 +274,26 @@ const ProvaDetalhe = () => {
               )}
 
               {/* VALORES */}
-              {prices.some((d) => (d.price && d.price > 0) || (d.price_lote2 && d.price_lote2 > 0)) && (
+              {prices.some((d) => (d.price && d.price > 0) || (d.price_lote2 && d.price_lote2 > 0) || (d.price_lote3 && d.price_lote3 > 0)) && (
                 <Block id="valores" title="Valores">
                   <ul className="grid sm:grid-cols-2 gap-2">
-                    {prices.map((d, i) => {
-                      const today = new Date().toISOString().slice(0, 10);
-                      const hasLote2 = d.price_lote2 && d.price_lote2 > 0 && d.lote2_starts_at;
-                      const lote2Active = hasLote2 && today >= d.lote2_starts_at;
-                      const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-                      const fmtDate = (iso: string) => {
-                        const [y, m, dd] = iso.split("-");
-                        return `${dd}/${m}/${y}`;
-                      };
-                      return (
-                        <li
-                          key={i}
-                          className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/60 px-4 py-3"
-                        >
+                    {prices.map((d, i) => (
+                      <li
+                        key={i}
+                        className="rounded-xl border border-border/60 bg-card/60 px-4 py-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
                           <span className="text-sm text-foreground/80">{d.distance}</span>
                           <span className="text-right">
-                            <span className="font-semibold text-sm">{money(lote2Active ? d.price_lote2 : d.price ?? 0)}</span>
-                            {hasLote2 && (
-                              <span className="block text-[10px] text-muted-foreground">
-                                {lote2Active
-                                  ? `2º lote desde ${fmtDate(d.lote2_starts_at)}`
-                                  : `2º lote ${money(d.price_lote2)} em ${fmtDate(d.lote2_starts_at)}`}
-                              </span>
-                            )}
+                            <span className="font-semibold text-sm">{formatBRL(currentPrice(d))}</span>
+                            <span className="block text-[10px] text-success font-semibold uppercase tracking-wide">
+                              {activeLote(d)}º lote — atual
+                            </span>
                           </span>
-                        </li>
-                      );
-                    })}
+                        </div>
+                        <LoteBreakdown distance={d} className="mt-2" />
+                      </li>
+                    ))}
                   </ul>
                 </Block>
               )}

@@ -16,6 +16,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
+import { activeLote, currentPrice } from "@/lib/eventPricing";
+import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 
 type Distance = { distance: string; price?: number };
 type AgeBracket = { min: number; max: number };
@@ -212,10 +214,9 @@ const ProvaInscricao = () => {
   const profileComplete = profile && profile.full_name && profile.cpf && profile.whatsapp && profile.cep;
 
   const distanceObj = distances.find((d) => d.distance === distance);
-  const today = new Date().toISOString().slice(0, 10);
-  const isLote2 = (d: any) => !!(d && d.price_lote2 > 0 && d.lote2_starts_at && today >= d.lote2_starts_at);
-  const priceOf = (d: any) => (isLote2(d) ? (d.price_lote2 ?? 0) : (d?.price ?? 0));
-  const lote2Active = isLote2(distanceObj);
+  const priceOf = (d: any) => currentPrice(d ?? {});
+  const loteOf = (d: any) => activeLote(d ?? {});
+  const currentLote = loteOf(distanceObj);
   const distancePrice = priceOf(distanceObj);
   const kitExtra = kitOptions
     .filter((k) => selectedKits.includes(k.name))
@@ -339,7 +340,7 @@ const ProvaInscricao = () => {
       {total > 0 && (
         <div className="border-t border-border pt-3 space-y-1 text-sm">
           <div className="flex justify-between">
-            <span>Inscrição <span className="text-xs text-muted-foreground">({lote2Active ? "2º lote" : "1º lote"})</span></span>
+            <span>Inscrição <span className="text-xs text-muted-foreground">({currentLote}º lote)</span></span>
             <span>{brl(distancePrice)}</span>
           </div>
           {kitExtra > 0 && <div className="flex justify-between"><span>Kit</span><span>+{brl(kitExtra)}</span></div>}
@@ -465,8 +466,8 @@ const ProvaInscricao = () => {
                                 const active = distance === d.distance;
                                 const price = priceOf(d);
                                 return (
+                                  <div key={d.distance} className="space-y-1">
                                   <button
-                                    key={d.distance}
                                     type="button"
                                     onClick={() => setDistance(d.distance)}
                                     className={[
@@ -479,11 +480,13 @@ const ProvaInscricao = () => {
                                     <span className="font-semibold">{cleanDistanceLabel(d.distance)}</span>
                                     {price > 0 && (
                                       <span className="text-sm">
-                                        <span className="text-muted-foreground mr-1">{isLote2(d) ? "2º lote" : "1º lote"}</span>
+                                        <span className="text-muted-foreground mr-1">{loteOf(d)}º lote</span>
                                         <span className="font-bold text-brand">{brl(price)}</span>
                                       </span>
                                     )}
                                   </button>
+                                  {active && <LoteBreakdown distance={d} className="px-1" />}
+                                  </div>
                                 );
                               })}
                               {visibleDistances.length === 0 && (

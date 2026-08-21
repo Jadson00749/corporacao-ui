@@ -5,7 +5,14 @@
 
 export type EventStatus = "open" | "soon" | "closed";
 
-export type EventDistance = { distance: string; price?: number };
+export type EventDistance = {
+  distance: string;
+  price?: number;
+  price_lote2?: number;
+  lote2_starts_at?: string | null;
+  price_lote3?: number;
+  lote3_starts_at?: string | null;
+};
 export type EventAgeBracket = { min: number; max: number };
 export type EventKitOption = { name: string; extra_price?: number };
 export type EventCoupon = { code: string; description?: string };

@@ -4,6 +4,7 @@ import { RaceEvent, eventStatusLabel } from "@/data/events";
 import { cn } from "@/lib/utils";
 import { getEventBannerFallback } from "@/lib/eventBannerFallback";
 import { BannerFrame } from "@/components/site/BannerFrame";
+import { currentPrice } from "@/lib/eventPricing";
 
 
 const statusStyle: Record<RaceEvent["status"], string> = {
@@ -58,11 +59,9 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
             {event.distance}
           </p>
           {(() => {
-            const prices = (event.distances ?? []).map((d: any) => {
-              const today = new Date().toISOString().slice(0, 10);
-              const useLote2 = d.price_lote2 && d.price_lote2 > 0 && d.lote2_starts_at && today >= d.lote2_starts_at;
-              return useLote2 ? d.price_lote2 : (d.price ?? 0);
-            }).filter((p: number) => p > 0);
+            const prices = (event.distances ?? [])
+              .map((d: any) => currentPrice(d))
+              .filter((p: number) => p > 0);
             if (!prices.length) return null;
             const min = Math.min(...prices);
             return (
