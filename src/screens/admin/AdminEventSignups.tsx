@@ -174,23 +174,6 @@ const AdminEventSignups = () => {
     }
   };
 
-  const exportCsv = () => {
-    const headers = ["Prova", "Data", "Atleta", "CPF", "E-mail", "WhatsApp", "Categoria", "Kit", "Camiseta", "Cupom", "Equipe", "Cidade", "Status", "Inscrito em"];
-    const rows = filtered.map((r) => [
-      r.events?.name || "", r.events?.date || "",
-      r.profiles?.full_name || "", r.profiles?.cpf || "", r.profiles?.email || "",
-      r.profiles?.whatsapp || "", r.category, formatKitOption(r.kit_option || ""), r.shirt_size || "", r.coupon_code || "",
-      r.team_name || r.profiles?.team_name || "",
-      `${r.profiles?.city || ""} ${r.profiles?.state || ""}`.trim(),
-      r.status, new Date(r.created_at).toLocaleString("pt-BR"),
-    ]);
-    const csv = [headers, ...rows].map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `inscricoes-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click(); URL.revokeObjectURL(url);
-  };
 
   return (
     <div className="space-y-4">
