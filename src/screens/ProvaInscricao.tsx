@@ -633,11 +633,11 @@ const ProvaInscricao = () => {
                             {pendingSignup.category ? ` (${pendingSignup.category})` : ""}
                           </p>
                         </div>
-                        <div className="flex gap-2 shrink-0">
-                          <Button variant="brand" size="sm" onClick={() => resumeSignup(pendingSignup)}>
+                        <div className="grid grid-cols-1 xs:grid-cols-2 sm:flex gap-2 shrink-0">
+                          <Button variant="brand" className="w-full sm:w-auto min-h-11" onClick={() => resumeSignup(pendingSignup)}>
                             Continuar inscrição
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setResumeDismissed(true)}>
+                          <Button variant="ghost" className="w-full sm:w-auto min-h-11" onClick={() => setResumeDismissed(true)}>
                             Começar do zero
                           </Button>
                         </div>
