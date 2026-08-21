@@ -25,6 +25,7 @@ import {
   isSeniorOnlyDistance,
 } from "@/lib/eventPricing";
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
+import { PixPayment } from "@/components/site/PixPayment";
 
 type Distance = { distance: string; price?: number };
 type AgeBracket = { min: number; max: number };
@@ -270,6 +271,20 @@ const ProvaInscricao = () => {
     const parts = [distance, gender, bracket && `${bracket} anos`].filter(Boolean);
     return parts.join(" · ");
   }, [distance, gender, bracket]);
+
+  const whatsMessage = useMemo(() => {
+    const lines = [
+      `Olá! Sou ${profile?.full_name || "atleta"} e fiz minha inscrição na ${event?.name || "prova"}.`,
+      "",
+      distance && `Modalidade: ${distance}`,
+      (gender || bracket) && `Categoria: ${[gender, bracket && `${bracket} anos`].filter(Boolean).join(" · ")}`,
+      selectedKits.length && `Kit: ${selectedKits.join(", ")}`,
+      total > 0 && `Valor: ${brl(total)}`,
+      "",
+      "Gostaria de enviar meu comprovante PIX.",
+    ].filter((l) => l !== false && l !== 0 && l !== undefined && l !== null && l !== "" || l === "");
+    return (lines as string[]).join("\n");
+  }, [profile?.full_name, event?.name, distance, gender, bracket, selectedKits, total]);
 
   const applyCoupon = () => {
     const code = couponInput.trim().toUpperCase();
