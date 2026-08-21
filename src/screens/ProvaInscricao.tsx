@@ -340,7 +340,7 @@ const ProvaInscricao = () => {
       {total > 0 && (
         <div className="border-t border-border pt-3 space-y-1 text-sm">
           <div className="flex justify-between">
-            <span>Inscrição <span className="text-xs text-muted-foreground">({lote2Active ? "2º lote" : "1º lote"})</span></span>
+            <span>Inscrição <span className="text-xs text-muted-foreground">({currentLote}º lote)</span></span>
             <span>{brl(distancePrice)}</span>
           </div>
           {kitExtra > 0 && <div className="flex justify-between"><span>Kit</span><span>+{brl(kitExtra)}</span></div>}
@@ -480,7 +480,7 @@ const ProvaInscricao = () => {
                                     <span className="font-semibold">{cleanDistanceLabel(d.distance)}</span>
                                     {price > 0 && (
                                       <span className="text-sm">
-                                        <span className="text-muted-foreground mr-1">{isLote2(d) ? "2º lote" : "1º lote"}</span>
+                                        <span className="text-muted-foreground mr-1">{loteOf(d)}º lote</span>
                                         <span className="font-bold text-brand">{brl(price)}</span>
                                       </span>
                                     )}
