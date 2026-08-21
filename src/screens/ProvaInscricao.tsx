@@ -317,7 +317,57 @@ const ProvaInscricao = () => {
     return (lines as string[]).join("\n");
   }, [profile?.full_name, event?.name, distance, gender, bracket, selectedKits, total]);
 
+  // Retomar rascunho pendente sem criar nova inscrição
+  const resumeSignup = (signup: { id: string; category: string | null; kit_option?: string | null; team_name?: string | null; coupon_code?: string | null }) => {
+    const parts = (signup.category || "").split("·").map((p) => p.trim()).filter(Boolean);
+    const savedDistance = parts.find((p) => distances.some((d) => d.distance === p));
+    if (savedDistance) {
+      const g = groupOf(savedDistance);
+      if (groups.includes(g)) setGroup(g);
+      setDistance(savedDistance);
+    }
+    let kits: string[] = [];
+    try {
+      const parsed = JSON.parse(signup.kit_option || "[]");
+      if (Array.isArray(parsed)) kits = parsed.filter((k) => typeof k === "string");
+      else if (typeof parsed === "string" && parsed) kits = [parsed];
+    } catch {
+      if (signup.kit_option) kits = [signup.kit_option];
+    }
+    if (kits.length) setSelectedKits(kits);
+    if (signup.team_name) setTeamName(signup.team_name);
+    if (signup.coupon_code) {
+      const found = coupons.find((c) => c.code.toUpperCase() === signup.coupon_code!.toUpperCase());
+      if (found) setAppliedCoupon(found);
+    }
+    setSignupId(signup.id);
+    setAcceptedTerms(true);
+    setResumeDismissed(true);
+
+    const ready = !!profileComplete && !!savedDistance && (kitOptions.length === 0 || kits.length > 0);
+    if (ready) {
+      setDone(true);
+      setStep(2);
+    } else {
+      setStep(savedDistance ? 1 : 0);
+      if (!profileComplete) toast.info("Complete os dados obrigatórios para seguir ao pagamento.");
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Retomada automática via /provas/:id/inscricao?retomar=<signupId>
+  const resumedRef = useRef(false);
+  useEffect(() => {
+    if (resumedRef.current || !pendingSignup || !distances.length) return;
+    const wanted = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("retomar") : null;
+    if (!wanted) return;
+    if (wanted !== "1" && wanted !== pendingSignup.id) return;
+    resumedRef.current = true;
+    resumeSignup(pendingSignup);
+  }, [pendingSignup, distances, kitOptions, profileComplete]);
+
   const applyCoupon = () => {
+
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
     const found = coupons.find((c) => c.code.toUpperCase() === code);
