@@ -183,7 +183,7 @@ const ProvaDetalhe = () => {
     <Layout>
       <SEO title={`${event.name} | Provas`} description={event.description?.slice(0, 160)} />
 
-      <div className="pt-24 pb-16 lg:pb-16 pb-[calc(4rem+72px)]">
+      <div className={cn("pt-24", closed ? "pb-16" : "pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-16")}>
         <div className="container-page">
           {/* BREADCRUMB */}
           <nav className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
