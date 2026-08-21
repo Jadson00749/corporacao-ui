@@ -162,15 +162,25 @@ const ProvaDetalhe = () => {
               {/* BANNER */}
               <div className="rounded-2xl overflow-hidden border border-border/60 bg-card">
                 {banner ? (
-                  <BannerFrame
-                    src={banner}
-                    alt={`Banner ${event.name}`}
-                    loading="eager"
-                    className="aspect-[16/9] sm:aspect-[2/1] md:aspect-[21/9]"
-                  />
+                  <>
+                    {/* Mobile: usa arte específica quando existir */}
+                    <BannerFrame
+                      src={mobileBanner}
+                      alt={`Banner ${event.name}`}
+                      loading="eager"
+                      className={cn("md:hidden", bannerAspectClass(event.banner_aspect_ratio))}
+                    />
+                    <BannerFrame
+                      src={banner}
+                      alt={`Banner ${event.name}`}
+                      loading="eager"
+                      className={cn("hidden md:block", bannerAspectClass(event.banner_aspect_ratio))}
+                    />
+                  </>
                 ) : (
                   <div className="w-full aspect-[16/9] md:aspect-[21/9] bg-gradient-dark" />
                 )}
+
                 <div className="p-5 md:p-7">
                   <span
                     className={cn(
