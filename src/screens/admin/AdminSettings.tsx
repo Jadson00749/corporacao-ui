@@ -130,12 +130,12 @@ const AdminSettings = () => {
   const uploadImage = async (key: string, file: File, folder = "home-benefits") => {
     setUploading(key);
     const path = `${folder}/${key}-${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
-    const { error } = await supabase.storage.from("site-images").upload(path, file);
+    const { error } = await supabase.storage.from("corporacao-bucket").upload(path, file);
     if (error) {
       setUploading(null);
       return toast.error(error.message);
     }
-    const { data } = supabase.storage.from("site-images").getPublicUrl(path);
+    const { data } = supabase.storage.from("corporacao-bucket").getPublicUrl(path);
     update(key, data.publicUrl);
     setUploading(null);
     toast.success("Imagem enviada! Lembre de salvar.");
