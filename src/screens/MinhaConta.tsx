@@ -394,10 +394,16 @@ const MinhaConta = () => {
                                   : "bg-warning/15 text-warning border-warning/40 dark:text-warning"
                               )}
                             >
-                              {s.status}
+                              {s.status !== "confirmada" && s.status !== "cancelada" ? "Aguardando pagamento" : s.status}
                             </span>
+                            {s.status !== "confirmada" && s.status !== "cancelada" && s.events?.id && (
+                              <Button asChild variant="brand" size="sm">
+                                <Link to={`/provas/${s.events.id}/inscricao?retomar=${s.id}`}>Continuar inscrição</Link>
+                              </Button>
+                            )}
                             {s.status !== "confirmada" && s.status !== "cancelada" && (
-                              <Button asChild variant="brand" size="sm" title="Enviar comprovante no WhatsApp">
+
+                              <Button asChild variant="outline" size="sm" title="Enviar comprovante no WhatsApp">
                                 <a
                                   href={buildWhats(
                                     `Olá! Fiz minha inscrição na prova ${s.events?.name || ""} (categoria ${s.category || ""}) e gostaria de enviar o comprovante do PIX.`

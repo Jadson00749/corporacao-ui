@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "@/lib/router-compat";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/site/Layout";
@@ -136,7 +136,11 @@ const ProvaInscricao = () => {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [signupId, setSignupId] = useState<string | null>(null);
+  const [resumeDismissed, setResumeDismissed] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
+
+
 
   // Clear individual error as user fills the field
   useEffect(() => { if (distance && errors.distance) setErrors((e) => ({ ...e, distance: false })); }, [distance]);
@@ -176,6 +180,29 @@ const ProvaInscricao = () => {
       return data;
     },
   });
+
+  // Inscrições já existentes desta pessoa nesta prova (rascunhos retomáveis)
+  const { data: myEventSignups = [] } = useQuery({
+    queryKey: ["event_signup_existing", id, user?.id],
+    enabled: !!id && !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("event_signups")
+        .select("id, category, status, kit_option, team_name, coupon_code")
+        .eq("event_id", id!)
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const pendingSignup = useMemo(
+    () => myEventSignups.find((s) => s.status !== "confirmada" && s.status !== "cancelada") ?? null,
+    [myEventSignups]
+  );
+
+
 
   const distances = useMemo<Distance[]>(() => {
     if (!event) return [];
@@ -290,7 +317,57 @@ const ProvaInscricao = () => {
     return (lines as string[]).join("\n");
   }, [profile?.full_name, event?.name, distance, gender, bracket, selectedKits, total]);
 
+  // Retomar rascunho pendente sem criar nova inscrição
+  const resumeSignup = (signup: { id: string; category: string | null; kit_option?: string | null; team_name?: string | null; coupon_code?: string | null }) => {
+    const parts = (signup.category || "").split("·").map((p) => p.trim()).filter(Boolean);
+    const savedDistance = parts.find((p) => distances.some((d) => d.distance === p));
+    if (savedDistance) {
+      const g = groupOf(savedDistance);
+      if (groups.includes(g)) setGroup(g);
+      setDistance(savedDistance);
+    }
+    let kits: string[] = [];
+    try {
+      const parsed = JSON.parse(signup.kit_option || "[]");
+      if (Array.isArray(parsed)) kits = parsed.filter((k) => typeof k === "string");
+      else if (typeof parsed === "string" && parsed) kits = [parsed];
+    } catch {
+      if (signup.kit_option) kits = [signup.kit_option];
+    }
+    if (kits.length) setSelectedKits(kits);
+    if (signup.team_name) setTeamName(signup.team_name);
+    if (signup.coupon_code) {
+      const found = coupons.find((c) => c.code.toUpperCase() === signup.coupon_code!.toUpperCase());
+      if (found) setAppliedCoupon(found);
+    }
+    setSignupId(signup.id);
+    setAcceptedTerms(true);
+    setResumeDismissed(true);
+
+    const ready = !!profileComplete && !!savedDistance && (kitOptions.length === 0 || kits.length > 0);
+    if (ready) {
+      setDone(true);
+      setStep(2);
+    } else {
+      setStep(savedDistance ? 1 : 0);
+      if (!profileComplete) toast.info("Complete os dados obrigatórios para seguir ao pagamento.");
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Retomada automática via /provas/:id/inscricao?retomar=<signupId>
+  const resumedRef = useRef(false);
+  useEffect(() => {
+    if (resumedRef.current || !pendingSignup || !distances.length) return;
+    const wanted = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("retomar") : null;
+    if (!wanted) return;
+    if (wanted !== "1" && wanted !== pendingSignup.id) return;
+    resumedRef.current = true;
+    resumeSignup(pendingSignup);
+  }, [pendingSignup, distances, kitOptions, profileComplete]);
+
   const applyCoupon = () => {
+
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
     const found = coupons.find((c) => c.code.toUpperCase() === code);
@@ -344,9 +421,8 @@ const ProvaInscricao = () => {
     setErrors({});
 
     setSubmitting(true);
-    const { error } = await supabase.from("event_signups").insert({
-      user_id: user.id,
-      event_id: event.id,
+
+    const payload = {
       category: categoryLabel,
       status: "pendente",
       notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: valor fixo ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
@@ -354,18 +430,58 @@ const ProvaInscricao = () => {
       coupon_code: appliedCoupon?.code || "",
       team_name: teamName,
       accepted_event_terms_at: new Date().toISOString(),
-    });
+    };
+
+    // Já existe inscrição desta pessoa nesta prova/categoria?
+    const { data: existing, error: findError } = await supabase
+      .from("event_signups")
+      .select("id, status")
+      .eq("user_id", user.id)
+      .eq("event_id", event.id)
+      .eq("category", categoryLabel)
+      .maybeSingle();
+
+    if (findError) {
+      setSubmitting(false);
+      toast.error(findError.message);
+      return;
+    }
+
+    if (existing && existing.status === "confirmada") {
+      setSubmitting(false);
+      toast.error("Você já está inscrito nesta categoria.");
+      return;
+    }
+
+    let error = null as { code?: string; message: string } | null;
+    if (existing) {
+      // Retoma o rascunho pendente/cancelado: atualiza, nunca duplica
+      const res = await supabase.from("event_signups").update(payload).eq("id", existing.id);
+      error = res.error;
+      if (!error) setSignupId(existing.id);
+    } else {
+      const res = await supabase
+        .from("event_signups")
+        .insert({ user_id: user.id, event_id: event.id, ...payload })
+        .select("id")
+        .maybeSingle();
+      error = res.error;
+      if (!error && res.data?.id) setSignupId(res.data.id);
+    }
+
     setSubmitting(false);
     if (error) {
-      if (error.code === "23505") toast.error("Você já está inscrito nessa categoria.");
+      if (error.code === "23505") toast.error("Você já está inscrito nesta categoria.");
       else toast.error(error.message);
       return;
     }
     qc.invalidateQueries({ queryKey: ["my_signups"] });
+    qc.invalidateQueries({ queryKey: ["event_signup_existing", id, user.id] });
     setDone(true);
     setStep(2);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
 
   if (loading || !user) return null;
 
@@ -461,7 +577,7 @@ const ProvaInscricao = () => {
                     recipient={payment?.pix_recipient || (event as any)?.pix_recipient}
                     city={event.city}
                     amount={total}
-                    txid={`INSC${String(event.id).replace(/\D/g, "").slice(0, 10)}`}
+                    txid={`INSC${String(signupId || event.id).replace(/\D/g, "").slice(0, 10)}`}
                     instructions={payment?.payment_instructions || (event as any)?.payment_instructions}
                   />
 
@@ -484,7 +600,27 @@ const ProvaInscricao = () => {
               ) : (
                 <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
                   <div className="space-y-6">
+                    {pendingSignup && !resumeDismissed && (
+                      <div className="bg-warning/10 border border-warning/40 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                        <div className="min-w-0">
+                          <p className="font-display font-semibold">Você já iniciou sua inscrição nesta prova.</p>
+                          <p className="text-sm text-muted-foreground">
+                            Continue de onde parou para finalizar o pagamento.
+                            {pendingSignup.category ? ` (${pendingSignup.category})` : ""}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Button variant="brand" size="sm" onClick={() => resumeSignup(pendingSignup)}>
+                            Continuar inscrição
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setResumeDismissed(true)}>
+                            Começar do zero
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     {step === 0 && (
+
                       <>
                         <div>
                           <h1 className="font-display text-2xl sm:text-3xl font-bold">{event.name}</h1>
