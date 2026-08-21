@@ -68,6 +68,12 @@ const AdminEvents = () => {
   };
 
   const save = async () => {
+    const badLote = (editing?.distances ?? []).find(
+      (d: Distance) => d.lote3_starts_at && (!d.lote2_starts_at || d.lote3_starts_at < d.lote2_starts_at)
+    );
+    if (badLote) {
+      return toast.error(`Distância "${badLote.distance || "sem nome"}": a data do 3º lote deve ser posterior à do 2º lote.`);
+    }
     const payload: any = { ...editing };
     delete payload.created_at; delete payload.updated_at;
     const pix_key = payload.pix_key ?? "";
