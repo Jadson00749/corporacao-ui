@@ -384,38 +384,115 @@ const AdminEvents = () => {
                         <Input className="w-32" type="number" step="0.01" placeholder="Adicional R$" value={k.extra_price ?? 0} onChange={(e) => updateItem("kit_options", i, { extra_price: parseFloat(e.target.value) || 0 })} />
                         <Button variant="outline" size="icon" onClick={() => removeItem("kit_options", i)}><X className="w-4 h-4" /></Button>
                       </div>
-                      <div className="grid sm:grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-xs">Tamanhos de camiseta (separados por vírgula)</Label>
-                          <Input
-                            placeholder="PP, P, M, G, GG, XG"
-                            value={Array.isArray((k as any).sizes) ? (k as any).sizes.join(", ") : ""}
-                            onChange={(e) =>
-                              updateItem("kit_options", i, {
-                                sizes: e.target.value.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
-                              })
-                            }
-                          />
-                          <p className="text-[11px] text-muted-foreground mt-1">Deixe vazio se este kit não tem camiseta.</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs">Tabela de medidas — imagem (opcional)</Label>
-                          <Input
-                            placeholder="https://... (imagem recomendada 1000×1000px)"
-                            value={(k as any).size_chart_url ?? ""}
-                            onChange={(e) => updateItem("kit_options", i, { size_chart_url: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Tabela de medidas — informações (opcional)</Label>
-                        <Textarea
-                          rows={2}
-                          placeholder="Ex: P — 50cm largura x 70cm altura..."
-                          value={(k as any).size_chart_info ?? ""}
-                          onChange={(e) => updateItem("kit_options", i, { size_chart_info: e.target.value })}
-                        />
-                      </div>
+                      {(() => {
+                        const sizes: string[] = Array.isArray((k as any).sizes) ? (k as any).sizes : [];
+                        const hasShirt = sizes.length > 0 || (k as any).has_shirt === true;
+                        const toggleSize = (s: string) =>
+                          updateItem("kit_options", i, {
+                            sizes: sizes.includes(s) ? sizes.filter((x) => x !== s) : [...DEFAULT_SIZES, ...sizes.filter((x) => !DEFAULT_SIZES.includes(x))].filter((x) => sizes.includes(x) || x === s),
+                          });
+                        return (
+                          <>
+                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                              <Switch
+                                checked={hasShirt}
+                                onCheckedChange={(v) =>
+                                  updateItem("kit_options", i, { has_shirt: v, sizes: v ? DEFAULT_SIZES : [] })
+                                }
+                              />
+                              Este kit possui camiseta
+                            </label>
+
+                            {hasShirt && (
+                              <div className="space-y-3 rounded-lg bg-secondary/30 p-3">
+                                <div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <Label className="text-xs">Tamanhos disponíveis</Label>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-xs"
+                                      onClick={() => updateItem("kit_options", i, { sizes: DEFAULT_SIZES })}
+                                    >
+                                      Usar tamanhos padrão
+                                    </Button>
+                                  </div>
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {[...DEFAULT_SIZES, ...sizes.filter((s) => !DEFAULT_SIZES.includes(s))].map((s) => {
+                                      const on = sizes.includes(s);
+                                      return (
+                                        <button
+                                          key={s}
+                                          type="button"
+                                          onClick={() => toggleSize(s)}
+                                          className={
+                                            "px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors " +
+                                            (on
+                                              ? "bg-brand text-brand-foreground border-brand"
+                                              : "bg-background text-foreground/60 border-border hover:border-brand/60")
+                                          }
+                                        >
+                                          {on ? "☑" : "☐"} {s}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  <div className="mt-2 flex gap-2">
+                                    <Input
+                                      className="h-8 w-40 text-xs"
+                                      placeholder="Outro tamanho (ex: XGG)"
+                                      value={customSize[i] ?? ""}
+                                      onChange={(e) => setCustomSize({ ...customSize, [i]: e.target.value })}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          const v = (customSize[i] ?? "").trim().toUpperCase();
+                                          if (v && !sizes.includes(v)) updateItem("kit_options", i, { sizes: [...sizes, v] });
+                                          setCustomSize({ ...customSize, [i]: "" });
+                                        }
+                                      }}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 text-xs"
+                                      onClick={() => {
+                                        const v = (customSize[i] ?? "").trim().toUpperCase();
+                                        if (v && !sizes.includes(v)) updateItem("kit_options", i, { sizes: [...sizes, v] });
+                                        setCustomSize({ ...customSize, [i]: "" });
+                                      }}
+                                    >
+                                      <Plus className="w-3 h-3" /> Adicionar outro tamanho
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                <div className="grid sm:grid-cols-2 gap-2">
+                                  <div>
+                                    <Label className="text-xs">Tabela de medidas — imagem (opcional)</Label>
+                                    <Input
+                                      placeholder="https://... (imagem recomendada 1000×1000px)"
+                                      value={(k as any).size_chart_url ?? ""}
+                                      onChange={(e) => updateItem("kit_options", i, { size_chart_url: e.target.value })}
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs">Tabela de medidas — informações (opcional)</Label>
+                                    <Textarea
+                                      rows={2}
+                                      placeholder="Ex: P — 50cm largura x 70cm altura..."
+                                      value={(k as any).size_chart_info ?? ""}
+                                      onChange={(e) => updateItem("kit_options", i, { size_chart_info: e.target.value })}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   ))}
                   <Button variant="outline" size="sm" onClick={() => addItem("kit_options", { name: "", extra_price: 0, sizes: [] })}><Plus className="w-4 h-4" /> Adicionar kit</Button>
