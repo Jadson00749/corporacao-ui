@@ -895,8 +895,8 @@ const ProvaInscricao = () => {
                             <div>
                               <Label>Cupom (opcional)</Label>
                               <div className="flex gap-2 mt-1">
-                                <Input value={couponInput} onChange={(e) => setCouponInput(e.target.value)} placeholder="Tem um cupom? Informe aqui" />
-                                <Button type="button" variant="outline" onClick={applyCoupon}>Aplicar</Button>
+                                <Input className="min-w-0 flex-1" value={couponInput} onChange={(e) => setCouponInput(e.target.value)} placeholder="Tem um cupom?" />
+                                <Button type="button" variant="outline" className="shrink-0 min-h-11" onClick={applyCoupon}>Aplicar</Button>
                               </div>
                               {appliedCoupon && (
                                 <p className="text-xs text-success mt-1 flex items-center gap-1">
