@@ -49,6 +49,10 @@ export type EventSignup = {
   status: string;
   notes: string;
   created_at: string;
+  kit_option?: string | null;
+  shirt_size?: string | null;
+  team_name?: string | null;
+  coupon_code?: string | null;
   events?: {
     id: string;
     name: string;
@@ -56,6 +60,9 @@ export type EventSignup = {
     city: string;
     distance: string;
     status: string;
+    start_time?: string | null;
+    kit_delivery?: string | null;
+    kit_info?: string | null;
   } | null;
 };
 
@@ -67,11 +74,13 @@ export const useMySignups = () => {
     queryFn: async (): Promise<EventSignup[]> => {
       const { data, error } = await supabase
         .from("event_signups")
-        .select("*, events(id, name, date, city, distance, status)")
+        .select(
+          "*, events(id, name, date, city, distance, status, start_time, kit_delivery, kit_info)"
+        )
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as EventSignup[];
+      return (data ?? []) as unknown as EventSignup[];
     },
   });
 };
