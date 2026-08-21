@@ -403,7 +403,7 @@ const MinhaConta = () => {
                             )}
                             {s.status !== "confirmada" && s.status !== "cancelada" && (
 
-                              <Button asChild variant="brand" size="sm" title="Enviar comprovante no WhatsApp">
+                              <Button asChild variant="outline" size="sm" title="Enviar comprovante no WhatsApp">
                                 <a
                                   href={buildWhats(
                                     `Olá! Fiz minha inscrição na prova ${s.events?.name || ""} (categoria ${s.category || ""}) e gostaria de enviar o comprovante do PIX.`
