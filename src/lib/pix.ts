@@ -67,7 +67,7 @@ export const buildPixPayload = ({
 
   let payload =
     tag("00", "01") +
-    tag("01", "12") + // reutilizável (QR estático)
+    tag("01", "11") + // QR estático reutilizável
     tag("26", merchantAccount) +
     tag("52", "0000") +
     tag("53", "986");
