@@ -912,9 +912,9 @@ const ProvaInscricao = () => {
                           </div>
                         </div>
 
-                        <div data-invalid={errors.terms || undefined} className={`flex items-start gap-2 rounded-lg p-2 ${errors.terms ? "ring-2 ring-destructive/60 bg-destructive/5" : ""}`}>
-                          <Checkbox id="terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(!!v)} className={`mt-0.5 ${errors.terms ? "border-destructive" : ""}`} />
-                          <label htmlFor="terms" className={`text-sm cursor-pointer ${errors.terms ? "text-destructive font-medium" : ""}`}>
+                        <div data-invalid={errors.terms || undefined} className={`flex items-start gap-3 rounded-lg p-3 ${errors.terms ? "ring-2 ring-destructive/60 bg-destructive/5" : ""}`}>
+                          <Checkbox id="terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(!!v)} className={`mt-0.5 h-5 w-5 shrink-0 ${errors.terms ? "border-destructive" : ""}`} />
+                          <label htmlFor="terms" className={`text-sm leading-relaxed cursor-pointer ${errors.terms ? "text-destructive font-medium" : ""}`}>
                             Estou de acordo com os{" "}
                             {event.regulation_url ? (
                               <a href={event.regulation_url} target="_blank" rel="noreferrer" className="text-brand underline">termos e regulamento</a>
@@ -922,11 +922,11 @@ const ProvaInscricao = () => {
                           </label>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <Button variant="outline" size="lg" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                        <div className="sticky bottom-0 z-30 -mx-4 flex flex-col-reverse gap-2 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:flex-row sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                          <Button variant="outline" size="lg" className="min-h-12" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
                             <ChevronLeft className="w-4 h-4" /> Voltar
                           </Button>
-                          <Button onClick={submit} disabled={submitting || !profileComplete} variant="brand" size="lg" className="flex-1">
+                          <Button onClick={submit} disabled={submitting || !profileComplete} variant="brand" size="lg" className="min-h-12 flex-1">
                             {submitting ? "Enviando..." : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
                           </Button>
                         </div>
