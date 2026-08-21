@@ -147,7 +147,9 @@ const ProvaDetalhe = () => {
   const slotsLeft = event.max_slots ? Math.max(event.max_slots - signupsCount, 0) : null;
 
   const kits = (Array.isArray(event.kit_options) ? (event.kit_options as any[]) : []).filter((k) => k?.name);
-  const prices = (Array.isArray(event.distances) ? (event.distances as any[]) : []).filter((d) => d?.distance);
+  const prices = (Array.isArray(event.distances) ? (event.distances as any[]) : []).filter(
+    (d) => d?.distance && !isSeniorOnlyDistance(d.distance)
+  );
   const docs = (Array.isArray(event.documents) ? (event.documents as { label: string; url: string }[]) : []).filter(
     (d) => d.url && d.label
   );
