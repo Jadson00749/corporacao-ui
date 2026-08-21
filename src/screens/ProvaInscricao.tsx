@@ -633,39 +633,43 @@ const ProvaInscricao = () => {
                           </dl>
                         </div>
 
-                        {(genders.length > 1 || ageBrackets.length > 1) && (
+                        {(genders.length > 0 || ageBrackets.length > 0) && (
                           <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-3">
-                            <h3 className="text-sm uppercase tracking-wide text-muted-foreground">Categoria</h3>
-                            <div className="grid sm:grid-cols-2 gap-3">
-                              {genders.length > 1 && (
-                                <div>
-                                  <Label className={errors.gender ? "text-destructive" : ""}>Sexo *</Label>
-                                  <Select value={gender} onValueChange={setGender}>
-                                    <SelectTrigger data-invalid={errors.gender || undefined} className={`mt-1 ${errors.gender ? "border-destructive ring-2 ring-destructive/50" : ""}`}><SelectValue placeholder="Sexo" /></SelectTrigger>
-                                    <SelectContent>
-                                      {genders.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
+                            <h3 className="text-sm uppercase tracking-wide text-muted-foreground">Categoria (automática)</h3>
+                            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                              {genders.length > 0 && (
+                                <div data-invalid={errors.gender || undefined}>
+                                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Sexo</dt>
+                                  <dd className={`font-medium ${errors.gender ? "text-destructive" : ""}`}>
+                                    {gender || "não informado no cadastro"}
+                                  </dd>
                                 </div>
                               )}
-                              {ageBrackets.length > 1 && (
-                                <div>
-                                  <Label className={errors.bracket ? "text-destructive" : ""}>Faixa etária *</Label>
-                                  <Select value={bracket} onValueChange={setBracket}>
-                                    <SelectTrigger data-invalid={errors.bracket || undefined} className={`mt-1 ${errors.bracket ? "border-destructive ring-2 ring-destructive/50" : ""}`}><SelectValue placeholder="Faixa" /></SelectTrigger>
-                                    <SelectContent>
-                                      {ageBrackets.map((b) => (
-                                        <SelectItem key={`${b.min}-${b.max}`} value={`${b.min}-${b.max}`}>
-                                          {b.min} a {b.max} anos
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                              {ageBrackets.length > 0 && (
+                                <div data-invalid={errors.bracket || undefined}>
+                                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Faixa etária</dt>
+                                  <dd className={`font-medium ${errors.bracket ? "text-destructive" : ""}`}>
+                                    {bracket ? `${bracket.replace("-", " a ")} anos` : "não informada no cadastro"}
+                                    {categoryAge != null && bracket && (
+                                      <span className="text-muted-foreground font-normal"> · {categoryAge} anos no ano da prova</span>
+                                    )}
+                                  </dd>
                                 </div>
                               )}
                             </div>
+                            {(!gender && genders.length > 0) || (!bracket && ageBrackets.length > 0) ? (
+                              <p className="text-sm text-destructive">
+                                Faltam dados no seu cadastro (sexo e/ou data de nascimento).{" "}
+                                <Link to="/minha-conta" className="underline text-brand">Complete seu cadastro</Link> para continuar.
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                Definida automaticamente pelo seu cadastro. A idade considerada é o ano da prova menos o ano de nascimento.
+                              </p>
+                            )}
                           </div>
                         )}
+
 
                         <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
                           <div>
