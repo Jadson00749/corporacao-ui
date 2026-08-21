@@ -226,10 +226,14 @@ const ProvaInscricao = () => {
   const profileComplete = profile && profile.full_name && profile.cpf && profile.whatsapp && profile.cep;
 
   const distanceObj = distances.find((d) => d.distance === distance);
-  const priceOf = (d: any) => currentPrice(d ?? {});
+  const senior = isSenior(profile?.birth_date);
+  const basePriceOf = (d: any) => currentPrice(d ?? {});
+  const priceOf = (d: any) => applySeniorDiscount(basePriceOf(d), senior);
   const loteOf = (d: any) => activeLote(d ?? {});
   const currentLote = loteOf(distanceObj);
-  const distancePrice = priceOf(distanceObj);
+  const baseDistancePrice = basePriceOf(distanceObj);
+  const distancePrice = applySeniorDiscount(baseDistancePrice, senior);
+  const seniorDiscount = baseDistancePrice - distancePrice;
   const kitExtra = kitOptions
     .filter((k) => selectedKits.includes(k.name))
     .reduce((sum, k) => sum + (k.extra_price ?? 0), 0);
