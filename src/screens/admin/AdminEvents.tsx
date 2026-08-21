@@ -14,7 +14,7 @@ import { isKidsDistance } from "@/lib/eventPricing";
 
 type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null; price_lote3?: number; lote3_starts_at?: string | null; price_60_plus?: number };
 type AgeBracket = { min: number; max: number };
-type KitOption = { name: string; extra_price?: number };
+type KitOption = { name: string; extra_price?: number; sizes?: string[]; size_chart_url?: string; size_chart_info?: string };
 type Coupon = { code: string; description?: string };
 type EventDocument = { label: string; url: string };
 
@@ -378,15 +378,50 @@ const AdminEvents = () => {
               {editing.internal_signup && (
                 <Section title="Opções de kit (camiseta, premium etc.)">
                   {editing.kit_options.map((k: KitOption, i: number) => (
-                    <div key={i} className="flex gap-2 mb-2">
-                      <Input className="flex-1" placeholder="Ex: Camiseta P" value={k.name} onChange={(e) => updateItem("kit_options", i, { name: e.target.value })} />
-                      <Input className="w-32" type="number" step="0.01" placeholder="Adicional R$" value={k.extra_price ?? 0} onChange={(e) => updateItem("kit_options", i, { extra_price: parseFloat(e.target.value) || 0 })} />
-                      <Button variant="outline" size="icon" onClick={() => removeItem("kit_options", i)}><X className="w-4 h-4" /></Button>
+                    <div key={i} className="mb-3 rounded-xl border border-border p-3 space-y-2">
+                      <div className="flex gap-2">
+                        <Input className="flex-1" placeholder="Ex: Kit camiseta" value={k.name} onChange={(e) => updateItem("kit_options", i, { name: e.target.value })} />
+                        <Input className="w-32" type="number" step="0.01" placeholder="Adicional R$" value={k.extra_price ?? 0} onChange={(e) => updateItem("kit_options", i, { extra_price: parseFloat(e.target.value) || 0 })} />
+                        <Button variant="outline" size="icon" onClick={() => removeItem("kit_options", i)}><X className="w-4 h-4" /></Button>
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Tamanhos de camiseta (separados por vírgula)</Label>
+                          <Input
+                            placeholder="PP, P, M, G, GG, XG"
+                            value={Array.isArray((k as any).sizes) ? (k as any).sizes.join(", ") : ""}
+                            onChange={(e) =>
+                              updateItem("kit_options", i, {
+                                sizes: e.target.value.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
+                              })
+                            }
+                          />
+                          <p className="text-[11px] text-muted-foreground mt-1">Deixe vazio se este kit não tem camiseta.</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Tabela de medidas — imagem (opcional)</Label>
+                          <Input
+                            placeholder="https://... (imagem recomendada 1000×1000px)"
+                            value={(k as any).size_chart_url ?? ""}
+                            onChange={(e) => updateItem("kit_options", i, { size_chart_url: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Tabela de medidas — informações (opcional)</Label>
+                        <Textarea
+                          rows={2}
+                          placeholder="Ex: P — 50cm largura x 70cm altura..."
+                          value={(k as any).size_chart_info ?? ""}
+                          onChange={(e) => updateItem("kit_options", i, { size_chart_info: e.target.value })}
+                        />
+                      </div>
                     </div>
                   ))}
-                  <Button variant="outline" size="sm" onClick={() => addItem("kit_options", { name: "", extra_price: 0 })}><Plus className="w-4 h-4" /> Adicionar kit</Button>
+                  <Button variant="outline" size="sm" onClick={() => addItem("kit_options", { name: "", extra_price: 0, sizes: [] })}><Plus className="w-4 h-4" /> Adicionar kit</Button>
                 </Section>
               )}
+
 
               {/* Cupons */}
               {editing.internal_signup && (

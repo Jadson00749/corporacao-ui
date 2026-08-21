@@ -17,6 +17,7 @@ type Row = {
   user_id: string;
   event_id: string;
   kit_option: string;
+  shirt_size: string | null;
   coupon_code: string;
   team_name: string;
   events: { id: string; name: string; date: string; city: string } | null;
@@ -122,6 +123,19 @@ const AdminEventSignups = () => {
     );
   }, [baseFiltered]);
 
+  const shirtCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of baseFiltered) {
+      const sz = (r.shirt_size || "").trim().toUpperCase();
+      if (!sz) continue;
+      map.set(sz, (map.get(sz) ?? 0) + 1);
+    }
+    const order = ["PP", "P", "M", "G", "GG", "XG", "XGG"];
+    return Array.from(map.entries()).sort(
+      (a, b) => (order.indexOf(a[0]) === -1 ? 99 : order.indexOf(a[0])) - (order.indexOf(b[0]) === -1 ? 99 : order.indexOf(b[0]))
+    );
+  }, [baseFiltered]);
+
   const filtered = useMemo(
     () => (genderFilter === "all" ? baseFiltered : baseFiltered.filter((r) => rowGender(r) === genderFilter)),
     [baseFiltered, genderFilter]
@@ -144,11 +158,11 @@ const AdminEventSignups = () => {
   };
 
   const exportCsv = () => {
-    const headers = ["Prova", "Data", "Atleta", "CPF", "E-mail", "WhatsApp", "Categoria", "Kit", "Cupom", "Equipe", "Cidade", "Status", "Inscrito em"];
+    const headers = ["Prova", "Data", "Atleta", "CPF", "E-mail", "WhatsApp", "Categoria", "Kit", "Camiseta", "Cupom", "Equipe", "Cidade", "Status", "Inscrito em"];
     const rows = filtered.map((r) => [
       r.events?.name || "", r.events?.date || "",
       r.profiles?.full_name || "", r.profiles?.cpf || "", r.profiles?.email || "",
-      r.profiles?.whatsapp || "", r.category, formatKitOption(r.kit_option || ""), r.coupon_code || "",
+      r.profiles?.whatsapp || "", r.category, formatKitOption(r.kit_option || ""), r.shirt_size || "", r.coupon_code || "",
       r.team_name || r.profiles?.team_name || "",
       `${r.profiles?.city || ""} ${r.profiles?.state || ""}`.trim(),
       r.status, new Date(r.created_at).toLocaleString("pt-BR"),
@@ -210,6 +224,19 @@ const AdminEventSignups = () => {
         ))}
       </div>
 
+      {shirtCounts.length > 0 && (
+        <div className="rounded-xl border border-border p-4">
+          <h2 className="text-sm font-semibold mb-2">Camisetas {eventFilter !== "all" ? "(prova filtrada)" : "(todas as provas)"}</h2>
+          <div className="flex flex-wrap gap-2">
+            {shirtCounts.map(([size, count]) => (
+              <span key={size} className="rounded-lg border border-border bg-secondary/40 px-3 py-1.5 text-sm">
+                <span className="font-bold">{size}</span> — {count}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <Skeleton className="h-64" />
       ) : filtered.length === 0 ? (
@@ -241,9 +268,10 @@ const AdminEventSignups = () => {
                   </td>
                   <td className="p-3">
                     <div>{r.category || "-"}</div>
-                    {(r.kit_option || r.team_name || r.coupon_code) && (
+                    {(r.kit_option || r.shirt_size || r.team_name || r.coupon_code) && (
                       <div className="text-xs text-muted-foreground">
                         {r.kit_option && <>Kit: {formatKitOption(r.kit_option)} </>}
+                        {r.shirt_size && <>· Camiseta: <span className="font-semibold text-foreground">{r.shirt_size}</span> </>}
                         {r.team_name && <>· Equipe: {r.team_name} </>}
                         {r.coupon_code && <>· Cupom: {r.coupon_code}</>}
                       </div>

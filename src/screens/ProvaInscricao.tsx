@@ -8,13 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt } from "lucide-react";
+import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt, Ruler } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
 import {
   activeLote,
@@ -31,7 +32,7 @@ import { PixPayment } from "@/components/site/PixPayment";
 
 type Distance = { distance: string; price?: number };
 type AgeBracket = { min: number; max: number };
-type KitOption = { name: string; extra_price?: number };
+type KitOption = { name: string; extra_price?: number; sizes?: string[]; size_chart_url?: string; size_chart_info?: string };
 type Coupon = { code: string; description?: string };
 
 const calcAge = (birth?: string | null) => {
@@ -129,6 +130,8 @@ const ProvaInscricao = () => {
   const [gender, setGender] = useState("");
   const [bracket, setBracket] = useState("");
   const [selectedKits, setSelectedKits] = useState<string[]>([]);
+  const [shirtSize, setShirtSize] = useState("");
+  const [sizeChartKit, setSizeChartKit] = useState<KitOption | null>(null);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [teamName, setTeamName] = useState("");
@@ -188,7 +191,7 @@ const ProvaInscricao = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("event_signups")
-        .select("id, category, status, kit_option, team_name, coupon_code")
+        .select("*")
         .eq("event_id", id!)
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
@@ -258,6 +261,19 @@ const ProvaInscricao = () => {
     [event]
   );
 
+  // Kit selecionado que possui camiseta (tamanhos configurados pelo admin)
+  const shirtKit = useMemo(
+    () => kitOptions.find((k) => selectedKits.includes(k.name) && Array.isArray(k.sizes) && k.sizes.length > 0) || null,
+    [kitOptions, selectedKits]
+  );
+  const availableSizes = shirtKit?.sizes ?? [];
+  useEffect(() => {
+    if (shirtSize && !availableSizes.includes(shirtSize)) setShirtSize("");
+  }, [availableSizes.join("|")]);
+  useEffect(() => { if (shirtSize && errors.shirtSize) setErrors((e) => ({ ...e, shirtSize: false })); }, [shirtSize]);
+
+
+
   // Auto-pick when there's only one option
   useEffect(() => { if (distances.length === 1) setDistance(distances[0].distance); }, [distances]);
   useEffect(() => { if (kitOptions.length === 1) setSelectedKits([kitOptions[0].name]); }, [kitOptions]);
@@ -310,15 +326,16 @@ const ProvaInscricao = () => {
       distance && `Modalidade: ${distance}`,
       (gender || bracket) && `Categoria: ${[gender, bracket && `${bracket} anos`].filter(Boolean).join(" · ")}`,
       selectedKits.length && `Kit: ${selectedKits.join(", ")}`,
+      shirtSize && `Tamanho da camiseta: ${shirtSize}`,
       total > 0 && `Valor: ${brl(total)}`,
       "",
       "Gostaria de enviar meu comprovante PIX.",
     ].filter((l) => l !== false && l !== 0 && l !== undefined && l !== null && l !== "" || l === "");
     return (lines as string[]).join("\n");
-  }, [profile?.full_name, event?.name, distance, gender, bracket, selectedKits, total]);
+  }, [profile?.full_name, event?.name, distance, gender, bracket, selectedKits, shirtSize, total]);
 
   // Retomar rascunho pendente sem criar nova inscrição
-  const resumeSignup = (signup: { id: string; category: string | null; kit_option?: string | null; team_name?: string | null; coupon_code?: string | null }) => {
+  const resumeSignup = (signup: { id: string; category: string | null; kit_option?: string | null; team_name?: string | null; coupon_code?: string | null; shirt_size?: string | null }) => {
     const parts = (signup.category || "").split("·").map((p) => p.trim()).filter(Boolean);
     const savedDistance = parts.find((p) => distances.some((d) => d.distance === p));
     if (savedDistance) {
@@ -335,6 +352,8 @@ const ProvaInscricao = () => {
       if (signup.kit_option) kits = [signup.kit_option];
     }
     if (kits.length) setSelectedKits(kits);
+    const savedSize = (signup as any)?.shirt_size;
+    if (savedSize) setShirtSize(savedSize);
     if (signup.team_name) setTeamName(signup.team_name);
     if (signup.coupon_code) {
       const found = coupons.find((c) => c.code.toUpperCase() === signup.coupon_code!.toUpperCase());
@@ -385,6 +404,7 @@ const ProvaInscricao = () => {
     const missing: string[] = [];
     if (distances.length > 0 && !distance) { newErrors.distance = true; missing.push("Modalidade"); }
     if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missing.push("Kit"); }
+    if (availableSizes.length > 0 && !shirtSize) { newErrors.shirtSize = true; missing.push("Tamanho da camiseta"); }
     if (missing.length) {
       setErrors(newErrors);
       toast.error("Selecione para continuar", { description: missing.join(" · "), position: "top-center" });
@@ -403,6 +423,7 @@ const ProvaInscricao = () => {
     if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo (complete no seu cadastro)"); }
     if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Data de nascimento (complete no seu cadastro)"); }
     if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Opção de kit"); }
+    if (availableSizes.length > 0 && !shirtSize) { newErrors.shirtSize = true; missingLabels.push("Tamanho da camiseta"); }
     if (!acceptedTerms) { newErrors.terms = true; missingLabels.push("Aceitar os termos"); }
 
     if (missingLabels.length) {
@@ -427,6 +448,7 @@ const ProvaInscricao = () => {
       status: "pendente",
       notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: valor fixo ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
       kit_option: selectedKits.length ? JSON.stringify(selectedKits) : "",
+      shirt_size: shirtSize || null,
       coupon_code: appliedCoupon?.code || "",
       team_name: teamName,
       accepted_event_terms_at: new Date().toISOString(),
@@ -456,13 +478,13 @@ const ProvaInscricao = () => {
     let error = null as { code?: string; message: string } | null;
     if (existing) {
       // Retoma o rascunho pendente/cancelado: atualiza, nunca duplica
-      const res = await supabase.from("event_signups").update(payload).eq("id", existing.id);
+      const res = await supabase.from("event_signups").update(payload as any).eq("id", existing.id);
       error = res.error;
       if (!error) setSignupId(existing.id);
     } else {
       const res = await supabase
         .from("event_signups")
-        .insert({ user_id: user.id, event_id: event.id, ...payload })
+        .insert({ user_id: user.id, event_id: event.id, ...payload } as any)
         .select("id")
         .maybeSingle();
       error = res.error;
@@ -507,6 +529,12 @@ const ProvaInscricao = () => {
               <span className="font-medium text-right">{selectedKits.join(", ") || "—"}</span>
             </div>
           )}
+        {shirtSize && (
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground">Camiseta</span>
+            <span className="font-medium text-right">{shirtSize}</span>
+          </div>
+        )}
         {(gender || bracket) && (
           <div className="flex justify-between gap-3">
             <span className="text-muted-foreground">Categoria</span>
@@ -569,6 +597,7 @@ const ProvaInscricao = () => {
                   <div className="bg-secondary/40 rounded-xl p-4 space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-muted-foreground">Prova</span><span className="font-medium">{event.name}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Categoria</span><span className="font-medium">{categoryLabel}</span></div>
+                    {shirtSize && <div className="flex justify-between"><span className="text-muted-foreground">Camiseta</span><span className="font-medium">{shirtSize}</span></div>}
                     {total > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
                   </div>
 
@@ -743,8 +772,53 @@ const ProvaInscricao = () => {
                                 );
                               })}
                             </div>
+
+                            {availableSizes.length > 0 && (
+                              <div
+                                data-invalid={errors.shirtSize || undefined}
+                                className={`mt-4 rounded-xl border p-4 ${errors.shirtSize ? "border-destructive" : "border-border"} bg-secondary/20`}
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                                  <h4 className="text-sm font-semibold">Escolha o tamanho da camiseta</h4>
+                                  {(shirtKit?.size_chart_url || shirtKit?.size_chart_info) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSizeChartKit(shirtKit)}
+                                      className="inline-flex items-center gap-1 text-xs text-brand underline underline-offset-2"
+                                    >
+                                      <Ruler className="w-3.5 h-3.5" /> Tabela de medidas
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {availableSizes.map((sz) => {
+                                    const active = shirtSize === sz;
+                                    return (
+                                      <button
+                                        key={sz}
+                                        type="button"
+                                        onClick={() => setShirtSize(sz)}
+                                        className={[
+                                          "min-w-[64px] min-h-[52px] px-4 rounded-xl border text-base font-bold transition-all",
+                                          active
+                                            ? "border-brand bg-brand text-brand-foreground"
+                                            : "border-border bg-background hover:border-brand/60",
+                                        ].join(" ")}
+                                      >
+                                        {sz}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                {errors.shirtSize && (
+                                  <p className="mt-2 text-xs text-destructive">Selecione um tamanho para continuar.</p>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
+
+
 
                         <Button onClick={goStep2} variant="brand" size="lg" className="w-full sm:w-auto sm:min-w-56">
                           Continuar
@@ -870,6 +944,25 @@ const ProvaInscricao = () => {
           )}
         </div>
       </section>
+
+      <Dialog open={!!sizeChartKit} onOpenChange={(o) => !o && setSizeChartKit(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Tabela de medidas</DialogTitle>
+          </DialogHeader>
+          {sizeChartKit?.size_chart_url && (
+            <img
+              src={sizeChartKit.size_chart_url}
+              alt="Tabela de medidas da camiseta"
+              className="w-full rounded-xl border border-border"
+              loading="lazy"
+            />
+          )}
+          {sizeChartKit?.size_chart_info && (
+            <p className="whitespace-pre-line text-sm text-muted-foreground">{sizeChartKit.size_chart_info}</p>
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
