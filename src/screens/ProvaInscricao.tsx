@@ -181,6 +181,29 @@ const ProvaInscricao = () => {
     },
   });
 
+  // Inscrições já existentes desta pessoa nesta prova (rascunhos retomáveis)
+  const { data: myEventSignups = [] } = useQuery({
+    queryKey: ["event_signup_existing", id, user?.id],
+    enabled: !!id && !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("event_signups")
+        .select("id, category, status, kit_option, team_name, coupon_code")
+        .eq("event_id", id!)
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const pendingSignup = useMemo(
+    () => myEventSignups.find((s) => s.status !== "confirmada" && s.status !== "cancelada") ?? null,
+    [myEventSignups]
+  );
+
+
+
   const distances = useMemo<Distance[]>(() => {
     if (!event) return [];
     const arr = ((event.distances as Distance[]) || []).filter(
