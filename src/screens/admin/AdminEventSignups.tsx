@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
+import { exportSignupsXlsx } from "@/lib/exportSignupsXlsx";
 import { toast } from "sonner";
+
 
 type Row = {
   id: string;
@@ -60,7 +62,7 @@ const AdminEventSignups = () => {
   const { data: events = [] } = useQuery({
     queryKey: ["admin_events_list"],
     queryFn: async () => {
-      const { data } = await supabase.from("events").select("id,name").order("date", { ascending: false });
+      const { data } = await supabase.from("events").select("id,name,distances").order("date", { ascending: false });
       return data ?? [];
     },
   });
@@ -79,7 +81,7 @@ const AdminEventSignups = () => {
       if (userIds.length) {
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("user_id,full_name,cpf,email,whatsapp,team_name,city,state,gender")
+          .select("user_id,full_name,cpf,email,whatsapp,team_name,city,state,gender,birth_date")
           .in("user_id", userIds);
         const map = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
         rows.forEach((r) => { r.profiles = map.get(r.user_id) ?? null; });
@@ -157,6 +159,21 @@ const AdminEventSignups = () => {
     }
   };
 
+  const [exporting, setExporting] = useState(false);
+
+  const exportXlsx = async () => {
+    try {
+      setExporting(true);
+      const eventName = eventFilter !== "all" ? (events as any[]).find((e) => e.id === eventFilter)?.name : undefined;
+      await exportSignupsXlsx(filtered as any, events as any, eventName);
+      toast.success("Planilha gerada");
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao gerar planilha");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const exportCsv = () => {
     const headers = ["Prova", "Data", "Atleta", "CPF", "E-mail", "WhatsApp", "Categoria", "Kit", "Camiseta", "Cupom", "Equipe", "Cidade", "Status", "Inscrito em"];
     const rows = filtered.map((r) => [
@@ -179,7 +196,12 @@ const AdminEventSignups = () => {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-bold">Inscrições em provas</h1>
-        <Button onClick={exportCsv} variant="outline"><Download className="w-4 h-4" /> Exportar CSV</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={exportXlsx} disabled={exporting}>
+            <FileSpreadsheet className="w-4 h-4" /> {exporting ? "Gerando..." : "Exportar Excel"}
+          </Button>
+          <Button onClick={exportCsv} variant="outline"><Download className="w-4 h-4" /> Exportar CSV</Button>
+        </div>
       </div>
 
       <div className="grid sm:grid-cols-3 gap-3">
