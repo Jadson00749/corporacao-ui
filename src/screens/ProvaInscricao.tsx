@@ -702,19 +702,19 @@ const ProvaInscricao = () => {
                                     type="button"
                                     onClick={() => setDistance(d.distance)}
                                     className={[
-                                      "w-full text-left rounded-xl px-4 py-3 border transition-all flex items-center justify-between gap-3",
+                                      "w-full min-h-[56px] text-left rounded-xl px-4 py-3 border transition-all flex items-center justify-between gap-3",
                                       active
                                         ? "border-brand bg-brand/10 ring-1 ring-brand/40"
                                         : "border-border bg-secondary/30 hover:bg-secondary/60",
                                     ].join(" ")}
                                   >
-                                    <span className="font-semibold">{cleanDistanceLabel(d.distance)}</span>
+                                    <span className="min-w-0 flex-1 font-semibold break-words">{cleanDistanceLabel(d.distance)}</span>
                                     {(fixed60 ? price > 0 : base > 0) && (
-                                      <span className="text-sm">
+                                      <span className="shrink-0 text-right text-sm leading-tight">
                                         {fixed60 ? (
-                                          <span className="text-success mr-1">60+</span>
+                                          <span className="block text-success text-xs">60+</span>
                                         ) : (
-                                          <span className="text-muted-foreground mr-1">{loteOf(d)}º lote</span>
+                                          <span className="block text-muted-foreground text-xs">{loteOf(d)}º lote</span>
                                         )}
                                         <span className="font-bold text-brand">{brl(price)}</span>
                                       </span>
