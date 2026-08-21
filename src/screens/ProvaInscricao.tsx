@@ -437,38 +437,25 @@ const ProvaInscricao = () => {
                     {total > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
                   </div>
 
-                  {(payment?.pix_key || payment?.pix_recipient || payment?.payment_instructions) && (
-                    <div className="border border-brand/40 bg-brand/5 rounded-xl p-4 space-y-3">
-                      <h3 className="font-display font-bold text-brand">Pagamento via PIX</h3>
-                      {payment?.pix_recipient && (
-                        <div className="text-sm"><span className="text-muted-foreground">Recebedor: </span><span className="font-medium">{payment.pix_recipient}</span></div>
-                      )}
-                      {payment?.pix_key && (
-                        <div>
-                          <div className="text-xs text-muted-foreground mb-1">Chave PIX</div>
-                          <div className="flex gap-2">
-                            <Input readOnly value={payment.pix_key} className="font-mono text-sm" />
-                            <Button type="button" variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(payment.pix_key!); toast.success("Chave copiada!"); }}>
-                              <Copy className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                      {payment?.payment_instructions && (
-                        <p className="text-sm whitespace-pre-line text-foreground/80">{payment.payment_instructions}</p>
-                      )}
-                    </div>
-                  )}
+                  <PixPayment
+                    pixKey={payment?.pix_key || (event as any)?.pix_key}
+                    recipient={payment?.pix_recipient || (event as any)?.pix_recipient}
+                    city={event.city}
+                    amount={total}
+                    txid={`INSC${String(event.id).replace(/\D/g, "").slice(0, 10)}`}
+                    instructions={payment?.payment_instructions || (event as any)?.payment_instructions}
+                  />
 
                   <Button asChild variant="brand" size="lg" className="w-full">
                     <a
-                      href={buildWhats(`Olá! Sou ${profile?.full_name || "atleta"} e fiz minha inscrição na ${event.name} na categoria ${categoryLabel}${selectedKits.length ? " com kit " + selectedKits.join(", ") : ""}. Gostaria de enviar o comprovante do PIX.`)}
+                      href={buildWhats(whatsMessage)}
                       target="_blank"
                       rel="noreferrer"
                     >
                       <MessageCircle className="w-4 h-4" /> Enviar comprovante no WhatsApp
                     </a>
                   </Button>
+
 
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <Button asChild variant="outline" size="sm"><Link to="/minha-conta">Ver minhas inscrições</Link></Button>
