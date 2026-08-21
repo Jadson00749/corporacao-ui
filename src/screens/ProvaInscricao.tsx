@@ -577,7 +577,7 @@ const ProvaInscricao = () => {
                     recipient={payment?.pix_recipient || (event as any)?.pix_recipient}
                     city={event.city}
                     amount={total}
-                    txid={`INSC${String(event.id).replace(/\D/g, "").slice(0, 10)}`}
+                    txid={`INSC${String(signupId || event.id).replace(/\D/g, "").slice(0, 10)}`}
                     instructions={payment?.payment_instructions || (event as any)?.payment_instructions}
                   />
 
