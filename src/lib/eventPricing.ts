@@ -85,3 +85,39 @@ export const formatDateBR = (iso: string) => {
   const [y, m, dd] = iso.split("-");
   return `${dd}/${m}/${y}`;
 };
+
+// ---------- Benefício 60+ ----------
+// A regra 60+ deixa de ser uma modalidade separada: é um desconto automático
+// de 50% sobre o preço do lote vigente, baseado em profiles.birth_date.
+
+export const SENIOR_MIN_AGE = 60;
+export const SENIOR_DISCOUNT_RATE = 0.5;
+
+export const calcAgeFromBirth = (birth?: string | null): number | null => {
+  if (!birth) return null;
+  const d = new Date(birth.length <= 10 ? `${birth}T12:00:00` : birth);
+  if (Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  return age;
+};
+
+export const isSenior = (birth?: string | null) => {
+  const age = calcAgeFromBirth(birth);
+  return age !== null && age >= SENIOR_MIN_AGE;
+};
+
+export const applySeniorDiscount = (price: number, senior: boolean) =>
+  senior ? Math.round(price * (1 - SENIOR_DISCOUNT_RATE) * 100) / 100 : price;
+
+/** Modalidades legadas criadas como "(60 anos ou mais)" não são mais exibidas. */
+const SENIOR_LABEL_RE = /(60\s*anos\s*ou\s*mais|\b60\s*\+|melhor\s*idade)/i;
+
+export const isSeniorOnlyDistance = (name?: string | null) =>
+  !!name && SENIOR_LABEL_RE.test(name);
+
+export const visibleDistances = <T extends { distance?: string }>(list: T[]): T[] =>
+  (list ?? []).filter((d) => !isSeniorOnlyDistance(d?.distance));
+
