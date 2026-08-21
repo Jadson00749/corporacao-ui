@@ -183,7 +183,6 @@ const AdminEventSignups = () => {
           <Button onClick={exportXlsx} disabled={exporting}>
             <FileSpreadsheet className="w-4 h-4" /> {exporting ? "Gerando..." : "Exportar Excel"}
           </Button>
-          <Button onClick={exportCsv} variant="outline"><Download className="w-4 h-4" /> Exportar CSV</Button>
         </div>
       </div>
 
