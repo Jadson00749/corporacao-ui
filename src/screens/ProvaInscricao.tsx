@@ -325,12 +325,13 @@ const ProvaInscricao = () => {
       distance && `Modalidade: ${distance}`,
       (gender || bracket) && `Categoria: ${[gender, bracket && `${bracket} anos`].filter(Boolean).join(" · ")}`,
       selectedKits.length && `Kit: ${selectedKits.join(", ")}`,
+      shirtSize && `Tamanho da camiseta: ${shirtSize}`,
       total > 0 && `Valor: ${brl(total)}`,
       "",
       "Gostaria de enviar meu comprovante PIX.",
     ].filter((l) => l !== false && l !== 0 && l !== undefined && l !== null && l !== "" || l === "");
     return (lines as string[]).join("\n");
-  }, [profile?.full_name, event?.name, distance, gender, bracket, selectedKits, total]);
+  }, [profile?.full_name, event?.name, distance, gender, bracket, selectedKits, shirtSize, total]);
 
   // Retomar rascunho pendente sem criar nova inscrição
   const resumeSignup = (signup: { id: string; category: string | null; kit_option?: string | null; team_name?: string | null; coupon_code?: string | null }) => {
@@ -400,6 +401,7 @@ const ProvaInscricao = () => {
     const missing: string[] = [];
     if (distances.length > 0 && !distance) { newErrors.distance = true; missing.push("Modalidade"); }
     if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missing.push("Kit"); }
+    if (availableSizes.length > 0 && !shirtSize) { newErrors.shirtSize = true; missing.push("Tamanho da camiseta"); }
     if (missing.length) {
       setErrors(newErrors);
       toast.error("Selecione para continuar", { description: missing.join(" · "), position: "top-center" });
@@ -418,6 +420,7 @@ const ProvaInscricao = () => {
     if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo (complete no seu cadastro)"); }
     if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Data de nascimento (complete no seu cadastro)"); }
     if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Opção de kit"); }
+    if (availableSizes.length > 0 && !shirtSize) { newErrors.shirtSize = true; missingLabels.push("Tamanho da camiseta"); }
     if (!acceptedTerms) { newErrors.terms = true; missingLabels.push("Aceitar os termos"); }
 
     if (missingLabels.length) {
@@ -442,6 +445,7 @@ const ProvaInscricao = () => {
       status: "pendente",
       notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: valor fixo ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
       kit_option: selectedKits.length ? JSON.stringify(selectedKits) : "",
+      shirt_size: shirtSize || null,
       coupon_code: appliedCoupon?.code || "",
       team_name: teamName,
       accepted_event_terms_at: new Date().toISOString(),
