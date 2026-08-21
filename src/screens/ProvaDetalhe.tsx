@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BannerFrame } from "@/components/site/BannerFrame";
-import { bannerAspectClass } from "@/lib/bannerAspect";
+import { bannerAspectClass, DESKTOP_BANNER_CLASS } from "@/lib/bannerAspect";
 import { PublicSignupList, type PublicSignup } from "@/components/site/PublicSignupList";
 
 
@@ -177,7 +177,7 @@ const ProvaDetalhe = () => {
                       src={banner}
                       alt={`Banner ${event.name}`}
                       loading="eager"
-                      className={cn("hidden md:block", bannerAspectClass(bannerRatio))}
+                      className={cn("hidden md:block", DESKTOP_BANNER_CLASS)}
                     />
                   </>
                 ) : (
