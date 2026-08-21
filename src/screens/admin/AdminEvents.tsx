@@ -45,6 +45,7 @@ const emptyEvent = () => ({
 const AdminEvents = () => {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<any | null>(null);
+  const [customSize, setCustomSize] = useState<Record<number, string>>({});
 
   const { data: rows = [], refetch, isLoading } = useQuery({
     queryKey: ["admin_events"],
