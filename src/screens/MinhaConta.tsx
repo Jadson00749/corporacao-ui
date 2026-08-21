@@ -31,10 +31,16 @@ import {
   CheckCircle2,
   UserRound,
   ClipboardList,
+  Package,
+  Shirt,
+  Clock,
+  Timer,
 } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
 import { WelcomeDialog } from "@/components/site/WelcomeDialog";
+import { OnboardingTour } from "@/components/site/OnboardingTour";
 import { IncompleteProfileBanner } from "@/components/site/IncompleteProfileBanner";
+import type { EventSignup } from "@/hooks/useProfile";
 
 const today = () => new Date();
 const dateFromYMD = (d: string) => new Date(d + "T12:00:00");
