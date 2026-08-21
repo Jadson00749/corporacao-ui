@@ -457,6 +457,18 @@ const ProvaInscricao = () => {
                           <p className="text-sm text-muted-foreground mt-1">Selecione a modalidade e o kit para ver o valor da inscrição.</p>
                         </div>
 
+                        {senior && (
+                          <div className="rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-sm">
+                            <span className="font-semibold text-success">Benefício 60+ aplicado</span>{" "}
+                            <span className="text-muted-foreground">
+                              — {Math.round(SENIOR_DISCOUNT_RATE * 100)}% de desconto automático sobre o valor do lote
+                              vigente, conforme sua data de nascimento no cadastro.
+                            </span>
+                          </div>
+                        )}
+
+
+
                         {distances.length > 0 && (
                           <div
                             data-invalid={errors.distance || undefined}
