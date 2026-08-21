@@ -148,15 +148,14 @@ const AdminEvents = () => {
 
 
   const uploadDocument = async (idx: number, file: File) => {
-    const path = `events/docs/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const { error } = await supabase.storage.from("site-images").upload(path, file);
-    if (error) return toast.error(error.message);
-    const { data } = supabase.storage.from("site-images").getPublicUrl(path);
+    const url = await uploadToBanners(file, "events/documents");
+    if (!url) return;
     const next = [...editing.documents];
-    next[idx] = { ...next[idx], url: data.publicUrl, label: next[idx].label || file.name.replace(/\.[^.]+$/, "") };
+    next[idx] = { ...next[idx], url, label: next[idx].label || file.name.replace(/\.[^.]+$/, "") };
     setEditing({ ...editing, documents: next });
     toast.success("Documento enviado");
   };
+
 
   // Helpers for editing distances/brackets/kit/coupons
   const addItem = (key: string, item: any) =>
