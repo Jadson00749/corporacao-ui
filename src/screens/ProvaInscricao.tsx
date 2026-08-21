@@ -8,13 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt } from "lucide-react";
+import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt, Ruler } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
 import {
   activeLote,
@@ -190,7 +191,7 @@ const ProvaInscricao = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("event_signups")
-        .select("id, category, status, kit_option, team_name, coupon_code")
+        .select("*")
         .eq("event_id", id!)
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
@@ -334,7 +335,7 @@ const ProvaInscricao = () => {
   }, [profile?.full_name, event?.name, distance, gender, bracket, selectedKits, shirtSize, total]);
 
   // Retomar rascunho pendente sem criar nova inscrição
-  const resumeSignup = (signup: { id: string; category: string | null; kit_option?: string | null; team_name?: string | null; coupon_code?: string | null }) => {
+  const resumeSignup = (signup: { id: string; category: string | null; kit_option?: string | null; team_name?: string | null; coupon_code?: string | null; shirt_size?: string | null }) => {
     const parts = (signup.category || "").split("·").map((p) => p.trim()).filter(Boolean);
     const savedDistance = parts.find((p) => distances.some((d) => d.distance === p));
     if (savedDistance) {
@@ -351,6 +352,8 @@ const ProvaInscricao = () => {
       if (signup.kit_option) kits = [signup.kit_option];
     }
     if (kits.length) setSelectedKits(kits);
+    const savedSize = (signup as any)?.shirt_size;
+    if (savedSize) setShirtSize(savedSize);
     if (signup.team_name) setTeamName(signup.team_name);
     if (signup.coupon_code) {
       const found = coupons.find((c) => c.code.toUpperCase() === signup.coupon_code!.toUpperCase());
@@ -475,13 +478,13 @@ const ProvaInscricao = () => {
     let error = null as { code?: string; message: string } | null;
     if (existing) {
       // Retoma o rascunho pendente/cancelado: atualiza, nunca duplica
-      const res = await supabase.from("event_signups").update(payload).eq("id", existing.id);
+      const res = await supabase.from("event_signups").update(payload as any).eq("id", existing.id);
       error = res.error;
       if (!error) setSignupId(existing.id);
     } else {
       const res = await supabase
         .from("event_signups")
-        .insert({ user_id: user.id, event_id: event.id, ...payload })
+        .insert({ user_id: user.id, event_id: event.id, ...payload } as any)
         .select("id")
         .maybeSingle();
       error = res.error;
@@ -526,6 +529,12 @@ const ProvaInscricao = () => {
               <span className="font-medium text-right">{selectedKits.join(", ") || "—"}</span>
             </div>
           )}
+        {shirtSize && (
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground">Camiseta</span>
+            <span className="font-medium text-right">{shirtSize}</span>
+          </div>
+        )}
         {(gender || bracket) && (
           <div className="flex justify-between gap-3">
             <span className="text-muted-foreground">Categoria</span>
@@ -588,6 +597,7 @@ const ProvaInscricao = () => {
                   <div className="bg-secondary/40 rounded-xl p-4 space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-muted-foreground">Prova</span><span className="font-medium">{event.name}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Categoria</span><span className="font-medium">{categoryLabel}</span></div>
+                    {shirtSize && <div className="flex justify-between"><span className="text-muted-foreground">Camiseta</span><span className="font-medium">{shirtSize}</span></div>}
                     {total > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
                   </div>
 
