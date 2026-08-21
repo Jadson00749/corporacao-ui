@@ -19,10 +19,10 @@ import { useWhatsappLink } from "@/contexts/SettingsContext";
 import {
   activeLote,
   currentPrice,
-  applySeniorDiscount,
+  effectivePrice,
+  hasSeniorPrice,
   isSenior,
   isSeniorOnlyDistance,
-  SENIOR_DISCOUNT_RATE,
 } from "@/lib/eventPricing";
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 
