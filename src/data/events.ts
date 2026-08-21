@@ -12,6 +12,7 @@ export type EventDistance = {
   lote2_starts_at?: string | null;
   price_lote3?: number;
   lote3_starts_at?: string | null;
+  price_60_plus?: number;
 };
 export type EventAgeBracket = { min: number; max: number };
 export type EventKitOption = { name: string; extra_price?: number };
