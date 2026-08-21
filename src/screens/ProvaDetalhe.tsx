@@ -483,7 +483,7 @@ const ProvaDetalhe = () => {
           {!loadingSignups && signups.length === 0 && (
             <div className="py-8 text-center text-muted-foreground">Nenhum inscrito até o momento.</div>
           )}
-          {!loadingSignups && signups.length > 0 && (() => {
+          {!loadingSignups && (() => {
             const totals = signups.reduce(
               (acc, s) => {
                 const g = signupGender(s);
@@ -494,31 +494,69 @@ const ProvaDetalhe = () => {
               { F: 0, M: 0 }
             );
 
-            const filtered =
-              genderFilter === "all"
-                ? signups
-                : signups.filter((s) => signupGender(s) === genderFilter);
+            // Estrutura oficial da prova (mesmo sem inscritos)
+            const distanceList: string[] = prices.map((d: any) => String(d.distance));
+            const genderList: { label: string; code: "F" | "M" | "O" }[] = (
+              (Array.isArray(event.genders) ? (event.genders as string[]) : ["Masculino", "Feminino"]) as string[]
+            )
+              .filter((g) => g && g.trim())
+              .map((g) => ({ label: g, code: normalizeGender(g) }));
+            const cfgBrackets = (Array.isArray(event.age_brackets) ? (event.age_brackets as any[]) : []).filter(
+              (b) => b && Number.isFinite(Number(b.min)) && Number.isFinite(Number(b.max))
+            );
+            const bracketList = cfgBrackets.length
+              ? cfgBrackets.map((b: any) => ({ label: `${b.min}–${b.max} anos`, min: Number(b.min), max: Number(b.max) }))
+              : DEFAULT_AGE_BRACKETS.map((b) => ({ label: b.label, min: b.min, max: b.max }));
 
-            // Agrupa por distância e depois por faixa etária
-            const grouped: Record<string, Record<string, PublicSignup[]>> = {};
-            for (const s of filtered) {
-              const dist = extractDistance(s.category);
-              const bracket = getAgeBracket(s.age);
-              grouped[dist] = grouped[dist] || {};
-              grouped[dist][bracket] = grouped[dist][bracket] || [];
-              grouped[dist][bracket].push(s);
+            const matchDistance = (cat: string) => {
+              const raw = extractDistance(cat);
+              return (
+                distanceList.find((d) => d.toUpperCase() === raw) ||
+                distanceList.find((d) => d.toUpperCase().includes(raw) || raw.includes(d.toUpperCase())) ||
+                null
+              );
+            };
+            const bracketOf = (s: PublicSignup) => {
+              const m = (s.category || "").match(/(\d{1,3})\s*[-–a]\s*(\d{1,3})/);
+              if (m) {
+                const found = bracketList.find((b) => b.min === Number(m[1]) && b.max === Number(m[2]));
+                if (found) return found.label;
+              }
+              if (s.age != null) {
+                const found = bracketList.find((b) => s.age! >= b.min && s.age! <= b.max);
+                if (found) return found.label;
+              }
+              return null;
+            };
+
+            // Mapa: distância -> gênero -> faixa -> inscritos
+            const grid: Record<string, Record<string, Record<string, PublicSignup[]>>> = {};
+            const ensure = (d: string, g: string, b: string) => {
+              grid[d] = grid[d] || {};
+              grid[d][g] = grid[d][g] || {};
+              grid[d][g][b] = grid[d][g][b] || [];
+              return grid[d][g][b];
+            };
+            for (const d of distanceList)
+              for (const g of genderList) for (const b of bracketList) ensure(d, g.label, b.label);
+
+            const orphans: PublicSignup[] = [];
+            for (const s of signups) {
+              const d = matchDistance(s.category);
+              const gCode = signupGender(s);
+              const g = genderList.find((x) => x.code === gCode)?.label;
+              const b = bracketOf(s);
+              if (!d || !g || !b) {
+                orphans.push(s);
+                continue;
+              }
+              ensure(d, g, b).push(s);
             }
 
-            // Ordena distâncias (5K, 10K, 21K, 42K) e faixas etárias pela ordem padrão
-            const distOrder = Object.keys(grouped).sort((a, b) => {
-              const na = parseInt(a) || 999;
-              const nb = parseInt(b) || 999;
-              return na - nb;
-            });
-            const bracketOrder = (label: string) => {
-              const idx = DEFAULT_AGE_BRACKETS.findIndex((b) => b.label === label);
-              return idx === -1 ? 999 : idx;
-            };
+            const visible = (s: PublicSignup) => genderFilter === "all" || signupGender(s) === genderFilter;
+            const visibleGenders = genderList.filter(
+              (g) => genderFilter === "all" || g.code === genderFilter
+            );
 
             const filterBtn = (value: GenderFilter, label: string, count?: number) => (
               <button
@@ -533,15 +571,12 @@ const ProvaDetalhe = () => {
                 )}
               >
                 {label}
-                {typeof count === "number" && (
-                  <span className="ml-1.5 opacity-70">({count})</span>
-                )}
+                {typeof count === "number" && <span className="ml-1.5 opacity-70">({count})</span>}
               </button>
             );
 
             return (
               <div className="space-y-6">
-                {/* Filtros de sexo */}
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mr-1">
                     Filtrar:
@@ -551,69 +586,103 @@ const ProvaDetalhe = () => {
                   {filterBtn("M", "Masculino", totals.M)}
                 </div>
 
-                {distOrder.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Somente inscrições confirmadas aparecem nesta lista.
+                </p>
+
+                {distanceList.length === 0 && (
                   <div className="py-6 text-center text-sm text-muted-foreground">
-                    Nenhum inscrito nesse filtro.
+                    Nenhuma modalidade configurada para esta prova.
                   </div>
                 )}
 
-                {distOrder.map((dist) => {
-                  const brackets = grouped[dist];
-                  const total = Object.values(brackets).reduce((acc, arr) => acc + arr.length, 0);
-                  const sortedBrackets = Object.keys(brackets).sort(
-                    (a, b) => bracketOrder(a) - bracketOrder(b)
+                {distanceList.map((dist) => {
+                  const totalDist = visibleGenders.reduce(
+                    (acc, g) =>
+                      acc +
+                      bracketList.reduce((a, b) => a + (grid[dist]?.[g.label]?.[b.label]?.filter(visible).length ?? 0), 0),
+                    0
                   );
-
                   return (
                     <div key={dist} className="space-y-4">
-                      {/* Cabeçalho da distância */}
                       <div className="flex items-baseline gap-2 pb-1 border-b border-brand/30">
-                        <h2 className="font-display font-bold text-base uppercase tracking-wide text-brand">
-                          {dist}
-                        </h2>
+                        <h2 className="font-display font-bold text-base uppercase tracking-wide text-brand">{dist}</h2>
                         <span className="text-xs text-muted-foreground">
-                          ({total} {total === 1 ? "atleta" : "atletas"})
+                          ({totalDist} {totalDist === 1 ? "atleta" : "atletas"})
                         </span>
                       </div>
 
-                      {sortedBrackets.map((bracket) => {
-                        const list = brackets[bracket];
-                        return (
-                          <div key={bracket} className="space-y-2">
-                            <h3 className="font-display font-bold text-xs uppercase tracking-wider text-foreground/80">
-                              {bracket} <span className="text-muted-foreground font-normal">({list.length})</span>
-                            </h3>
-                            <div className="border border-border rounded-lg overflow-hidden">
-                              <table className="w-full text-sm">
-                                <thead className="bg-muted/50 text-xs uppercase tracking-wide">
-                                  <tr>
-                                    <th className="text-left px-3 py-2">Nome</th>
-                                    <th className="text-left px-3 py-2">Cidade</th>
-                                    <th className="text-left px-3 py-2">Equipe</th>
-                                    <th className="text-left px-3 py-2">Status</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border">
-                                  {list.map((s, i) => (
-                                    <tr key={i}>
-                                      <td className="px-3 py-2 capitalize">{s.full_name.toLowerCase()}</td>
-                                      <td className="px-3 py-2 capitalize">{s.city.toLowerCase()}</td>
-                                      <td className="px-3 py-2 capitalize">{s.team_name.toLowerCase()}</td>
-                                      <td className="px-3 py-2 capitalize">{s.status.toLowerCase()}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {visibleGenders.map((g) => (
+                        <div key={g.label} className="space-y-3">
+                          <h3 className="font-display font-bold text-sm uppercase tracking-wide text-foreground">
+                            {g.label}
+                          </h3>
+                          {bracketList.map((b) => {
+                            const list = (grid[dist]?.[g.label]?.[b.label] ?? []).filter(visible);
+                            return (
+                              <div key={b.label} className="space-y-2">
+                                <h4 className="font-display font-semibold text-xs uppercase tracking-wider text-foreground/80">
+                                  {b.label}{" "}
+                                  <span className="text-muted-foreground font-normal">
+                                    — {list.length} {list.length === 1 ? "inscrito" : "inscritos"}
+                                  </span>
+                                </h4>
+                                {list.length > 0 && (
+                                  <div className="border border-border rounded-lg overflow-hidden">
+                                    <table className="w-full text-sm">
+                                      <thead className="bg-muted/50 text-xs uppercase tracking-wide">
+                                        <tr>
+                                          <th className="text-left px-3 py-2">Nome</th>
+                                          <th className="text-left px-3 py-2">Cidade</th>
+                                          <th className="text-left px-3 py-2">Equipe</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-border">
+                                        {list.map((s, i) => (
+                                          <tr key={i}>
+                                            <td className="px-3 py-2 capitalize">{(s.full_name || "").toLowerCase()}</td>
+                                            <td className="px-3 py-2 capitalize">{(s.city || "").toLowerCase()}</td>
+                                            <td className="px-3 py-2 capitalize">{(s.team_name || "").toLowerCase()}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
                     </div>
                   );
                 })}
+
+                {orphans.filter(visible).length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-baseline gap-2 pb-1 border-b border-border">
+                      <h2 className="font-display font-bold text-base uppercase tracking-wide">Outras categorias</h2>
+                      <span className="text-xs text-muted-foreground">({orphans.filter(visible).length})</span>
+                    </div>
+                    <div className="border border-border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <tbody className="divide-y divide-border">
+                          {orphans.filter(visible).map((s, i) => (
+                            <tr key={i}>
+                              <td className="px-3 py-2 capitalize">{(s.full_name || "").toLowerCase()}</td>
+                              <td className="px-3 py-2 capitalize">{(s.city || "").toLowerCase()}</td>
+                              <td className="px-3 py-2 capitalize">{(s.team_name || "").toLowerCase()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}
+
         </DialogContent>
       </Dialog>
     </Layout>
