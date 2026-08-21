@@ -466,8 +466,8 @@ const ProvaInscricao = () => {
                                 const active = distance === d.distance;
                                 const price = priceOf(d);
                                 return (
+                                  <div key={d.distance} className="space-y-1">
                                   <button
-                                    key={d.distance}
                                     type="button"
                                     onClick={() => setDistance(d.distance)}
                                     className={[
@@ -485,6 +485,8 @@ const ProvaInscricao = () => {
                                       </span>
                                     )}
                                   </button>
+                                  {active && <LoteBreakdown distance={d} className="px-1" />}
+                                  </div>
                                 );
                               })}
                               {visibleDistances.length === 0 && (
