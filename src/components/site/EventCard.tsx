@@ -60,6 +60,7 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
           </p>
           {(() => {
             const prices = (event.distances ?? [])
+              .filter((d: any) => !isSeniorOnlyDistance(d?.distance))
               .map((d: any) => currentPrice(d))
               .filter((p: number) => p > 0);
             if (!prices.length) return null;
