@@ -114,13 +114,16 @@ const ProvaDetalhe = () => {
     },
   });
 
+  // Lista pública: somente inscrições confirmadas (pendentes/canceladas não aparecem)
+  const isPublicVisible = (s: PublicSignup) => s.status?.toLowerCase() === "confirmada";
+
   const { data: signupsCount = 0 } = useQuery({
     queryKey: ["event_signups_count", id],
     enabled: !!id,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("list_event_signups_public", { _event_id: id! });
       if (error) return 0;
-      return (data ?? []).filter((s: PublicSignup) => s.status?.toLowerCase() !== "cancelada").length;
+      return (data ?? []).filter(isPublicVisible).length;
     },
   });
 
@@ -130,7 +133,7 @@ const ProvaDetalhe = () => {
     queryFn: async (): Promise<PublicSignup[]> => {
       const { data, error } = await supabase.rpc("list_event_signups_public", { _event_id: id! });
       if (error) throw error;
-      return (data ?? []) as PublicSignup[];
+      return ((data ?? []) as PublicSignup[]).filter(isPublicVisible);
     },
   });
 
