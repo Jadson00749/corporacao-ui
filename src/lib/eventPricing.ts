@@ -16,6 +16,12 @@ export type DistancePricing = {
   lote3_starts_at?: string | null;
 };
 
+export type SeniorPricing = {
+  /** Valor fixo para participantes 60+ (opcional, definido no admin). */
+  price_60_plus?: number;
+};
+
+
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export const hasLote2 = (d: DistancePricing) =>
@@ -87,11 +93,11 @@ export const formatDateBR = (iso: string) => {
 };
 
 // ---------- Benefício 60+ ----------
-// A regra 60+ deixa de ser uma modalidade separada: é um desconto automático
-// de 50% sobre o preço do lote vigente, baseado em profiles.birth_date.
+// O organizador define manualmente, por distância, o campo opcional
+// price_60_plus (JSONB). Se preenchido, participantes com 60+ pagam
+// exatamente esse valor, independentemente do lote vigente.
 
 export const SENIOR_MIN_AGE = 60;
-export const SENIOR_DISCOUNT_RATE = 0.5;
 
 export const calcAgeFromBirth = (birth?: string | null): number | null => {
   if (!birth) return null;
@@ -109,8 +115,27 @@ export const isSenior = (birth?: string | null) => {
   return age !== null && age >= SENIOR_MIN_AGE;
 };
 
-export const applySeniorDiscount = (price: number, senior: boolean) =>
-  senior ? Math.round(price * (1 - SENIOR_DISCOUNT_RATE) * 100) / 100 : price;
+/** Valor fixo 60+ definido pelo admin, se houver. */
+export const seniorPrice = (d?: SeniorPricing | null): number | null => {
+  const v = d?.price_60_plus;
+  return typeof v === "number" && v > 0 ? v : null;
+};
+
+export const hasSeniorPrice = (d?: SeniorPricing | null) => seniorPrice(d) !== null;
+
+/** Preço efetivo: valor fixo 60+ quando aplicável, senão o lote vigente. */
+export const effectivePrice = (
+  d: DistancePricing & SeniorPricing,
+  senior: boolean,
+  today?: string,
+): number => {
+  if (senior) {
+    const sp = seniorPrice(d);
+    if (sp !== null) return sp;
+  }
+  return currentPrice(d, today);
+};
+
 
 /** Modalidades legadas criadas como "(60 anos ou mais)" não são mais exibidas. */
 const SENIOR_LABEL_RE = /(60\s*anos\s*ou\s*mais|\b60\s*\+|melhor\s*idade)/i;

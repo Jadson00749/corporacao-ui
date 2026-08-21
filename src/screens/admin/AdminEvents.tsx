@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Pencil, Trash2, Plus, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 
-type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null; price_lote3?: number; lote3_starts_at?: string | null };
+type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null; price_lote3?: number; lote3_starts_at?: string | null; price_60_plus?: number };
 type AgeBracket = { min: number; max: number };
 type KitOption = { name: string; extra_price?: number };
 type Coupon = { code: string; description?: string };
@@ -311,6 +311,18 @@ const AdminEvents = () => {
                             <p className="text-[10px] text-destructive">Defina primeiro a data do 2º lote.</p>
                           )}
                         </div>
+                      </div>
+                      <div className="rounded-md border border-success/40 bg-success/5 p-2 space-y-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Benefício 60+ (opcional)</p>
+                        <Label className="text-[11px]">Valor para participantes 60+ (R$)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Ex: 49,95"
+                          value={d.price_60_plus ?? ""}
+                          onChange={(e) => updateItem("distances", i, { price_60_plus: e.target.value === "" ? undefined : parseFloat(e.target.value) || 0 })}
+                        />
+                        <p className="text-[10px] text-muted-foreground">Se preenchido, atletas com 60 anos ou mais pagam exatamente este valor, sem mudar na virada de lote. Em branco, pagam o lote vigente.</p>
                       </div>
                     </div>
                   ))}
