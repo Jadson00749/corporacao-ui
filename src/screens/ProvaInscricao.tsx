@@ -108,7 +108,7 @@ const Stepper = ({ current }: { current: number }) => (
             >
               {state === "done" ? <Check className="w-4 h-4" /> : i + 1}
             </div>
-            <span className={`mt-2 text-xs sm:text-sm ${state === "todo" ? "text-muted-foreground" : "font-semibold"}`}>{label}</span>
+            <span className={`mt-2 text-[11px] leading-tight text-center sm:text-sm ${state === "todo" ? "text-muted-foreground" : "font-semibold"}`}>{label}</span>
           </div>
           {i < STEPS.length - 1 && <div className="h-[2px] w-8 sm:w-24 bg-border mt-[18px]" />}
         </div>
