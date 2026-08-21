@@ -356,16 +356,23 @@ const ProvaInscricao = () => {
       {total > 0 && (
         <div className="border-t border-border pt-3 space-y-1 text-sm">
           <div className="flex justify-between">
-            <span>Inscrição <span className="text-xs text-muted-foreground">({currentLote}º lote)</span></span>
-            <span>{brl(distancePrice)}</span>
+            <span>Valor do lote atual <span className="text-xs text-muted-foreground">({currentLote}º lote)</span></span>
+            <span>{brl(baseDistancePrice)}</span>
           </div>
+          {seniorDiscount > 0 && (
+            <div className="flex justify-between text-success font-medium">
+              <span>Benefício 60+</span>
+              <span>-{Math.round(SENIOR_DISCOUNT_RATE * 100)}% ({brl(-seniorDiscount).replace("-", "-")})</span>
+            </div>
+          )}
           {kitExtra > 0 && <div className="flex justify-between"><span>Kit</span><span>+{brl(kitExtra)}</span></div>}
           <div className="flex justify-between font-bold text-base pt-2 border-t border-border">
-            <span>Total</span><span className="text-brand">{brl(total)}</span>
+            <span>Valor final</span><span className="text-brand">{brl(total)}</span>
           </div>
           <p className="text-xs text-muted-foreground pt-1">Pagamento via PIX após a confirmação.</p>
         </div>
       )}
+
     </div>
   );
 
