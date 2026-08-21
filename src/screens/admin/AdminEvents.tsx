@@ -321,7 +321,9 @@ const AdminEvents = () => {
                           )}
                         </div>
                       </div>
+                      {(() => { const isKids = isKidsDistance(d.distance); return null; })()}
                       <div className={`rounded-md border border-success/40 bg-success/5 p-2 space-y-1 ${isKids ? "opacity-60" : ""}`}>
+
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Benefício 60+ (opcional)</p>
                         <Label className="text-[11px]">Valor para participantes 60+ (R$)</Label>
                         <Input
