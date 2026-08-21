@@ -4,6 +4,7 @@ import { RaceEvent, eventStatusLabel } from "@/data/events";
 import { cn } from "@/lib/utils";
 import { getEventBannerFallback } from "@/lib/eventBannerFallback";
 import { BannerFrame } from "@/components/site/BannerFrame";
+import { currentPrice } from "@/lib/eventPricing";
 
 
 const statusStyle: Record<RaceEvent["status"], string> = {
