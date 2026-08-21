@@ -95,7 +95,7 @@ const Stepper = ({ current }: { current: number }) => (
       const state = i < current ? "done" : i === current ? "active" : "todo";
       return (
         <div key={label} className="flex items-start">
-          <div className="flex flex-col items-center w-20 sm:w-28">
+          <div className="flex flex-col items-center w-[72px] sm:w-28">
             <div
               className={[
                 "w-9 h-9 rounded-full grid place-items-center text-sm font-bold border-2 transition-colors",
