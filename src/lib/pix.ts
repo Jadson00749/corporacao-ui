@@ -26,17 +26,18 @@ export const crc16 = (payload: string) => {
   return crc.toString(16).toUpperCase().padStart(4, "0");
 };
 
-/** Normaliza a chave PIX (remove máscara de CPF/CNPJ e telefone). */
+/** Normaliza a chave PIX (remove máscaras de CPF/CNPJ e telefone). */
 export const normalizePixKey = (raw: string) => {
   const key = (raw || "").trim();
   if (!key) return "";
   if (key.includes("@")) return key.toLowerCase();
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) return key.toLowerCase();
   const digits = key.replace(/\D/g, "");
-  if (/^\+?55\d{10,11}$/.test(key.replace(/\D/g, "+$&")) && digits.length >= 12) return `+${digits}`;
-  if (digits.length === 11 && key.replace(/\D/g, "") === digits && /[.\-]/.test(key)) return digits; // CPF mascarado
-  if (digits.length === 11 && /^\(?\d{2}\)?\s?9/.test(key) && /[()\s-]/.test(key)) return `+55${digits}`;
-  if (digits.length === 11 || digits.length === 14) return digits; // CPF/CNPJ
-  return key;
+  if (!digits) return key;
+  if (key.startsWith("+") || digits.length === 12 || digits.length === 13) return `+${digits}`;
+  if (digits.length === 10) return `+55${digits}`;
+  if (digits.length === 11) return /^\d{2}9/.test(digits) && /[()\s-]/.test(key) ? `+55${digits}` : digits;
+  return digits.length === 14 ? digits : key;
 };
 
 export type PixPayloadInput = {
