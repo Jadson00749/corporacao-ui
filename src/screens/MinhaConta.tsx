@@ -149,20 +149,47 @@ const MinhaConta = () => {
           <IncompleteProfileBanner className="mb-6 rounded-2xl border" />
 
           {/* Quick stats row */}
-          <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
+          <div className="grid grid-cols-3 gap-2.5 md:gap-4 mb-6 md:mb-8">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("signups");
+                signupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="bg-card border border-border/60 rounded-2xl p-3 md:p-4 text-center transition-colors hover:border-brand/40"
+            >
+              <p className="text-2xl md:text-3xl font-display font-bold text-brand leading-none">{signups.length}</p>
+              <p className="text-[11px] md:text-xs text-muted-foreground mt-1.5 leading-tight">Inscrições</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("signups");
+                signupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className={cn(
+                "rounded-2xl border p-3 md:p-4 text-center transition-colors",
+                pendingSignups.length > 0
+                  ? "border-warning/40 bg-warning/10 hover:border-warning/70"
+                  : "border-border/60 bg-card hover:border-brand/40"
+              )}
+            >
+              <p
+                className={cn(
+                  "text-2xl md:text-3xl font-display font-bold leading-none",
+                  pendingSignups.length > 0 ? "text-warning" : "text-brand"
+                )}
+              >
+                {pendingSignups.length}
+              </p>
+              <p className="text-[11px] md:text-xs text-muted-foreground mt-1.5 leading-tight">Aguardando pagamento</p>
+            </button>
             <div className="bg-card border border-border/60 rounded-2xl p-3 md:p-4 text-center">
-              <p className="text-2xl md:text-3xl font-display font-bold text-brand">{signups.length}</p>
-              <p className="text-[11px] md:text-xs text-muted-foreground">Inscrições</p>
-            </div>
-            <div className="bg-card border border-border/60 rounded-2xl p-3 md:p-4 text-center">
-              <p className="text-2xl md:text-3xl font-display font-bold text-brand">{confirmedSignups.length}</p>
-              <p className="text-[11px] md:text-xs text-muted-foreground">Confirmadas</p>
-            </div>
-            <div className="bg-card border border-border/60 rounded-2xl p-3 md:p-4 text-center">
-              <p className="text-2xl md:text-3xl font-display font-bold text-brand">{profileComplete ? 100 : completionPct}</p>
-              <p className="text-[11px] md:text-xs text-muted-foreground">Perfil</p>
+              <p className="text-2xl md:text-3xl font-display font-bold text-brand leading-none">{upcomingSignups.length}</p>
+              <p className="text-[11px] md:text-xs text-muted-foreground mt-1.5 leading-tight">Próximas provas</p>
             </div>
           </div>
+
 
           {/* Dashboard cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
