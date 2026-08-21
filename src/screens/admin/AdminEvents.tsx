@@ -76,6 +76,13 @@ const AdminEvents = () => {
     if (badLote) {
       return toast.error(`Distância "${badLote.distance || "sem nome"}": a data do 3º lote deve ser posterior à do 2º lote.`);
     }
+    const kidsWithSenior = (editing?.distances ?? []).find(
+      (d: Distance) => isKidsDistance(d.distance) && typeof d.price_60_plus === "number" && d.price_60_plus > 0
+    );
+    if (kidsWithSenior) {
+      return toast.error(`Modalidade "${kidsWithSenior.distance || "KIDS"}": não é permitido configurar valor 60+ para distâncias KIDS/Infantil.`);
+    }
+
     const payload: any = { ...editing };
     delete payload.created_at; delete payload.updated_at;
     const pix_key = payload.pix_key ?? "";
