@@ -180,6 +180,28 @@ const AdminEventSignups = () => {
         </Select>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {([
+          ["all", "Todos", counts.all],
+          ["F", "Feminino", counts.F],
+          ["M", "Masculino", counts.M],
+        ] as const).map(([value, label, count]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setGenderFilter(value as "all" | "F" | "M")}
+            className={[
+              "rounded-full border px-4 py-1.5 text-sm transition-colors",
+              genderFilter === value
+                ? "border-brand bg-brand text-brand-foreground font-semibold"
+                : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground",
+            ].join(" ")}
+          >
+            {label} ({count})
+          </button>
+        ))}
+      </div>
+
       {isLoading ? (
         <Skeleton className="h-64" />
       ) : filtered.length === 0 ? (
