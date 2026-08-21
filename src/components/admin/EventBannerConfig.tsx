@@ -32,7 +32,7 @@ const Preview = ({
       "relative overflow-hidden rounded-xl border border-border bg-[#0b0b0b] mx-auto",
       device === "mobile" ? "w-[220px]" : "w-full max-w-[520px]"
     )}
-    style={bannerRatioStyle(aspect)}
+    style={device === "mobile" ? bannerRatioStyle(aspect) : { aspectRatio: "16 / 9" }}
   >
     {src ? (
       <>
@@ -63,10 +63,10 @@ export const EventBannerConfig = ({
     <div className="space-y-5">
       {/* Formato */}
       <div>
-        <p className="text-sm font-medium">Formato do banner</p>
+        <p className="text-sm font-medium">Formato no celular</p>
         <p className="text-sm text-muted-foreground mt-1">
-          Escolha como a arte desta prova será exibida. Para banners com patrocinadores, recomendamos o
-          formato vertical no celular para preservar todas as marcas.
+          Este formato vale apenas para a exibição no celular. No desktop o banner é sempre exibido em
+          formato horizontal (16:9), usando a arte principal.
         </p>
         <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {BANNER_ASPECT_OPTIONS.map((o) => {
@@ -186,7 +186,10 @@ export const EventBannerConfig = ({
           src={device === "mobile" ? mobileImage || bannerImage : bannerImage}
         />
         <p className="text-xs text-muted-foreground mt-2 text-center">
-          A arte é exibida por inteiro (sem cortar patrocinadores), com fundo desfocado preenchendo as sobras.
+          {device === "mobile"
+            ? "No celular usamos a arte específica (se existir) no formato escolhido acima."
+            : "No desktop usamos sempre a arte principal em formato horizontal (16:9)."}{" "}
+          A arte aparece por inteiro (sem cortar patrocinadores), com fundo desfocado nas sobras.
         </p>
       </div>
     </div>

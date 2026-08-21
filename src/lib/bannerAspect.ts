@@ -22,20 +22,23 @@ export const BANNER_ASPECT_OPTIONS: {
 export const normalizeBannerAspect = (v?: string | null): BannerAspect =>
   (BANNER_ASPECT_OPTIONS.some((o) => o.value === v) ? v : "9:16") as BannerAspect;
 
-/** Classes de proporção para o banner na página da prova (mobile → desktop). */
+/** Classes de proporção do banner NO CELULAR (o formato configurado só vale no mobile). */
 export const bannerAspectClass = (v?: string | null) => {
   switch (normalizeBannerAspect(v)) {
     case "9:16":
-      return "aspect-[9/16] sm:aspect-[3/4] lg:aspect-[4/5] max-h-[78vh]";
+      return "aspect-[9/16] max-h-[80vh]";
     case "3:4":
-      return "aspect-[3/4] lg:aspect-[4/5] max-h-[78vh]";
+      return "aspect-[3/4] max-h-[80vh]";
     case "1:1":
-      return "aspect-square max-h-[78vh]";
+      return "aspect-square";
     case "16:9":
     default:
       return "aspect-[16/9]";
   }
 };
+
+/** Banner no desktop: sempre horizontal, com altura limitada. */
+export const DESKTOP_BANNER_CLASS = "aspect-[16/9] max-h-[420px] xl:max-h-[480px]";
 
 /** Proporção pura (usada em previews do Admin). */
 export const bannerRatioStyle = (v?: string | null) => {
