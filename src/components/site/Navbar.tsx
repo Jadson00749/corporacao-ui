@@ -172,6 +172,10 @@ export const Navbar = () => {
                 {item.label}
               </NavLink>
             ))}
+            <div className="mt-3 flex items-center justify-between rounded-md bg-secondary/50 px-3 py-2 md:hidden">
+              <span className="text-sm text-muted-foreground">Tema</span>
+              <ThemeToggle />
+            </div>
             <Button asChild variant="outline" size="lg" className="mt-3">
               <Link to={user ? "/minha-conta" : "/auth"}>
                 <User className="w-4 h-4" /> {user ? "Minha conta" : "Entrar / Criar conta"}
