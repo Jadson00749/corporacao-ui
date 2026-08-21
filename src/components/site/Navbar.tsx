@@ -151,8 +151,8 @@ export const Navbar = () => {
       {/* Mobile menu */}
       {open && (
         <div
-          className="lg:hidden bg-background border-t border-border animate-fade-in overflow-y-auto"
-          style={{ maxHeight: "calc(100dvh - 3.5rem)", paddingBottom: "env(safe-area-inset-bottom)" }}
+          className="lg:hidden bg-background border-t border-border animate-fade-in overflow-y-auto overscroll-contain max-h-[calc(100dvh-52px)] md:max-h-[calc(100dvh-88px)]"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           <nav className="container-page py-4 flex flex-col gap-1">
             {navItems.map((item) => (
