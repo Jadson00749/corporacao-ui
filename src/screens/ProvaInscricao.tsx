@@ -170,19 +170,14 @@ const ProvaInscricao = () => {
     },
   });
 
-  const { data: payment } = useQuery({
-    queryKey: ["event_payment_details", id],
-    enabled: !!id && !!user,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("event_payment_details")
-        .select("pix_key, pix_recipient, payment_instructions")
-        .eq("event_id", id!)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const payment = event
+    ? {
+        pix_key: (event as any).pix_key,
+        pix_recipient: (event as any).pix_recipient,
+        payment_instructions: (event as any).payment_instructions,
+      }
+    : null;
+
 
   // Inscrições já existentes desta pessoa nesta prova (rascunhos retomáveis)
   const { data: myEventSignups = [] } = useQuery({

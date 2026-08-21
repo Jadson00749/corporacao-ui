@@ -59,18 +59,14 @@ const AdminEvents = () => {
   });
 
   const openEdit = async (r: any) => {
-    const { data: pay } = await supabase
-      .from("event_payment_details")
-      .select("pix_key, pix_recipient, payment_instructions")
-      .eq("event_id", r.id)
-      .maybeSingle();
     setEditing({
       ...r,
-      pix_key: pay?.pix_key ?? "",
-      pix_recipient: pay?.pix_recipient ?? "",
-      payment_instructions: pay?.payment_instructions ?? "",
+      pix_key: r.pix_key ?? "",
+      pix_recipient: r.pix_recipient ?? "",
+      payment_instructions: r.payment_instructions ?? "",
     });
   };
+
 
   const save = async () => {
     const badLote = (editing?.distances ?? []).find(
@@ -88,24 +84,17 @@ const AdminEvents = () => {
 
     const payload: any = { ...editing };
     delete payload.created_at; delete payload.updated_at;
-    const pix_key = payload.pix_key ?? "";
-    const pix_recipient = payload.pix_recipient ?? "";
-    const payment_instructions = payload.payment_instructions ?? "";
-    delete payload.pix_key; delete payload.pix_recipient; delete payload.payment_instructions;
+    payload.pix_key = payload.pix_key ?? "";
+    payload.pix_recipient = payload.pix_recipient ?? "";
+    payload.payment_instructions = payload.payment_instructions ?? "";
     if (!payload.registration_deadline) payload.registration_deadline = null;
     const isNew = !payload.id;
     if (isNew) delete payload.id;
-    const { data: saved, error } = isNew
+    const { error } = isNew
       ? await supabase.from("events").insert(payload).select("id").maybeSingle()
       : await supabase.from("events").update(payload).eq("id", payload.id).select("id").maybeSingle();
     if (error) return toast.error(error.message);
-    const eventId = saved?.id ?? payload.id;
-    if (eventId) {
-      const { error: payErr } = await supabase
-        .from("event_payment_details")
-        .upsert({ event_id: eventId, pix_key, pix_recipient, payment_instructions });
-      if (payErr) return toast.error(payErr.message);
-    }
+
     toast.success(isNew ? "Criado!" : "Atualizado!");
     setEditing(null);
     qc.invalidateQueries({ queryKey: ["events"] });
