@@ -600,7 +600,27 @@ const ProvaInscricao = () => {
               ) : (
                 <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
                   <div className="space-y-6">
+                    {pendingSignup && !resumeDismissed && (
+                      <div className="bg-warning/10 border border-warning/40 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                        <div className="min-w-0">
+                          <p className="font-display font-semibold">Você já iniciou sua inscrição nesta prova.</p>
+                          <p className="text-sm text-muted-foreground">
+                            Continue de onde parou para finalizar o pagamento.
+                            {pendingSignup.category ? ` (${pendingSignup.category})` : ""}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Button variant="brand" size="sm" onClick={() => resumeSignup(pendingSignup)}>
+                            Continuar inscrição
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setResumeDismissed(true)}>
+                            Começar do zero
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     {step === 0 && (
+
                       <>
                         <div>
                           <h1 className="font-display text-2xl sm:text-3xl font-bold">{event.name}</h1>
