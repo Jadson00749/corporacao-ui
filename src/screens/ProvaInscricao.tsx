@@ -349,7 +349,7 @@ const ProvaInscricao = () => {
       event_id: event.id,
       category: categoryLabel,
       status: "pendente",
-      notes: senior ? [notes, "[Benefício 60+ aplicado: -50%]"].filter(Boolean).join(" ") : notes,
+      notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: valor fixo ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
       kit_option: selectedKits.length ? JSON.stringify(selectedKits) : "",
       coupon_code: appliedCoupon?.code || "",
       team_name: teamName,
