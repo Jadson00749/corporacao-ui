@@ -43,6 +43,17 @@ const normalizeGender = (g: string): "F" | "M" | "O" => {
   return "O";
 };
 
+/** Usa o gênero do perfil; se vier vazio, tenta identificar pelo texto da categoria. */
+const signupGender = (s: { gender?: string; category?: string }): "F" | "M" | "O" => {
+  const fromProfile = normalizeGender(s.gender || "");
+  if (fromProfile !== "O") return fromProfile;
+  const cat = (s.category || "").toLowerCase();
+  if (/femin/.test(cat)) return "F";
+  if (/mascul/.test(cat)) return "M";
+  return "O";
+};
+
+
 // Extrai a distância (ex: "10K") da categoria "10K · Masculino"
 const extractDistance = (category: string): string => {
   if (!category) return "Distância não informada";
