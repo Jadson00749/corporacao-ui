@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { activeLote, currentPrice, formatBRL } from "@/lib/eventPricing";
+import { activeLote, currentPrice, formatBRL, isSeniorOnlyDistance } from "@/lib/eventPricing";
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 import {
   Calendar,
