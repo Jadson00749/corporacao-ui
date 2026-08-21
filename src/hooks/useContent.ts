@@ -227,6 +227,8 @@ export const useEvents = () =>
         status: r.status as EventStatus,
         image: r.image ?? undefined,
         bannerImage: r.banner_image ?? undefined,
+        bannerMobileImage: r.banner_mobile_image ?? undefined,
+        bannerAspectRatio: r.banner_aspect_ratio ?? "9:16",
         internalSignup: r.internal_signup ?? false,
         regulationUrl: r.regulation_url ?? "",
         kitInfo: r.kit_info ?? "",
