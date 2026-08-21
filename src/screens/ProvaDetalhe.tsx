@@ -483,7 +483,7 @@ const ProvaDetalhe = () => {
           {!loadingSignups && signups.length > 0 && (() => {
             const totals = signups.reduce(
               (acc, s) => {
-                const g = normalizeGender(s.gender);
+                const g = signupGender(s);
                 if (g === "F") acc.F += 1;
                 else if (g === "M") acc.M += 1;
                 return acc;
@@ -494,7 +494,7 @@ const ProvaDetalhe = () => {
             const filtered =
               genderFilter === "all"
                 ? signups
-                : signups.filter((s) => normalizeGender(s.gender) === genderFilter);
+                : signups.filter((s) => signupGender(s) === genderFilter);
 
             // Agrupa por distância e depois por faixa etária
             const grouped: Record<string, Record<string, PublicSignup[]>> = {};
