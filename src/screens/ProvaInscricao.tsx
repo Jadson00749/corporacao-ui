@@ -502,6 +502,7 @@ const ProvaInscricao = () => {
                                 const active = distance === d.distance;
                                 const base = basePriceOf(d);
                                 const price = priceOf(d);
+                                const fixed60 = seniorApplied(d);
                                 return (
                                   <div key={d.distance} className="space-y-1">
                                   <button
@@ -515,17 +516,18 @@ const ProvaInscricao = () => {
                                     ].join(" ")}
                                   >
                                     <span className="font-semibold">{cleanDistanceLabel(d.distance)}</span>
-                                    {base > 0 && (
+                                    {(fixed60 ? price > 0 : base > 0) && (
                                       <span className="text-sm">
-                                        <span className="text-muted-foreground mr-1">{loteOf(d)}º lote</span>
-                                        {senior && (
-                                          <span className="text-muted-foreground line-through mr-1">{brl(base)}</span>
+                                        {fixed60 ? (
+                                          <span className="text-success mr-1">60+</span>
+                                        ) : (
+                                          <span className="text-muted-foreground mr-1">{loteOf(d)}º lote</span>
                                         )}
                                         <span className="font-bold text-brand">{brl(price)}</span>
                                       </span>
                                     )}
                                   </button>
-                                  {active && <LoteBreakdown distance={d} className="px-1" />}
+                                  {active && !fixed60 && <LoteBreakdown distance={d} className="px-1" />}
                                   </div>
                                 );
                               })}
