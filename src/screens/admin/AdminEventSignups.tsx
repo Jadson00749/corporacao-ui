@@ -20,7 +20,24 @@ type Row = {
   coupon_code: string;
   team_name: string;
   events: { id: string; name: string; date: string; city: string } | null;
-  profiles: { full_name: string; cpf: string; email: string; whatsapp: string; team_name: string; city: string; state: string } | null;
+  profiles: { full_name: string; cpf: string; email: string; whatsapp: string; team_name: string; city: string; state: string; gender: string } | null;
+};
+
+const normalizeGender = (g?: string | null): "F" | "M" | "O" => {
+  const s = (g || "").trim().toLowerCase();
+  if (s.startsWith("f")) return "F";
+  if (s.startsWith("m")) return "M";
+  return "O";
+};
+
+/** Gênero real do perfil; fallback no texto da categoria apenas se o perfil estiver vazio. */
+const rowGender = (r: Row): "F" | "M" | "O" => {
+  const fromProfile = normalizeGender(r.profiles?.gender);
+  if (fromProfile !== "O") return fromProfile;
+  const cat = (r.category || "").toLowerCase();
+  if (/femin/.test(cat)) return "F";
+  if (/mascul/.test(cat)) return "M";
+  return "O";
 };
 
 const formatKitOption = (value: string) => {
@@ -31,6 +48,7 @@ const formatKitOption = (value: string) => {
   } catch {}
   return value;
 };
+
 
 const AdminEventSignups = () => {
   const [search, setSearch] = useState("");
