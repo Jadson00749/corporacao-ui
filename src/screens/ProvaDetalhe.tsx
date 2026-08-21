@@ -31,50 +31,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BannerFrame } from "@/components/site/BannerFrame";
+import { PublicSignupList, type PublicSignup } from "@/components/site/PublicSignupList";
 
-
-type PublicSignup = { full_name: string; city: string; team_name: string; category: string; status: string; gender: string; age: number | null };
-type GenderFilter = "all" | "F" | "M";
-
-const normalizeGender = (g: string): "F" | "M" | "O" => {
-  const s = (g || "").trim().toLowerCase();
-  if (s.startsWith("f")) return "F";
-  if (s.startsWith("m")) return "M";
-  return "O";
-};
-
-/** Usa o gênero do perfil; se vier vazio, tenta identificar pelo texto da categoria. */
-const signupGender = (s: { gender?: string; category?: string }): "F" | "M" | "O" => {
-  const fromProfile = normalizeGender(s.gender || "");
-  if (fromProfile !== "O") return fromProfile;
-  const cat = (s.category || "").toLowerCase();
-  if (/femin/.test(cat)) return "F";
-  if (/mascul/.test(cat)) return "M";
-  return "O";
-};
-
-
-// Extrai a distância (ex: "10K") da categoria "10K · Masculino"
-const extractDistance = (category: string): string => {
-  if (!category) return "Distância não informada";
-  return category.split("·")[0].trim().toUpperCase() || "Distância não informada";
-};
-
-// Faixas etárias padrão (usadas quando o evento não tem age_brackets configurado)
-const DEFAULT_AGE_BRACKETS: Array<{ label: string; min: number; max: number }> = [
-  { label: "14 A 24 ANOS", min: 14, max: 24 },
-  { label: "25 A 34 ANOS", min: 25, max: 34 },
-  { label: "35 A 44 ANOS", min: 35, max: 44 },
-  { label: "45 A 54 ANOS", min: 45, max: 54 },
-  { label: "55 A 64 ANOS", min: 55, max: 64 },
-  { label: "65+ ANOS", min: 65, max: 200 },
-];
-
-const getAgeBracket = (age: number | null): string => {
-  if (age == null) return "IDADE NÃO INFORMADA";
-  const b = DEFAULT_AGE_BRACKETS.find((br) => age >= br.min && age <= br.max);
-  return b ? b.label : "IDADE NÃO INFORMADA";
-};
 
 
 const fmt = (iso: string) =>
