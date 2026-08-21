@@ -491,14 +491,15 @@ const ProvaInscricao = () => {
                           <p className="text-sm text-muted-foreground mt-1">Selecione a modalidade e o kit para ver o valor da inscrição.</p>
                         </div>
 
-                        {senior && visibleDistances.some((d: any) => hasSeniorPrice(d)) && (
+                        {distanceObj && seniorApplied(distanceObj) && (
                           <div className="rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-sm">
                             <span className="font-semibold text-success">Benefício 60+ aplicado</span>{" "}
                             <span className="text-muted-foreground">
-                              — valor especial definido pela organização, conforme sua data de nascimento no cadastro.
+                              — valor especial definido para a modalidade {cleanDistanceLabel(distanceObj.distance)}.
                             </span>
                           </div>
                         )}
+
 
 
 
