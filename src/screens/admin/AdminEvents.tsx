@@ -225,20 +225,16 @@ const AdminEvents = () => {
 
               {/* Banner */}
               <Section title="Banner">
-                {editing.banner_image && <img src={editing.banner_image} alt="" className="w-full max-h-48 object-cover rounded-lg border border-border mb-2" />}
-                <div className="text-sm bg-muted/40 border border-border rounded-lg p-3 space-y-1 mb-3">
-                  <p><strong>📐 Tamanho ideal para 100% de preenchimento:</strong> 1920 × 640 px (proporção 3:1, banner panorâmico)</p>
-                  <p><strong>📦 Formato:</strong> JPG, até 3 MB</p>
-                  <p><strong>🎯 Dica:</strong> a imagem ocupa a largura toda do banner (220 px de altura no celular, 340 px no desktop). Mantenha o assunto principal no centro para não cortar rostos ou logos.</p>
-                </div>
-                <div className="flex gap-2">
-                  <Input placeholder="URL da imagem do banner" value={editing.banner_image || ""} onChange={(e) => setEditing({ ...editing, banner_image: e.target.value })} />
-                  <label className="cursor-pointer">
-                    <Button type="button" variant="outline" size="sm" asChild><span><Upload className="w-4 h-4" /> Enviar</span></Button>
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBanner(f); }} />
-                  </label>
-                </div>
+                <EventBannerConfig
+                  aspect={editing.banner_aspect_ratio}
+                  bannerImage={editing.banner_image}
+                  mobileImage={editing.banner_mobile_image}
+                  onChange={(patch) => setEditing({ ...editing, ...patch })}
+                  onUploadBanner={uploadBanner}
+                  onUploadMobile={uploadMobileBanner}
+                />
               </Section>
+
 
               {/* Inscrição */}
               <Section title="Inscrição">
