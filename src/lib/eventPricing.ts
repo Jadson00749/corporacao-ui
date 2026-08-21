@@ -143,6 +143,16 @@ const SENIOR_LABEL_RE = /(60\s*anos\s*ou\s*mais|\b60\s*\+|melhor\s*idade)/i;
 export const isSeniorOnlyDistance = (name?: string | null) =>
   !!name && SENIOR_LABEL_RE.test(name);
 
+/** Identifica modalidades KIDS/Infantil para não aplicar o benefício 60+. */
+const KIDS_RE = /(kids|infantil|kid|mirim)/i;
+
+export const isKidsDistance = (name?: string | null) =>
+  !!name && KIDS_RE.test(name);
+
+export const isSeniorApplicableDistance = (name?: string | null) =>
+  !!name && !isSeniorOnlyDistance(name) && !isKidsDistance(name);
+
 export const visibleDistances = <T extends { distance?: string }>(list: T[]): T[] =>
   (list ?? []).filter((d) => !isSeniorOnlyDistance(d?.distance));
+
 
