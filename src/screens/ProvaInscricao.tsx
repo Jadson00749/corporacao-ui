@@ -31,7 +31,7 @@ import { PixPayment } from "@/components/site/PixPayment";
 
 type Distance = { distance: string; price?: number };
 type AgeBracket = { min: number; max: number };
-type KitOption = { name: string; extra_price?: number };
+type KitOption = { name: string; extra_price?: number; sizes?: string[]; size_chart_url?: string; size_chart_info?: string };
 type Coupon = { code: string; description?: string };
 
 const calcAge = (birth?: string | null) => {
