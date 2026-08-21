@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet } from "lucide-react";
 import { exportSignupsXlsx } from "@/lib/exportSignupsXlsx";
 import { toast } from "sonner";
 
