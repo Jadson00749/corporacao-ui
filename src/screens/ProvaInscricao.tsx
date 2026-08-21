@@ -772,8 +772,53 @@ const ProvaInscricao = () => {
                                 );
                               })}
                             </div>
+
+                            {availableSizes.length > 0 && (
+                              <div
+                                data-invalid={errors.shirtSize || undefined}
+                                className={`mt-4 rounded-xl border p-4 ${errors.shirtSize ? "border-destructive" : "border-border"} bg-secondary/20`}
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                                  <h4 className="text-sm font-semibold">Escolha o tamanho da camiseta</h4>
+                                  {(shirtKit?.size_chart_url || shirtKit?.size_chart_info) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSizeChartKit(shirtKit)}
+                                      className="inline-flex items-center gap-1 text-xs text-brand underline underline-offset-2"
+                                    >
+                                      <Ruler className="w-3.5 h-3.5" /> Tabela de medidas
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {availableSizes.map((sz) => {
+                                    const active = shirtSize === sz;
+                                    return (
+                                      <button
+                                        key={sz}
+                                        type="button"
+                                        onClick={() => setShirtSize(sz)}
+                                        className={[
+                                          "min-w-[64px] min-h-[52px] px-4 rounded-xl border text-base font-bold transition-all",
+                                          active
+                                            ? "border-brand bg-brand text-brand-foreground"
+                                            : "border-border bg-background hover:border-brand/60",
+                                        ].join(" ")}
+                                      >
+                                        {sz}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                {errors.shirtSize && (
+                                  <p className="mt-2 text-xs text-destructive">Selecione um tamanho para continuar.</p>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
+
+
 
                         <Button onClick={goStep2} variant="brand" size="lg" className="w-full sm:w-auto sm:min-w-56">
                           Continuar
