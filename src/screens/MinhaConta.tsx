@@ -112,6 +112,10 @@ const MinhaConta = () => {
   const confirmedSignups = signups.filter((s) => s.status === "confirmada");
   const pendingSignups = signups.filter((s) => s.status !== "confirmada" && s.status !== "cancelada");
   const latestSignup = signups[0];
+  const startOfToday = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  const upcomingSignups = signups.filter(
+    (s) => s.status !== "cancelada" && s.events?.date && dateFromYMD(s.events.date) >= startOfToday
+  );
 
   return (
     <Layout>
