@@ -487,6 +487,7 @@ const ProvaInscricao = () => {
                             <div className="space-y-2">
                               {visibleDistances.map((d: any) => {
                                 const active = distance === d.distance;
+                                const base = basePriceOf(d);
                                 const price = priceOf(d);
                                 return (
                                   <div key={d.distance} className="space-y-1">
@@ -501,9 +502,12 @@ const ProvaInscricao = () => {
                                     ].join(" ")}
                                   >
                                     <span className="font-semibold">{cleanDistanceLabel(d.distance)}</span>
-                                    {price > 0 && (
+                                    {base > 0 && (
                                       <span className="text-sm">
                                         <span className="text-muted-foreground mr-1">{loteOf(d)}º lote</span>
+                                        {senior && (
+                                          <span className="text-muted-foreground line-through mr-1">{brl(base)}</span>
+                                        )}
                                         <span className="font-bold text-brand">{brl(price)}</span>
                                       </span>
                                     )}
@@ -512,6 +516,7 @@ const ProvaInscricao = () => {
                                   </div>
                                 );
                               })}
+
                               {visibleDistances.length === 0 && (
                                 <p className="text-sm text-muted-foreground">Nenhuma modalidade nessa categoria.</p>
                               )}
