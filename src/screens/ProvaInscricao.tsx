@@ -138,6 +138,8 @@ const ProvaInscricao = () => {
   const [done, setDone] = useState(false);
   const [signupId, setSignupId] = useState<string | null>(null);
   const [resumeDismissed, setResumeDismissed] = useState(false);
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
+
 
 
   // Clear individual error as user fills the field
