@@ -90,8 +90,16 @@ const AdminEventSignups = () => {
   // Base (sem o filtro de gênero) para contadores consistentes com a lista
   const baseFiltered = useMemo(() => {
     return signups.filter((r) => {
+      const status = (r.status || "").toLowerCase();
+      // Canceladas ficam no histórico do banco, mas fora da lista operacional
+      // (só aparecem se o admin filtrar explicitamente por "Cancelada").
+      if (statusFilter === "cancelada") {
+        if (status !== "cancelada") return false;
+      } else if (status === "cancelada") {
+        return false;
+      }
       if (eventFilter !== "all" && r.event_id !== eventFilter) return false;
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      if (statusFilter !== "all" && statusFilter !== "cancelada" && status !== statusFilter) return false;
       if (search) {
         const q = search.toLowerCase();
         const hay = `${r.profiles?.full_name || ""} ${r.profiles?.email || ""} ${r.profiles?.cpf || ""} ${r.events?.name || ""}`.toLowerCase();
