@@ -748,7 +748,7 @@ const ProvaInscricao = () => {
                                     type="button"
                                     onClick={() => setSelectedKits((prev) => active ? prev.filter((n) => n !== k.name) : [...prev, k.name])}
                                     className={[
-                                      "text-left rounded-xl px-4 py-3 border transition-all flex items-center gap-3",
+                                      "text-left min-h-[56px] rounded-xl px-4 py-3 border transition-all flex items-center gap-3",
                                       active
                                         ? "border-brand bg-brand/10 ring-1 ring-brand/40"
                                         : "border-border bg-secondary/30 hover:bg-secondary/60",
@@ -761,8 +761,8 @@ const ProvaInscricao = () => {
                                       {active && <Check className="w-3.5 h-3.5" />}
                                     </div>
                                     <Shirt className={`w-4 h-4 shrink-0 ${active ? "text-brand" : "text-muted-foreground"}`} />
-                                    <span className="flex-1 font-medium">{k.name}</span>
-                                    {k.extra_price ? <span className="text-sm text-brand font-semibold">+{brl(k.extra_price)}</span> : null}
+                                    <span className="min-w-0 flex-1 font-medium break-words">{k.name}</span>
+                                    {k.extra_price ? <span className="shrink-0 text-sm text-brand font-semibold">+{brl(k.extra_price)}</span> : null}
                                   </button>
                                 );
                               })}
