@@ -14,7 +14,9 @@ import { isKidsDistance } from "@/lib/eventPricing";
 
 type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null; price_lote3?: number; lote3_starts_at?: string | null; price_60_plus?: number };
 type AgeBracket = { min: number; max: number };
-type KitOption = { name: string; extra_price?: number; sizes?: string[]; size_chart_url?: string; size_chart_info?: string };
+type KitOption = { name: string; extra_price?: number; sizes?: string[]; has_shirt?: boolean; size_chart_url?: string; size_chart_info?: string };
+
+const DEFAULT_SIZES = ["PP", "P", "M", "G", "GG", "XG"];
 type Coupon = { code: string; description?: string };
 type EventDocument = { label: string; url: string };
 
