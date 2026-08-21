@@ -426,7 +426,7 @@ const AdminEvents = () => {
                                     </Button>
                                   </div>
                                   <div className="mt-2 flex flex-wrap gap-2">
-                                    {[...DEFAULT_SIZES, ...sizes.filter((s) => !DEFAULT_SIZES.includes(s))].map((s) => {
+                                    {allSizes.map((s) => {
                                       const on = sizes.includes(s);
                                       return (
                                         <button
