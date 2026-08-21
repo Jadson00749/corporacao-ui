@@ -395,68 +395,7 @@ const MinhaConta = () => {
                   ) : (
                     <div className="space-y-4">
                       {signups.map((s) => (
-                        <article
-                          key={s.id}
-                          className="bg-background border border-border/60 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between hover:shadow-card transition-shadow"
-                        >
-                          <div className="min-w-0">
-                            <h3 className="font-display font-semibold text-lg truncate">{s.events?.name || "Prova"}</h3>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
-                              {s.events?.date && (
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-3.5 h-3.5" />
-                                  {formatDate(s.events.date)}
-                                </span>
-                              )}
-                              {s.events?.city && (
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="w-3.5 h-3.5" />
-                                  {s.events.city}
-                                </span>
-                              )}
-                              {s.category && (
-                                <span>
-                                  Categoria: <strong>{s.category}</strong>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-                            <span
-                              className={cn(
-                                "text-xs font-semibold px-3 py-1 rounded-full border",
-                                s.status === "confirmada"
-                                  ? "bg-success/15 text-success border-success/40"
-                                  : s.status === "cancelada"
-                                  ? "bg-muted text-muted-foreground border-border"
-                                  : "bg-warning/15 text-warning border-warning/40 dark:text-warning"
-                              )}
-                            >
-                              {s.status !== "confirmada" && s.status !== "cancelada" ? "Aguardando pagamento" : s.status}
-                            </span>
-                            {s.status !== "confirmada" && s.status !== "cancelada" && s.events?.id && (
-                              <Button asChild variant="brand" size="sm">
-                                <Link to={`/provas/${s.events.id}/inscricao?retomar=${s.id}`}>Continuar inscrição</Link>
-                              </Button>
-                            )}
-                            {s.status !== "confirmada" && s.status !== "cancelada" && (
-
-                              <Button asChild variant="outline" size="sm" title="Enviar comprovante no WhatsApp">
-                                <a
-                                  href={buildWhats(
-                                    `Olá! Fiz minha inscrição na prova ${s.events?.name || ""} (categoria ${s.category || ""}) e gostaria de enviar o comprovante do PIX.`
-                                  )}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  aria-label="Enviar comprovante no WhatsApp"
-                                >
-                                  <MessageCircle className="w-4 h-4" />
-                                  <span className="hidden sm:inline">Comprovante</span>
-                                </a>
-                              </Button>
-                            )}
-                          </div>
-                        </article>
+                        <SignupCard key={s.id} signup={s} buildWhats={buildWhats} />
                       ))}
                     </div>
                   )}
