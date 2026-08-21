@@ -16,6 +16,12 @@ export type DistancePricing = {
   lote3_starts_at?: string | null;
 };
 
+export type SeniorPricing = {
+  /** Valor fixo para participantes 60+ (opcional, definido no admin). */
+  price_60_plus?: number;
+};
+
+
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export const hasLote2 = (d: DistancePricing) =>
