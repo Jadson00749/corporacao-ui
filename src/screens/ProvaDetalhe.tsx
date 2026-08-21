@@ -60,7 +60,7 @@ const statusBadge: Record<string, { label: string; className: string }> = {
 const ProvaDetalhe = () => {
   const { id } = useParams();
   const [listOpen, setListOpen] = useState(false);
-  const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
+  
 
   const { data: event, isLoading } = useQuery({
     queryKey: ["event_detail", id],
