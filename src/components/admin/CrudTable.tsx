@@ -113,9 +113,9 @@ export const CrudTable = ({ table, queryKey, title, fields, displayKey, orderBy,
 
   const uploadImage = async (file: File, key: string) => {
     const path = `${table}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const { error } = await supabase.storage.from("site-images").upload(path, file);
+    const { error } = await supabase.storage.from("corporacao-bucket").upload(path, file);
     if (error) return toast.error(error.message);
-    const { data } = supabase.storage.from("site-images").getPublicUrl(path);
+    const { data } = supabase.storage.from("corporacao-bucket").getPublicUrl(path);
     setEditing({ ...editing, [key]: data.publicUrl });
     toast.success("Imagem enviada!");
   };
