@@ -260,6 +260,19 @@ const ProvaInscricao = () => {
     [event]
   );
 
+  // Kit selecionado que possui camiseta (tamanhos configurados pelo admin)
+  const shirtKit = useMemo(
+    () => kitOptions.find((k) => selectedKits.includes(k.name) && Array.isArray(k.sizes) && k.sizes.length > 0) || null,
+    [kitOptions, selectedKits]
+  );
+  const availableSizes = shirtKit?.sizes ?? [];
+  useEffect(() => {
+    if (shirtSize && !availableSizes.includes(shirtSize)) setShirtSize("");
+  }, [availableSizes.join("|")]);
+  useEffect(() => { if (shirtSize && errors.shirtSize) setErrors((e) => ({ ...e, shirtSize: false })); }, [shirtSize]);
+
+
+
   // Auto-pick when there's only one option
   useEffect(() => { if (distances.length === 1) setDistance(distances[0].distance); }, [distances]);
   useEffect(() => { if (kitOptions.length === 1) setSelectedKits([kitOptions[0].name]); }, [kitOptions]);
