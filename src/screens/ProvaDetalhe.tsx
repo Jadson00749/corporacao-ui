@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BannerFrame } from "@/components/site/BannerFrame";
-import { bannerAspectClass, DESKTOP_BANNER_CLASS } from "@/lib/bannerAspect";
+import { bannerAspectClass } from "@/lib/bannerAspect";
 import { PublicSignupList, type PublicSignup } from "@/components/site/PublicSignupList";
 
 
