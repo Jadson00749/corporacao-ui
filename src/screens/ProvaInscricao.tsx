@@ -944,6 +944,25 @@ const ProvaInscricao = () => {
           )}
         </div>
       </section>
+
+      <Dialog open={!!sizeChartKit} onOpenChange={(o) => !o && setSizeChartKit(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Tabela de medidas</DialogTitle>
+          </DialogHeader>
+          {sizeChartKit?.size_chart_url && (
+            <img
+              src={sizeChartKit.size_chart_url}
+              alt="Tabela de medidas da camiseta"
+              className="w-full rounded-xl border border-border"
+              loading="lazy"
+            />
+          )}
+          {sizeChartKit?.size_chart_info && (
+            <p className="whitespace-pre-line text-sm text-muted-foreground">{sizeChartKit.size_chart_info}</p>
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
