@@ -136,7 +136,9 @@ const ProvaInscricao = () => {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [signupId, setSignupId] = useState<string | null>(null);
+  const [resumeDismissed, setResumeDismissed] = useState(false);
+
 
   // Clear individual error as user fills the field
   useEffect(() => { if (distance && errors.distance) setErrors((e) => ({ ...e, distance: false })); }, [distance]);
