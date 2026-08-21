@@ -173,12 +173,14 @@ const ProvaDetalhe = () => {
                       loading="eager"
                       className={cn("md:hidden", bannerAspectClass(bannerRatio))}
                     />
-                    <BannerFrame
+                    {/* Desktop: proporção natural da arte, encaixada no card */}
+                    <img
                       src={banner}
                       alt={`Banner ${event.name}`}
                       loading="eager"
-                      className={cn("hidden md:block", DESKTOP_BANNER_CLASS)}
+                      className="hidden md:block w-full h-auto"
                     />
+
                   </>
                 ) : (
                   <div className="w-full aspect-[16/9] md:aspect-[21/9] bg-gradient-dark" />
