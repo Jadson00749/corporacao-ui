@@ -304,8 +304,8 @@ const ProvaInscricao = () => {
     const newErrors: Record<string, boolean> = {};
     const missingLabels: string[] = [];
     if (distances.length > 0 && !distance) { newErrors.distance = true; missingLabels.push("Distância"); }
-    if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo"); }
-    if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Faixa etária"); }
+    if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo (complete no seu cadastro)"); }
+    if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Data de nascimento (complete no seu cadastro)"); }
     if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Opção de kit"); }
     if (!acceptedTerms) { newErrors.terms = true; missingLabels.push("Aceitar os termos"); }
 
