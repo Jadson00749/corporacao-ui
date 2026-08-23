@@ -131,7 +131,7 @@ export async function exportSignupsXlsx(
       equipe: r.team_name || r.profiles?.team_name || "",
       whats: r.profiles?.whatsapp || "",
       email: r.profiles?.email || "",
-      valor: valueOf(r, eventMap.get(r.event_id)),
+      valor: signupValue(r, eventMap.get(r.event_id)),
       status: (r.status || "").toLowerCase() === "confirmada" ? "Aprovada" : "Em andamento",
       criado: toDate(r.created_at),
     });
