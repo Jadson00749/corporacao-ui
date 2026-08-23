@@ -75,7 +75,7 @@ const toDate = (iso?: string | null) => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
-const valueOf = (s: ExportSignup, event?: EventPricingRow): number | null => {
+export const signupValue = (s: ExportSignup, event?: EventPricingRow): number | null => {
   const dist = modalityOf(s.category);
   const list: any[] = Array.isArray(event?.distances) ? (event!.distances as any[]) : [];
   const d = list.find((x) => (x?.distance || "").trim() === dist);
