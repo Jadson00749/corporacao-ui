@@ -771,25 +771,34 @@ const ProvaInscricao = () => {
               <Stepper current={step} />
 
               {done ? (
-                <div className="max-w-2xl mx-auto bg-card border border-border rounded-2xl p-5 sm:p-8 space-y-6">
+                <div className="max-w-2xl mx-auto bg-card border border-border rounded-2xl p-4 sm:p-7 space-y-5">
                   <Confetti fire={done} />
                   <div className="text-center">
-                    <CheckCircle2 className="w-14 h-14 text-success mx-auto mb-3" />
-                    <h1 className="font-display text-2xl font-bold mb-2">Inscrição registrada! 🎉</h1>
+                    <CheckCircle2 className="w-11 h-11 text-success mx-auto mb-2" />
+                    <h1 className="font-display text-xl sm:text-2xl font-bold mb-2">Inscrição registrada! 🎉</h1>
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/15 px-3 py-1 text-xs font-semibold text-warning">
                       🟡 Aguardando pagamento
                     </span>
-                    <p className="text-muted-foreground text-sm mt-3">
-                      Seu registro foi salvo. A participação é confirmada pela organização após o pagamento e o envio do comprovante.
+                    <p className="text-muted-foreground text-sm mt-2.5">
+                      Seu cadastro foi salvo. Agora falta realizar o pagamento e enviar o comprovante para concluir a confirmação.
                     </p>
                   </div>
 
-                  {/* Comprovante do registro */}
-                  <div className="rounded-2xl border border-border bg-secondary/40 p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-                      1. Comprovante do registro
-                    </p>
-                    <div className="space-y-2 text-sm">
+                  {/* Resumo compacto */}
+                  <div className="rounded-2xl border border-border bg-secondary/40 p-3.5 space-y-1.5 text-sm">
+                    {pName && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Participante</span><span className="font-medium text-right break-words">{pName}</span></div>}
+                    <div className="flex justify-between gap-3"><span className="text-muted-foreground">Prova</span><span className="font-medium text-right break-words">{event.name}</span></div>
+                    {distance && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Modalidade</span><span className="font-medium text-right">{distance}</span></div>}
+                    {total > 0 && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
+                  </div>
+
+                  {/* Detalhes recolhíveis */}
+                  <details className="group rounded-2xl border border-border bg-background/50">
+                    <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between text-sm font-medium">
+                      <span>Ver detalhes da inscrição</span>
+                      <ChevronLeft className="w-4 h-4 -rotate-90 group-open:rotate-90 transition-transform text-muted-foreground" />
+                    </summary>
+                    <div className="px-4 pb-4 space-y-2 text-sm border-t border-border pt-3">
                       {pName && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Participante</span><span className="font-medium text-right break-words">{pName}</span></div>}
                       <div className="flex justify-between gap-3"><span className="text-muted-foreground">Prova</span><span className="font-medium text-right break-words">{event.name}</span></div>
                       {distance && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Modalidade</span><span className="font-medium text-right">{distance}</span></div>}
@@ -804,7 +813,7 @@ const ProvaInscricao = () => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </details>
 
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-brand mb-2">
@@ -820,21 +829,16 @@ const ProvaInscricao = () => {
                     />
                   </div>
 
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    3. Envie o comprovante
-                  </p>
-
-
-                  <Button asChild variant="brand" size="lg" className="w-full">
-                    <a
-                      href={buildWhats(whatsMessage)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <MessageCircle className="w-4 h-4" /> Enviar comprovante no WhatsApp
-                    </a>
-                  </Button>
-
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      3. Envie o comprovante
+                    </p>
+                    <Button asChild variant="brand" size="lg" className="w-full">
+                      <a href={buildWhats(whatsMessage)} target="_blank" rel="noreferrer">
+                        <MessageCircle className="w-4 h-4" /> Enviar comprovante no WhatsApp
+                      </a>
+                    </Button>
+                  </div>
 
                   <Button onClick={startAnotherParticipant} variant="outline" size="lg" className="w-full">
                     + Inscrever outra pessoa nesta prova
@@ -846,12 +850,13 @@ const ProvaInscricao = () => {
                     </p>
                   )}
 
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
                     <Button asChild variant="ghost" size="sm"><Link to="/minha-conta">Ver minhas inscrições</Link></Button>
                     <Button asChild variant="ghost" size="sm"><Link to="/provas">Ver outras provas</Link></Button>
                   </div>
 
                 </div>
+
               ) : (
                 <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
                   <div className="space-y-6">
