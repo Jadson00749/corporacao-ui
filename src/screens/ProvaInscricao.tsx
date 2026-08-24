@@ -745,7 +745,7 @@ const ProvaInscricao = () => {
                   <div className="bg-secondary/40 rounded-xl p-4 space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-muted-foreground">Prova</span><span className="font-medium">{event.name}</span></div>
                     {pName && <div className="flex justify-between"><span className="text-muted-foreground">Participante</span><span className="font-medium">{pName}</span></div>}
-                    <div className="flex justify-between"><span className="text-muted-foreground">Categoria</span><span className="font-medium">{categoryLabel}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Categoria</span><span className="font-medium">{categoryDisplay || categoryLabel}</span></div>
                     {shirtSize && <div className="flex justify-between"><span className="text-muted-foreground">Camiseta</span><span className="font-medium">{shirtSize}</span></div>}
                     {total > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
                   </div>
