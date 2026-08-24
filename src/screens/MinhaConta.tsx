@@ -162,8 +162,18 @@ const MinhaConta = () => {
 
           <IncompleteProfileBanner className="mb-6 rounded-2xl border" />
 
+          <div className="flex flex-col">
+
+          {/* Contador compacto (mobile) */}
+          <p className="order-1 md:hidden mb-3 text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{signups.length}</span> inscriç{signups.length === 1 ? "ão" : "ões"}
+            {pendingSignups.length > 0 && (
+              <> • <span className="font-semibold text-warning">{pendingSignups.length}</span> aguardando pagamento</>
+            )}
+          </p>
+
           {/* Quick stats row */}
-          <div className="grid grid-cols-3 gap-2.5 md:gap-4 mb-6 md:mb-8">
+          <div className="order-4 md:order-1 hidden md:grid grid-cols-3 gap-2.5 md:gap-4 mb-6 md:mb-8">
             <button
               type="button"
               onClick={() => {
