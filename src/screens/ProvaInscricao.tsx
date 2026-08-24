@@ -906,16 +906,55 @@ const ProvaInscricao = () => {
                         </div>
 
                         <div className="grid sm:grid-cols-2 gap-3">
-                          {[
-                            { self: true, title: "Eu mesmo", desc: "Usar meus dados cadastrados", Icon: User },
-                            { self: false, title: "Outra pessoa", desc: "Filho, familiar, amigo ou aluno", Icon: Users },
-                          ].map(({ self, title, desc, Icon }) => {
-                            const active = isSelf === self;
-                            return (
+                          {(() => {
+                            type Choice = { key: string; title: string; desc: string; Icon: typeof User; active: boolean; onSelect: () => void };
+                            const choices: Choice[] = [
+                              {
+                                key: "self",
+                                title: "Eu mesmo",
+                                desc: "Usar meus dados cadastrados",
+                                Icon: User,
+                                active: isSelf,
+                                onSelect: () => { setIsSelf(true); setSelectedParticipantId(null); fillWithProfile(); },
+                              },
+                              ...savedParticipants.map((p) => ({
+                                key: p.id,
+                                title: p.full_name,
+                                desc: p.relationship || "Participante salvo",
+                                Icon: Users,
+                                active: !isSelf && selectedParticipantId === p.id,
+                                onSelect: () => {
+                                  setIsSelf(false);
+                                  setSelectedParticipantId(p.id);
+                                  setSaveToParticipants(false);
+                                  setOtherDraft((d) => ({
+                                    ...d,
+                                    name: p.full_name || "",
+                                    cpf: p.cpf || "",
+                                    birth: p.birth_date || "",
+                                    gender: p.gender || "",
+                                    phone: p.phone || "",
+                                  }));
+                                },
+                              })),
+                              {
+                                key: "other",
+                                title: "+ Outra pessoa",
+                                desc: "Filho, familiar, amigo ou aluno",
+                                Icon: Users,
+                                active: !isSelf && selectedParticipantId === null,
+                                onSelect: () => {
+                                  setIsSelf(false);
+                                  if (selectedParticipantId !== null) setOtherDraft(EMPTY_DRAFT);
+                                  setSelectedParticipantId(null);
+                                },
+                              },
+                            ];
+                            return choices.map(({ key, title, desc, Icon, active, onSelect }) => (
                               <button
-                                key={title}
+                                key={key}
                                 type="button"
-                                onClick={() => { setIsSelf(self); if (self) fillWithProfile(); }}
+                                onClick={onSelect}
                                 className={[
                                   "text-left rounded-2xl border p-4 sm:p-5 transition-all flex items-start gap-3 min-h-[88px]",
                                   active
@@ -930,12 +969,12 @@ const ProvaInscricao = () => {
                                   <Icon className="w-5 h-5" />
                                 </span>
                                 <span className="min-w-0">
-                                  <span className="block font-display font-bold">{title}</span>
-                                  <span className="block text-sm text-muted-foreground">{desc}</span>
+                                  <span className="block font-display font-bold truncate">{title}</span>
+                                  <span className="block text-sm text-muted-foreground truncate">{desc}</span>
                                 </span>
                               </button>
-                            );
-                          })}
+                            ));
+                          })()}
                         </div>
 
                         <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
