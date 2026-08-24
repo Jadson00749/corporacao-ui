@@ -145,6 +145,35 @@ const ProvaInscricao = () => {
   const [resumeDismissed, setResumeDismissed] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
 
+  // ---- PARTICIPANTE (pode ser o próprio usuário ou outra pessoa) ----
+  const [pName, setPName] = useState("");
+  const [pCpf, setPCpf] = useState("");
+  const [pBirth, setPBirth] = useState("");
+  const [pGender, setPGender] = useState("");
+  const [pPhone, setPPhone] = useState("");
+  const [isSelf, setIsSelf] = useState(true);
+  const prefilledRef = useRef(false);
+
+  const fillWithProfile = () => {
+    setPName(profile?.full_name || "");
+    setPCpf(profile?.cpf || "");
+    setPBirth((profile as any)?.birth_date || "");
+    setPGender((profile as any)?.gender || "");
+    setPPhone(profile?.whatsapp || "");
+  };
+
+  const clearParticipant = () => {
+    setPName(""); setPCpf(""); setPBirth(""); setPGender(""); setPPhone("");
+    setShirtSize("");
+  };
+
+  useEffect(() => {
+    if (prefilledRef.current || !profile) return;
+    prefilledRef.current = true;
+    fillWithProfile();
+  }, [profile]);
+
+
 
 
   // Clear individual error as user fills the field
