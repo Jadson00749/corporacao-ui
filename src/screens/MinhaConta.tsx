@@ -367,7 +367,7 @@ const MinhaConta = () => {
           </div>
 
           {/* Detailed sections */}
-          <div className="bg-card border border-border/60 rounded-3xl overflow-hidden shadow-card">
+          <div className="order-2 md:order-3 mb-8 md:mb-0 bg-card border border-border/60 rounded-3xl overflow-hidden shadow-card">
             <div className="flex border-b border-border/60 overflow-x-auto no-scrollbar">
               <button
                 type="button"
