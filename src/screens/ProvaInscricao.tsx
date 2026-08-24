@@ -1227,7 +1227,7 @@ const ProvaInscricao = () => {
                               <ChevronLeft className="w-4 h-4" /> Voltar
                             </Button>
                             <Button onClick={submit} disabled={submitting || !participantComplete} variant="brand" size="lg" className="min-h-12 flex-1">
-                              {submitting ? "Enviando..." : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
+                              {submitting ? "Enviando..." : submitError ? "Tentar novamente" : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
                             </Button>
                           </div>
                         </div>
