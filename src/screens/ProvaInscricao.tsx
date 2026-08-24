@@ -624,6 +624,7 @@ const ProvaInscricao = () => {
       return;
     }
     if (createdId) setSignupId(createdId);
+    setDoneParticipants((prev) => [...prev, { name: pName.trim(), birth: pBirth, self: isSelf }]);
     qc.invalidateQueries({ queryKey: ["my_signups"] });
     qc.invalidateQueries({ queryKey: ["event_signup_existing", id, user.id] });
     setDone(true);
@@ -637,16 +638,18 @@ const ProvaInscricao = () => {
     setSignupId(null);
     setStep(0);
     setSelectedKits(kitOptions.length === 1 ? [kitOptions[0].name] : []);
-    setShirtSize("");
     setNotes("");
     setAcceptedTerms(false);
     setAppliedCoupon(null);
     setCouponInput("");
+    setOtherDraft(EMPTY_DRAFT);
+    const selfDone = doneParticipants.some((p) => p.self);
+    if (selfDone) setSelfDraft(EMPTY_DRAFT);
     setIsSelf(false);
-    clearParticipant();
     setErrors({});
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
 
 
 
