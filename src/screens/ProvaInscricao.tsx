@@ -771,13 +771,20 @@ const ProvaInscricao = () => {
 
 
                   <Button onClick={startAnotherParticipant} variant="outline" size="lg" className="w-full">
-                    Adicionar outro participante
+                    + Inscrever outra pessoa nesta prova
                   </Button>
+
+                  {doneParticipants.length > 1 && (
+                    <p className="text-center text-xs text-muted-foreground">
+                      Nesta sessão você já inscreveu: {doneParticipants.map((p) => p.name).join(", ")}.
+                    </p>
+                  )}
 
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <Button asChild variant="ghost" size="sm"><Link to="/minha-conta">Ver minhas inscrições</Link></Button>
                     <Button asChild variant="ghost" size="sm"><Link to="/provas">Ver outras provas</Link></Button>
                   </div>
+
                 </div>
               ) : (
                 <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
