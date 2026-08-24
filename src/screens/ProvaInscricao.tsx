@@ -438,8 +438,7 @@ const ProvaInscricao = () => {
       if (signup.kit_option) kits = [signup.kit_option];
     }
     if (kits.length) setSelectedKits(kits);
-    const savedSize = (signup as any)?.shirt_size;
-    if (savedSize) setShirtSize(savedSize);
+    const savedSize = (signup as any)?.shirt_size || "";
     if (signup.team_name) setTeamName(signup.team_name);
     if (signup.coupon_code) {
       const found = coupons.find((c) => c.code.toUpperCase() === signup.coupon_code!.toUpperCase());
@@ -447,13 +446,20 @@ const ProvaInscricao = () => {
     }
     const sg = signup as any;
     if (sg.participant_full_name) {
-      setPName(sg.participant_full_name);
-      setPCpf(sg.participant_cpf || "");
-      setPBirth(sg.participant_birth_date || "");
-      setPGender(sg.participant_gender || "");
-      setPPhone(sg.participant_phone || "");
-      setIsSelf((sg.participant_full_name || "") === (profile?.full_name || ""));
+      const self = (sg.participant_full_name || "") === (profile?.full_name || "");
+      const restored = {
+        name: sg.participant_full_name,
+        cpf: sg.participant_cpf || "",
+        birth: sg.participant_birth_date || "",
+        gender: sg.participant_gender || "",
+        phone: sg.participant_phone || "",
+        shirtSize: savedSize,
+      };
+      (self ? setSelfDraft : setOtherDraft)(restored);
+      setIsSelf(self);
       prefilledRef.current = true;
+    } else if (savedSize) {
+      setShirtSize(savedSize);
     }
     setSignupId(signup.id);
     setAcceptedTerms(true);
@@ -464,9 +470,10 @@ const ProvaInscricao = () => {
       setDone(true);
       setStep(2);
     } else {
-      setStep(savedDistance ? 1 : 0);
-      if (!sg.participant_full_name) toast.info("Confirme os dados do participante para seguir ao pagamento.");
+      setStep(sg.participant_full_name ? 1 : 0);
+      if (!sg.participant_full_name) toast.info("Confirme os dados do participante para seguir.");
     }
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
