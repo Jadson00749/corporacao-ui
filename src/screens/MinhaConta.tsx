@@ -457,9 +457,11 @@ const parseKits = (value?: string | null): string[] => {
 const SignupCard = ({
   signup: s,
   buildWhats,
+  highlight = false,
 }: {
   signup: EventSignup;
   buildWhats: (msg: string) => string;
+  highlight?: boolean;
 }) => {
   const isConfirmed = s.status === "confirmada";
   const isCancelled = s.status === "cancelada";
@@ -477,9 +479,15 @@ const SignupCard = ({
       className={cn(
         "rounded-2xl border bg-background p-4 sm:p-5 transition-shadow hover:shadow-card",
         isPending ? "border-warning/40" : isConfirmed ? "border-success/30" : "border-border/60",
-        isCancelled && "opacity-70"
+        isCancelled && "opacity-70",
+        highlight && "ring-2 ring-brand ring-offset-2 ring-offset-background"
       )}
     >
+      {highlight && (
+        <p className="mb-2.5 inline-flex rounded-full bg-brand/15 px-2.5 py-1 text-[11px] font-semibold text-brand">
+          Inscrição recém-criada
+        </p>
+      )}
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
           <h3 className="font-display text-base sm:text-lg font-semibold leading-snug break-words">
