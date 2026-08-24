@@ -1213,6 +1213,11 @@ const ProvaInscricao = () => {
                         </div>
 
                         <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                          {submitError && (
+                            <div className="mb-3 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                              {submitError}
+                            </div>
+                          )}
                           <div className="mb-2 flex items-center justify-between text-sm sm:hidden">
                             <span className="text-muted-foreground truncate">{pName || "Participante"}</span>
                             <span className="font-bold text-brand">{total > 0 ? brl(total) : "—"}</span>
