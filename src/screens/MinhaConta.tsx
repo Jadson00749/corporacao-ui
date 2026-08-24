@@ -235,156 +235,85 @@ const MinhaConta = () => {
           </div>
 
 
-          {/* Dashboard cards */}
-          <div className="order-3 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
-            {/* Next training */}
-            <DashboardCard
-              icon={<Dumbbell className="w-5 h-5" />}
-              label="Próximo treino"
-              loading={trainingsLoading}
-              empty={!nextTraining}
-              emptyTitle="Nenhum treino agendado"
-              emptyAction={<Button asChild variant="brand" size="sm"><Link to="/treinos">Ver treinos</Link></Button>}
-            >
-              {nextTraining && (
-                <div className="space-y-3">
-                  <div>
-                    <p className="font-display font-semibold text-lg leading-tight">{nextTraining.title}</p>
-                    <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5" /> {formatDate(nextTraining.date)} · {nextTraining.time}
-                    </p>
-                  </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2">{nextTraining.location}</p>
-                  <Button asChild variant="outline" size="sm" className="w-full mt-1">
-                    <Link to="/treinos">Ver agenda</Link>
-                  </Button>
-                </div>
-              )}
-            </DashboardCard>
+          {/* Próximos passos (área secundária, compacta) */}
+          <div className="order-3 mb-8 md:mb-10">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+              Próximos passos
+            </p>
 
-            {/* Next race */}
-            <DashboardCard
-              icon={<Trophy className="w-5 h-5" />}
-              label="Próxima prova"
-              loading={eventsLoading}
-              empty={!nextRace}
-              emptyTitle="Nenhuma prova em aberto"
-              emptyAction={<Button asChild variant="brand" size="sm"><Link to="/provas">Ver provas</Link></Button>}
-            >
-              {nextRace && (
-                <div className="space-y-3">
-                  <div>
-                    <p className="font-display font-semibold text-lg leading-tight">{nextRace.name}</p>
-                    <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5" /> {formatDate(nextRace.date)}
-                    </p>
-                  </div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" /> {nextRace.city}
-                  </p>
-                  <Button asChild variant="outline" size="sm" className="w-full mt-1">
-                    <Link to={`/provas/${nextRace.id}`}>Ver detalhes</Link>
-                  </Button>
-                </div>
-              )}
-            </DashboardCard>
+            <div className="rounded-2xl border border-border/60 bg-card/50 divide-y divide-border/60 md:divide-y-0">
+              {/* Treino + prova */}
+              <div className="md:grid md:grid-cols-2 md:gap-px md:bg-border/60 md:rounded-2xl md:overflow-hidden">
+                <MiniRow
+                  icon={<Dumbbell className="w-4 h-4" />}
+                  label="Próximo treino"
+                  loading={trainingsLoading}
+                  title={nextTraining?.title ?? "Nenhum treino agendado"}
+                  meta={
+                    nextTraining
+                      ? `${formatDate(nextTraining.date)} · ${nextTraining.time}${nextTraining.location ? ` • ${nextTraining.location}` : ""}`
+                      : undefined
+                  }
+                  to="/treinos"
+                  action={nextTraining ? "Ver agenda" : "Ver treinos"}
+                />
+                <MiniRow
+                  icon={<Trophy className="w-4 h-4" />}
+                  label="Próxima prova"
+                  loading={eventsLoading}
+                  title={nextRace?.name ?? "Nenhuma prova em aberto"}
+                  meta={nextRace ? `${formatDate(nextRace.date)}${nextRace.city ? ` • ${nextRace.city}` : ""}` : undefined}
+                  to={nextRace ? `/provas/${nextRace.id}` : "/provas"}
+                  action={nextRace ? "Ver detalhes" : "Ver provas"}
+                />
+              </div>
 
-            {/* My signups */}
-            <DashboardCard
-              icon={<ClipboardList className="w-5 h-5" />}
-              label="Minhas inscrições"
-              loading={signupsLoading}
-              empty={signups.length === 0}
-              emptyTitle="Você ainda não tem inscrições"
-              emptyAction={<Button asChild variant="brand" size="sm"><Link to="/provas">Ver provas</Link></Button>}
-            >
-              {signups.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-brand/10 text-brand rounded-xl px-3 py-2 text-center min-w-[4.5rem]">
-                      <p className="font-display font-bold text-xl">{signups.length}</p>
-                      <p className="text-[10px] leading-none uppercase tracking-wide">Total</p>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-muted-foreground">{pendingSignups.length} pendente{pendingSignups.length !== 1 ? "s" : ""}</p>
-                      <p className="text-sm text-muted-foreground">{confirmedSignups.length} confirmada{confirmedSignups.length !== 1 ? "s" : ""}</p>
-                    </div>
-                  </div>
-                  {latestSignup && (
-                    <div className="border-t border-border/60 pt-3">
-                      <p className="text-xs text-muted-foreground mb-1">Última inscrição</p>
-                      <p className="font-medium text-sm truncate">{latestSignup.events?.name || "Prova"}</p>
-                      <p className="text-xs text-muted-foreground">{latestSignup.events?.date ? formatDateShort(latestSignup.events.date) : ""} · {latestSignup.status}</p>
-                    </div>
+              {/* Meu cadastro */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("data");
+                  cadastroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/40 md:mt-3 md:rounded-2xl md:border md:border-border/60 md:bg-card"
+              >
+                <span className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", profileComplete ? "bg-success/15 text-success" : "bg-warning/15 text-warning")}>
+                  {profileComplete ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">Meu cadastro</span>
+                  <span className="block text-xs text-muted-foreground truncate">
+                    {profileLoading ? "Carregando…" : profileComplete ? "Cadastro completo ✓" : `Cadastro ${completionPct}% completo`}
+                  </span>
+                  {!profileLoading && !profileComplete && (
+                    <Progress value={completionPct} className="h-1 mt-1.5 max-w-[220px]" />
                   )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full mt-1 group"
-                    onClick={() => {
-                      setActiveTab("signups");
-                      signupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }}
-                  >
-                    Gerenciar inscrições <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-                  </Button>
-                </div>
-              )}
-            </DashboardCard>
+                </span>
+                <span className="text-xs font-medium text-muted-foreground hidden sm:inline">
+                  {profileComplete ? "Editar" : "Completar"}
+                </span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+              </button>
 
-            {/* My profile / cadastro */}
-            <DashboardCard
-              icon={<UserRound className="w-5 h-5" />}
-              label="Meu cadastro"
-              loading={profileLoading}
-              empty={false}
-            >
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", profileComplete ? "bg-success/15 text-success" : "bg-warning/15 text-warning")}>
-                    {profileComplete ? <CheckCircle2 className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-display font-semibold">{profileComplete ? "Cadastro completo" : "Complete seu cadastro"}</p>
-                    <p className="text-xs text-muted-foreground">{completionPct}% preenchido</p>
-                  </div>
-                </div>
-                <Progress value={completionPct} className="h-2" />
-                <Button
-                  variant={profileComplete ? "outline" : "brand"}
-                  size="sm"
-                  className="w-full mt-1"
-                  onClick={() => {
-                    setActiveTab("data");
-                    cadastroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
-                >
-                  {profileComplete ? "Editar cadastro" : "Completar cadastro"}
-                </Button>
-              </div>
-            </DashboardCard>
-
-            {/* Invite a friend */}
-            <DashboardCard
-              icon={<Users className="w-5 h-5" />}
-              label="Indique um amigo"
-              loading={false}
-              empty={false}
-              highlight
-            >
-              <div className="space-y-3">
-                <div>
-                  <p className="font-display font-semibold text-lg">Treinar junto é ainda melhor</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Em breve você poderá indicar amigos e ganhar benefícios.
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" className="w-full" onClick={() => toast.info("Em breve você poderá indicar amigos!")}>
-                  Quero indicar
-                </Button>
-              </div>
-            </DashboardCard>
+              {/* Indique um amigo */}
+              <button
+                type="button"
+                onClick={() => toast.info("Em breve você poderá indicar amigos!")}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/40 md:mt-3 md:rounded-2xl md:border md:border-brand/25 md:bg-gradient-to-r md:from-brand/10 md:to-transparent"
+              >
+                <span className="w-8 h-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                  <Users className="w-4 h-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">Treinar junto é ainda melhor</span>
+                  <span className="block text-xs text-muted-foreground truncate">Convide um amigo para correr com você.</span>
+                </span>
+                <span className="text-xs font-medium text-brand hidden sm:inline">Indicar</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+              </button>
+            </div>
           </div>
+
 
           {/* Detailed sections */}
           <div className="order-2 mb-8 md:mb-10 bg-card border border-border/60 rounded-3xl overflow-hidden shadow-card">
