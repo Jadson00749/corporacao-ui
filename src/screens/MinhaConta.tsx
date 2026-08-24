@@ -40,6 +40,8 @@ import { OnboardingTour } from "@/components/site/OnboardingTour";
 import { IncompleteProfileBanner } from "@/components/site/IncompleteProfileBanner";
 import type { EventSignup } from "@/hooks/useProfile";
 import { ParticipantsPanel } from "@/components/account/ParticipantsPanel";
+import { TabsCoachmark } from "@/components/site/TabsCoachmark";
+
 
 const today = () => new Date();
 const dateFromYMD = (d: string) => new Date(d + "T12:00:00");
