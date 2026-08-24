@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { effectivePrice, isSeniorApplicableDistance, isSenior } from "@/lib/eventPricing";
+import { effectivePrice, isSeniorApplicableDistance, isSeniorAtEvent } from "@/lib/eventPricing";
 
 export type ExportSignup = {
   id: string;
@@ -11,6 +11,11 @@ export type ExportSignup = {
   team_name: string;
   event_id: string;
   events: { id: string; name: string; date: string; city: string } | null;
+  participant_full_name?: string | null;
+  participant_cpf?: string | null;
+  participant_birth_date?: string | null;
+  participant_gender?: string | null;
+  participant_phone?: string | null;
   profiles: {
     full_name: string;
     cpf: string;
@@ -59,8 +64,14 @@ export const bracketOf = (category: string) => {
   return /anos/i.test(last) ? last.replace(/\s*anos\s*/i, "").trim() : "";
 };
 
+/** Dados do atleta: participante quando houver, senão o titular da conta (histórico). */
+export const athleteName = (s: ExportSignup) => s.participant_full_name || s.profiles?.full_name || "";
+export const athleteCpf = (s: ExportSignup) => s.participant_cpf || s.profiles?.cpf || "";
+export const athleteBirth = (s: ExportSignup) => s.participant_birth_date || s.profiles?.birth_date || null;
+export const athletePhone = (s: ExportSignup) => s.participant_phone || s.profiles?.whatsapp || "";
+
 export const genderLabel = (s: ExportSignup): string => {
-  const g = (s.profiles?.gender || "").trim().toLowerCase();
+  const g = (s.participant_gender || s.profiles?.gender || "").trim().toLowerCase();
   if (g.startsWith("f")) return "Feminino";
   if (g.startsWith("m")) return "Masculino";
   const cat = (s.category || "").toLowerCase();
@@ -80,7 +91,7 @@ export const signupValue = (s: ExportSignup, event?: EventPricingRow): number | 
   const list: any[] = Array.isArray(event?.distances) ? (event!.distances as any[]) : [];
   const d = list.find((x) => (x?.distance || "").trim() === dist);
   if (!d) return null;
-  const senior = isSeniorApplicableDistance(dist) && isSenior(s.profiles?.birth_date);
+  const senior = isSeniorApplicableDistance(dist) && isSeniorAtEvent(athleteBirth(s), s.events?.date);
   const v = effectivePrice(d, senior);
   return typeof v === "number" && v > 0 ? v : null;
 };
@@ -119,9 +130,9 @@ export async function exportSignupsXlsx(
 
   for (const r of data) {
     ws.addRow({
-      nome: r.profiles?.full_name || "",
-      cpf: r.profiles?.cpf || "",
-      nasc: toDate(r.profiles?.birth_date),
+      nome: athleteName(r),
+      cpf: athleteCpf(r),
+      nasc: toDate(athleteBirth(r)),
       sexo: genderLabel(r),
       mod: modalityOf(r.category),
       cat: r.category || "",
@@ -129,7 +140,7 @@ export async function exportSignupsXlsx(
       kit: formatKitOption(r.kit_option || ""),
       cidade: `${r.profiles?.city || ""}${r.profiles?.state ? ` / ${r.profiles.state}` : ""}`.trim(),
       equipe: r.team_name || r.profiles?.team_name || "",
-      whats: r.profiles?.whatsapp || "",
+      whats: athletePhone(r),
       email: r.profiles?.email || "",
       valor: signupValue(r, eventMap.get(r.event_id)),
       status: (r.status || "").toLowerCase() === "confirmada" ? "Aprovada" : "Em andamento",

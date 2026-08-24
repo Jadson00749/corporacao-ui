@@ -53,6 +53,11 @@ export type EventSignup = {
   shirt_size?: string | null;
   team_name?: string | null;
   coupon_code?: string | null;
+  participant_full_name?: string | null;
+  participant_cpf?: string | null;
+  participant_birth_date?: string | null;
+  participant_gender?: string | null;
+  participant_phone?: string | null;
   events?: {
     id: string;
     name: string;

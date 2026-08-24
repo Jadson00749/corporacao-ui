@@ -459,6 +459,11 @@ const SignupCard = ({
           <h3 className="font-display text-base sm:text-lg font-semibold leading-snug break-words">
             {s.events?.name || "Prova"}
           </h3>
+          {s.participant_full_name && (
+            <p className="mt-0.5 text-xs sm:text-sm font-medium text-brand break-words">
+              Atleta: {s.participant_full_name}
+            </p>
+          )}
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
             {s.events?.date && (
               <span className="flex items-center gap-1">

@@ -35,7 +35,7 @@ const normalizeGender = (g?: string | null): "F" | "M" | "O" => {
 
 /** Gênero real do perfil; fallback no texto da categoria apenas se o perfil estiver vazio. */
 const rowGender = (r: Row): "F" | "M" | "O" => {
-  const fromProfile = normalizeGender(r.profiles?.gender);
+  const fromProfile = normalizeGender((r as any).participant_gender || r.profiles?.gender);
   if (fromProfile !== "O") return fromProfile;
   const cat = (r.category || "").toLowerCase();
   if (/femin/.test(cat)) return "F";
@@ -105,7 +105,7 @@ const AdminEventSignups = () => {
       if (statusFilter !== "all" && statusFilter !== "cancelada" && status !== statusFilter) return false;
       if (search) {
         const q = search.toLowerCase();
-        const hay = `${r.profiles?.full_name || ""} ${r.profiles?.email || ""} ${r.profiles?.cpf || ""} ${r.events?.name || ""}`.toLowerCase();
+        const hay = `${(r as any).participant_full_name || ""} ${r.profiles?.full_name || ""} ${r.profiles?.email || ""} ${r.profiles?.cpf || ""} ${r.events?.name || ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -263,8 +263,12 @@ const AdminEventSignups = () => {
                     <div className="text-xs text-muted-foreground">{r.events?.date}</div>
                   </td>
                   <td className="p-3">
-                    <div className="font-medium">{r.profiles?.full_name || "-"}</div>
-                    <div className="text-xs text-muted-foreground">CPF {r.profiles?.cpf || "-"}</div>
+                    <div className="font-medium">{(r as any).participant_full_name || r.profiles?.full_name || "-"}</div>
+                    <div className="text-xs text-muted-foreground">CPF {(r as any).participant_cpf || r.profiles?.cpf || "-"}</div>
+                    {(r as any).participant_full_name &&
+                      (r as any).participant_full_name !== r.profiles?.full_name && (
+                        <div className="text-xs text-muted-foreground">Responsável: {r.profiles?.full_name || "-"}</div>
+                      )}
                   </td>
                   <td className="p-3">
                     <div>{r.profiles?.email}</div>
