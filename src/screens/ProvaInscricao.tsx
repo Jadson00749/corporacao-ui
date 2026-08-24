@@ -1030,6 +1030,22 @@ const ProvaInscricao = () => {
                           <p className="text-xs text-muted-foreground">
                             A categoria e os benefícios são calculados automaticamente por estes dados.
                           </p>
+
+                          {!isSelf && selectedParticipantId === null && (
+                            <label className="flex items-start gap-3 rounded-xl border border-border bg-secondary/30 p-3 cursor-pointer">
+                              <Checkbox
+                                checked={saveToParticipants}
+                                onCheckedChange={(v) => setSaveToParticipants(v === true)}
+                                className="mt-0.5"
+                              />
+                              <span className="min-w-0">
+                                <span className="block text-sm font-semibold">Salvar em Meus participantes</span>
+                                <span className="block text-xs text-muted-foreground">
+                                  Assim você não precisará preencher esses dados novamente nas próximas provas.
+                                </span>
+                              </span>
+                            </label>
+                          )}
                         </div>
 
                         <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
