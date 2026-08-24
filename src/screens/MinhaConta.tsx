@@ -60,6 +60,8 @@ const MinhaConta = () => {
   const cadastroRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<"signups" | "data">("signups");
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "confirmed">("all");
+
 
   // Sempre buscar do banco ao abrir a área do atleta (evita estado local desatualizado)
   useEffect(() => {
