@@ -115,6 +115,25 @@ export const isSenior = (birth?: string | null) => {
   return age !== null && age >= SENIOR_MIN_AGE;
 };
 
+/** Idade do participante na data da prova (fallback: idade atual). */
+export const ageAtEvent = (birth?: string | null, eventDate?: string | null): number | null => {
+  if (!birth) return null;
+  if (!eventDate) return calcAgeFromBirth(birth);
+  const b = new Date(birth.length <= 10 ? `${birth}T12:00:00` : birth);
+  const e = new Date(eventDate.length <= 10 ? `${eventDate}T12:00:00` : eventDate);
+  if (Number.isNaN(b.getTime()) || Number.isNaN(e.getTime())) return null;
+  let age = e.getFullYear() - b.getFullYear();
+  const m = e.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && e.getDate() < b.getDate())) age--;
+  return age;
+};
+
+/** 60+ considerando a idade na data da prova. */
+export const isSeniorAtEvent = (birth?: string | null, eventDate?: string | null) => {
+  const age = ageAtEvent(birth, eventDate);
+  return age !== null && age >= SENIOR_MIN_AGE;
+};
+
 /** Valor fixo 60+ definido pelo admin, se houver. */
 export const seniorPrice = (d?: SeniorPricing | null): number | null => {
   const v = d?.price_60_plus;
@@ -123,7 +142,10 @@ export const seniorPrice = (d?: SeniorPricing | null): number | null => {
 
 export const hasSeniorPrice = (d?: SeniorPricing | null) => seniorPrice(d) !== null;
 
-/** Preço efetivo: valor fixo 60+ quando aplicável, senão o lote vigente. */
+/**
+ * Preço efetivo: valor fixo 60+ definido pelo admin quando houver;
+ * senão, 60+ paga 50% do valor integral do lote vigente.
+ */
 export const effectivePrice = (
   d: DistancePricing & SeniorPricing,
   senior: boolean,
@@ -132,9 +154,11 @@ export const effectivePrice = (
   if (senior) {
     const sp = seniorPrice(d);
     if (sp !== null) return sp;
+    return Math.round((currentPrice(d, today) / 2) * 100) / 100;
   }
   return currentPrice(d, today);
 };
+
 
 
 /** Modalidades legadas criadas como "(60 anos ou mais)" não são mais exibidas. */
