@@ -776,7 +776,7 @@ const ProvaInscricao = () => {
             <p className="text-center text-muted-foreground">Prova não encontrada.</p>
           ) : (
             <>
-              <Stepper current={step} />
+              <Stepper current={step} onGo={done ? undefined : (i) => setStep(i)} />
 
               {done ? (
                 <div className="max-w-2xl mx-auto bg-card border border-border rounded-2xl p-4 sm:p-7 space-y-5">
