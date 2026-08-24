@@ -130,6 +130,14 @@ const MinhaConta = () => {
   const upcomingSignups = signups.filter(
     (s) => s.status !== "cancelada" && s.events?.date && dateFromYMD(s.events.date) >= startOfToday
   );
+  const filteredSignups =
+    statusFilter === "pending"
+      ? pendingSignups
+      : statusFilter === "confirmed"
+      ? confirmedSignups
+      : signups;
+
+
 
   return (
     <Layout>
