@@ -770,31 +770,59 @@ const ProvaInscricao = () => {
               <Stepper current={step} />
 
               {done ? (
-                <div className="max-w-2xl mx-auto bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-6">
+                <div className="max-w-2xl mx-auto bg-card border border-border rounded-2xl p-5 sm:p-8 space-y-6">
+                  <Confetti fire={done} />
                   <div className="text-center">
                     <CheckCircle2 className="w-14 h-14 text-success mx-auto mb-3" />
-                    <h1 className="font-display text-2xl font-bold mb-2">Inscrição realizada com sucesso</h1>
-                    <p className="text-muted-foreground">
-                      Copie a chave PIX abaixo, faça o pagamento e envie o comprovante via WhatsApp para confirmarmos sua participação.
+                    <h1 className="font-display text-2xl font-bold mb-2">Inscrição registrada! 🎉</h1>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/15 px-3 py-1 text-xs font-semibold text-warning">
+                      🟡 Aguardando pagamento
+                    </span>
+                    <p className="text-muted-foreground text-sm mt-3">
+                      Seu registro foi salvo. A participação é confirmada pela organização após o pagamento e o envio do comprovante.
                     </p>
                   </div>
 
-                  <div className="bg-secondary/40 rounded-xl p-4 space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-muted-foreground">Prova</span><span className="font-medium">{event.name}</span></div>
-                    {pName && <div className="flex justify-between"><span className="text-muted-foreground">Participante</span><span className="font-medium">{pName}</span></div>}
-                    <div className="flex justify-between"><span className="text-muted-foreground">Categoria</span><span className="font-medium">{categoryDisplay || categoryLabel}</span></div>
-                    {shirtSize && <div className="flex justify-between"><span className="text-muted-foreground">Camiseta</span><span className="font-medium">{shirtSize}</span></div>}
-                    {total > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
+                  {/* Comprovante do registro */}
+                  <div className="rounded-2xl border border-border bg-secondary/40 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+                      1. Comprovante do registro
+                    </p>
+                    <div className="space-y-2 text-sm">
+                      {pName && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Participante</span><span className="font-medium text-right break-words">{pName}</span></div>}
+                      <div className="flex justify-between gap-3"><span className="text-muted-foreground">Prova</span><span className="font-medium text-right break-words">{event.name}</span></div>
+                      {distance && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Modalidade</span><span className="font-medium text-right">{distance}</span></div>}
+                      <div className="flex justify-between gap-3"><span className="text-muted-foreground">Categoria</span><span className="font-medium text-right">{categoryDisplay || categoryLabel}</span></div>
+                      {shirtSize && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Camiseta</span><span className="font-medium text-right">{shirtSize}</span></div>}
+                      {total > 0 && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
+                      <div className="flex justify-between gap-3"><span className="text-muted-foreground">Status</span><span className="font-medium text-warning">Aguardando pagamento</span></div>
+                      {signupId && (
+                        <div className="flex justify-between gap-3 border-t border-border pt-2">
+                          <span className="text-muted-foreground">Nº da inscrição</span>
+                          <span className="font-mono text-xs break-all text-right">{signupId}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <PixPayment
-                    pixKey={payment?.pix_key || (event as any)?.pix_key}
-                    recipient={payment?.pix_recipient || (event as any)?.pix_recipient}
-                    city={event.city}
-                    amount={total}
-                    txid={`INSC${String(signupId || event.id).replace(/\D/g, "").slice(0, 10)}`}
-                    instructions={payment?.payment_instructions || (event as any)?.payment_instructions}
-                  />
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-brand mb-2">
+                      2. Realize o pagamento
+                    </p>
+                    <PixPayment
+                      pixKey={payment?.pix_key || (event as any)?.pix_key}
+                      recipient={payment?.pix_recipient || (event as any)?.pix_recipient}
+                      city={event.city}
+                      amount={total}
+                      txid={`INSC${String(signupId || event.id).replace(/\D/g, "").slice(0, 10)}`}
+                      instructions={payment?.payment_instructions || (event as any)?.payment_instructions}
+                    />
+                  </div>
+
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    3. Envie o comprovante
+                  </p>
+
 
                   <Button asChild variant="brand" size="lg" className="w-full">
                     <a
