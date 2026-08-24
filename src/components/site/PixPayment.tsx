@@ -86,16 +86,20 @@ export function PixPayment({ pixKey, recipient, city, amount, txid, instructions
           </div>
 
           <div className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              PIX Copia e Cola
-            </div>
-            <div className="rounded-xl border border-border bg-background/70 p-3 font-mono text-[11px] leading-relaxed break-all max-h-28 overflow-y-auto">
-              {payload}
-            </div>
-            <Button type="button" variant={copied ? "outline" : "brand"} className="w-full" onClick={copy}>
+            <Button type="button" variant={copied ? "outline" : "brand"} size="lg" className="w-full" onClick={copy}>
               {copied ? (<><Check className="w-4 h-4" /> Código PIX copiado ✓</>) : (<><Copy className="w-4 h-4" /> Copiar código PIX</>)}
             </Button>
+            <details className="group">
+              <summary className="cursor-pointer list-none text-xs text-muted-foreground hover:text-foreground text-center py-1">
+                <span className="group-open:hidden">Mostrar código PIX</span>
+                <span className="hidden group-open:inline">Ocultar código PIX</span>
+              </summary>
+              <div className="mt-2 rounded-xl border border-border bg-background/70 p-3 font-mono text-[11px] leading-relaxed break-all max-h-24 overflow-y-auto">
+                {payload}
+              </div>
+            </details>
           </div>
+
         </>
       ) : null}
 
