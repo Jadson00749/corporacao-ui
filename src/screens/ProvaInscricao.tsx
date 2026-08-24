@@ -31,6 +31,7 @@ import {
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 
 import { PixPayment } from "@/components/site/PixPayment";
+import { Confetti } from "@/components/site/Confetti";
 
 type Distance = { distance: string; price?: number };
 type AgeBracket = { min: number; max: number };
