@@ -558,6 +558,7 @@ const ProvaInscricao = () => {
       return;
     }
     setErrors({});
+    setSubmitError(null);
 
     setSubmitting(true);
 
@@ -618,15 +619,50 @@ const ProvaInscricao = () => {
       }
     }
 
-    setSubmitting(false);
     if (error) {
-      toast.error(error.message);
+      setSubmitting(false);
+      setSubmitError(
+        "Não conseguimos registrar sua inscrição agora. Seus dados foram mantidos — tente novamente em instantes."
+      );
+      toast.error("Não foi possível registrar a inscrição", {
+        description: error.message,
+        position: "top-center",
+      });
       return;
     }
-    if (createdId) setSignupId(createdId);
+
+    // Confirmação real: só seguimos para a tela de sucesso se a linha existir no banco.
+    let persisted: { id: string; status: string } | null = null;
+    if (createdId) {
+      const { data: check } = await supabase
+        .from("event_signups")
+        .select("id, status")
+        .eq("id", createdId)
+        .maybeSingle();
+      persisted = (check as any) ?? null;
+    }
+
+    setSubmitting(false);
+
+    if (!persisted?.id) {
+      setSubmitError(
+        "Não conseguimos confirmar o registro da sua inscrição. Nada foi perdido — revise os dados e tente novamente."
+      );
+      toast.error("Inscrição não confirmada", {
+        description: "Tente novamente. Se persistir, fale com a organização pelo WhatsApp.",
+        position: "top-center",
+      });
+      return;
+    }
+
+    setSignupId(persisted.id);
+    setSubmitError(null);
     setDoneParticipants((prev) => [...prev, { name: pName.trim(), birth: pBirth, self: isSelf }]);
     qc.invalidateQueries({ queryKey: ["my_signups"] });
     qc.invalidateQueries({ queryKey: ["event_signup_existing", id, user.id] });
+    try {
+      sessionStorage.setItem("corporacao:last_signup_id", persisted.id);
+    } catch {}
     setDone(true);
     setStep(2);
     window.scrollTo({ top: 0, behavior: "smooth" });
