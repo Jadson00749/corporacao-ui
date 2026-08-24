@@ -50,6 +50,12 @@ export type Database = {
         Row: {
           accepted_event_terms_at: string | null
           category: string
+          participant_full_name?: string | null
+          participant_cpf?: string | null
+          participant_birth_date?: string | null
+          participant_gender?: string | null
+          participant_phone?: string | null
+          shirt_size?: string | null
           coupon_code: string
           created_at: string
           event_id: string
@@ -64,6 +70,12 @@ export type Database = {
         Insert: {
           accepted_event_terms_at?: string | null
           category?: string
+          participant_full_name?: string | null
+          participant_cpf?: string | null
+          participant_birth_date?: string | null
+          participant_gender?: string | null
+          participant_phone?: string | null
+          shirt_size?: string | null
           coupon_code?: string
           created_at?: string
           event_id: string
@@ -78,6 +90,12 @@ export type Database = {
         Update: {
           accepted_event_terms_at?: string | null
           category?: string
+          participant_full_name?: string | null
+          participant_cpf?: string | null
+          participant_birth_date?: string | null
+          participant_gender?: string | null
+          participant_phone?: string | null
+          shirt_size?: string | null
           coupon_code?: string
           created_at?: string
           event_id?: string

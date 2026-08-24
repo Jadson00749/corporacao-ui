@@ -22,10 +22,12 @@ import {
   currentPrice,
   effectivePrice,
   hasSeniorPrice,
-  isSenior,
+  isSeniorAtEvent,
+  ageAtEvent,
   isSeniorOnlyDistance,
   isKidsDistance,
 } from "@/lib/eventPricing";
+
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 
 import { PixPayment } from "@/components/site/PixPayment";
@@ -142,6 +144,35 @@ const ProvaInscricao = () => {
   const [signupId, setSignupId] = useState<string | null>(null);
   const [resumeDismissed, setResumeDismissed] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
+
+  // ---- PARTICIPANTE (pode ser o próprio usuário ou outra pessoa) ----
+  const [pName, setPName] = useState("");
+  const [pCpf, setPCpf] = useState("");
+  const [pBirth, setPBirth] = useState("");
+  const [pGender, setPGender] = useState("");
+  const [pPhone, setPPhone] = useState("");
+  const [isSelf, setIsSelf] = useState(true);
+  const prefilledRef = useRef(false);
+
+  const fillWithProfile = () => {
+    setPName(profile?.full_name || "");
+    setPCpf(profile?.cpf || "");
+    setPBirth((profile as any)?.birth_date || "");
+    setPGender((profile as any)?.gender || "");
+    setPPhone(profile?.whatsapp || "");
+  };
+
+  const clearParticipant = () => {
+    setPName(""); setPCpf(""); setPBirth(""); setPGender(""); setPPhone("");
+    setShirtSize("");
+  };
+
+  useEffect(() => {
+    if (prefilledRef.current || !profile) return;
+    prefilledRef.current = true;
+    fillWithProfile();
+  }, [profile]);
+
 
 
 
@@ -273,14 +304,14 @@ const ProvaInscricao = () => {
   useEffect(() => { if (distances.length === 1) setDistance(distances[0].distance); }, [distances]);
   useEffect(() => { if (kitOptions.length === 1) setSelectedKits([kitOptions[0].name]); }, [kitOptions]);
 
-  // Sexo automático a partir do cadastro (profiles.gender)
-  const profileGender = useMemo(() => genderLabelFrom(profile?.gender, genders), [profile?.gender, genders]);
-  useEffect(() => { setGender(profileGender); }, [profileGender]);
+  // Sexo derivado do PARTICIPANTE
+  const participantGenderLabel = useMemo(() => genderLabelFrom(pGender, genders), [pGender, genders]);
+  useEffect(() => { setGender(participantGenderLabel); }, [participantGenderLabel]);
 
-  // Idade esportiva (ano da prova - ano de nascimento) e faixa etária automática
+  // Idade esportiva do PARTICIPANTE (ano da prova - ano de nascimento)
   const categoryAge = useMemo(
-    () => sportAge(profile?.birth_date, (event as any)?.date),
-    [profile?.birth_date, event]
+    () => sportAge(pBirth, (event as any)?.date),
+    [pBirth, event]
   );
   const autoBracket = useMemo(() => {
     if (categoryAge == null || !ageBrackets.length) return "";
@@ -290,14 +321,16 @@ const ProvaInscricao = () => {
   useEffect(() => { setBracket(autoBracket); }, [autoBracket]);
 
   const profileComplete = profile && profile.full_name && profile.cpf && profile.whatsapp && profile.cep;
+  const participantComplete = !!(pName.trim() && pCpf.trim() && pBirth && pGender);
 
 
   const distanceObj = distances.find((d) => d.distance === distance);
-  const senior = isSenior(profile?.birth_date);
+  // 60+ pela idade do PARTICIPANTE na data da prova
+  const senior = isSeniorAtEvent(pBirth, (event as any)?.date);
   const basePriceOf = (d: any) => currentPrice(d ?? {});
   const seniorForDistance = (d: any) => senior && !isKidsDistance(d?.distance);
   const priceOf = (d: any) => effectivePrice(d ?? {}, seniorForDistance(d));
-  const seniorApplied = (d: any) => seniorForDistance(d) && hasSeniorPrice(d ?? {});
+  const seniorApplied = (d: any) => seniorForDistance(d) && (hasSeniorPrice(d ?? {}) || basePriceOf(d) > 0);
   const loteOf = (d: any) => activeLote(d ?? {});
   const currentLote = loteOf(distanceObj);
   const baseDistancePrice = basePriceOf(distanceObj);
@@ -316,18 +349,20 @@ const ProvaInscricao = () => {
 
   const whatsMessage = useMemo(() => {
     const lines = [
-      `Olá! Sou ${profile?.full_name || "atleta"} e fiz minha inscrição na ${event?.name || "prova"}.`,
+      `Olá! Sou ${profile?.full_name || "atleta"} e fiz uma inscrição na ${event?.name || "prova"}.`,
       "",
+      pName && `Participante: ${pName}`,
       distance && `Modalidade: ${distance}`,
       (gender || bracket) && `Categoria: ${[gender, bracket && `${bracket} anos`].filter(Boolean).join(" · ")}`,
       selectedKits.length && `Kit: ${selectedKits.join(", ")}`,
       shirtSize && `Tamanho da camiseta: ${shirtSize}`,
       total > 0 && `Valor: ${brl(total)}`,
       "",
-      "Gostaria de enviar meu comprovante PIX.",
+      "Gostaria de enviar o comprovante PIX.",
     ].filter((l) => l !== false && l !== 0 && l !== undefined && l !== null && l !== "" || l === "");
     return (lines as string[]).join("\n");
-  }, [profile?.full_name, event?.name, distance, gender, bracket, selectedKits, shirtSize, total]);
+  }, [profile?.full_name, pName, event?.name, distance, gender, bracket, selectedKits, shirtSize, total]);
+
 
   // Retomar rascunho pendente sem criar nova inscrição
   const resumeSignup = (signup: { id: string; category: string | null; kit_option?: string | null; team_name?: string | null; coupon_code?: string | null; shirt_size?: string | null }) => {
@@ -415,8 +450,12 @@ const ProvaInscricao = () => {
     const newErrors: Record<string, boolean> = {};
     const missingLabels: string[] = [];
     if (distances.length > 0 && !distance) { newErrors.distance = true; missingLabels.push("Distância"); }
-    if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo (complete no seu cadastro)"); }
-    if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Data de nascimento (complete no seu cadastro)"); }
+    if (!pName.trim()) { newErrors.pName = true; missingLabels.push("Nome do participante"); }
+    if (!pCpf.trim()) { newErrors.pCpf = true; missingLabels.push("CPF do participante"); }
+    if (!pBirth) { newErrors.pBirth = true; missingLabels.push("Data de nascimento do participante"); }
+    if (!pGender) { newErrors.pGender = true; missingLabels.push("Sexo do participante"); }
+    if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo do participante"); }
+    if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Data de nascimento do participante"); }
     if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Opção de kit"); }
     if (availableSizes.length > 0 && !shirtSize) { newErrors.shirtSize = true; missingLabels.push("Tamanho da camiseta"); }
     if (!acceptedTerms) { newErrors.terms = true; missingLabels.push("Aceitar os termos"); }
@@ -424,7 +463,7 @@ const ProvaInscricao = () => {
     if (missingLabels.length) {
       setErrors(newErrors);
       toast.error("Preencha os campos destacados", {
-        description: missingLabels.join(" · "),
+        description: Array.from(new Set(missingLabels)).join(" · "),
         position: "top-center",
         duration: 5000,
       });
@@ -441,41 +480,27 @@ const ProvaInscricao = () => {
     const payload = {
       category: categoryLabel,
       status: "pendente",
-      notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: valor fixo ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
+      notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
       kit_option: selectedKits.length ? JSON.stringify(selectedKits) : "",
       shirt_size: shirtSize || null,
       coupon_code: appliedCoupon?.code || "",
       team_name: teamName,
       accepted_event_terms_at: new Date().toISOString(),
+      participant_full_name: pName.trim(),
+      participant_cpf: pCpf.trim(),
+      participant_birth_date: pBirth,
+      participant_gender: pGender,
+      participant_phone: pPhone.trim() || null,
     };
 
-    // Já existe inscrição desta pessoa nesta prova/categoria?
-    const { data: existing, error: findError } = await supabase
-      .from("event_signups")
-      .select("id, status")
-      .eq("user_id", user.id)
-      .eq("event_id", event.id)
-      .eq("category", categoryLabel)
-      .maybeSingle();
-
-    if (findError) {
-      setSubmitting(false);
-      toast.error(findError.message);
-      return;
-    }
-
-    if (existing && existing.status === "confirmada") {
-      setSubmitting(false);
-      toast.error("Você já está inscrito nesta categoria.");
-      return;
-    }
-
     let error = null as { code?: string; message: string } | null;
-    if (existing) {
-      // Retoma o rascunho pendente/cancelado: atualiza, nunca duplica
-      const res = await supabase.from("event_signups").update(payload as any).eq("id", existing.id);
+    let createdId: string | null = null;
+
+    if (signupId) {
+      // Retomando um rascunho pendente já existente
+      const res = await supabase.from("event_signups").update(payload as any).eq("id", signupId);
       error = res.error;
-      if (!error) setSignupId(existing.id);
+      createdId = signupId;
     } else {
       const res = await supabase
         .from("event_signups")
@@ -483,21 +508,62 @@ const ProvaInscricao = () => {
         .select("id")
         .maybeSingle();
       error = res.error;
-      if (!error && res.data?.id) setSignupId(res.data.id);
+      createdId = res.data?.id ?? null;
+
+      // Compatibilidade com a restrição antiga (user_id + event_id + category):
+      // se colidir, reaproveita o registro pendente/cancelado existente.
+      if (error?.code === "23505") {
+        const { data: existing } = await supabase
+          .from("event_signups")
+          .select("id, status, participant_full_name")
+          .eq("user_id", user.id)
+          .eq("event_id", event.id)
+          .eq("category", categoryLabel)
+          .maybeSingle();
+        if (existing && existing.status !== "confirmada") {
+          const res2 = await supabase.from("event_signups").update(payload as any).eq("id", existing.id);
+          error = res2.error;
+          createdId = existing.id;
+        } else {
+          setSubmitting(false);
+          toast.error(
+            "Já existe uma inscrição confirmada nesta categoria por esta conta. Fale com a organização para incluir outro participante nesta mesma categoria."
+          );
+          return;
+        }
+      }
     }
 
     setSubmitting(false);
     if (error) {
-      if (error.code === "23505") toast.error("Você já está inscrito nesta categoria.");
-      else toast.error(error.message);
+      toast.error(error.message);
       return;
     }
+    if (createdId) setSignupId(createdId);
     qc.invalidateQueries({ queryKey: ["my_signups"] });
     qc.invalidateQueries({ queryKey: ["event_signup_existing", id, user.id] });
     setDone(true);
     setStep(2);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  /** Recomeça o fluxo para inscrever outro participante na mesma prova. */
+  const startAnotherParticipant = () => {
+    setDone(false);
+    setSignupId(null);
+    setStep(0);
+    setSelectedKits(kitOptions.length === 1 ? [kitOptions[0].name] : []);
+    setShirtSize("");
+    setNotes("");
+    setAcceptedTerms(false);
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setIsSelf(false);
+    clearParticipant();
+    setErrors({});
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
 
 
   if (loading || !user) return null;
