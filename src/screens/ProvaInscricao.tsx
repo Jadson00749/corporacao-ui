@@ -70,7 +70,7 @@ const genderLabelFrom = (raw?: string | null, options: string[] = []) => {
 const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const STEPS = ["Inscrição", "Dados", "Pagamento"];
+const STEPS = ["Participante", "Inscrição", "Pagamento"];
 
 // Deriva a categoria a partir do nome da modalidade (ex.: "3Km Caminhada - 60+")
 const GROUP_RULES: { label: string; test: RegExp }[] = [
