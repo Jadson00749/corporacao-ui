@@ -70,7 +70,7 @@ const genderLabelFrom = (raw?: string | null, options: string[] = []) => {
 const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const STEPS = ["Inscrição", "Dados", "Pagamento"];
+const STEPS = ["Participante", "Inscrição", "Pagamento"];
 
 // Deriva a categoria a partir do nome da modalidade (ex.: "3Km Caminhada - 60+")
 const GROUP_RULES: { label: string; test: RegExp }[] = [
@@ -132,7 +132,7 @@ const ProvaInscricao = () => {
   const [gender, setGender] = useState("");
   const [bracket, setBracket] = useState("");
   const [selectedKits, setSelectedKits] = useState<string[]>([]);
-  const [shirtSize, setShirtSize] = useState("");
+  
   const [sizeChartKit, setSizeChartKit] = useState<KitOption | null>(null);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
@@ -145,26 +145,51 @@ const ProvaInscricao = () => {
   const [resumeDismissed, setResumeDismissed] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
 
-  // ---- PARTICIPANTE (pode ser o próprio usuário ou outra pessoa) ----
-  const [pName, setPName] = useState("");
-  const [pCpf, setPCpf] = useState("");
-  const [pBirth, setPBirth] = useState("");
-  const [pGender, setPGender] = useState("");
-  const [pPhone, setPPhone] = useState("");
+  // ---- PARTICIPANTE (rascunhos independentes: "eu mesmo" x "outra pessoa") ----
+  type ParticipantDraft = {
+    name: string; cpf: string; birth: string; gender: string; phone: string; shirtSize: string;
+  };
+  const EMPTY_DRAFT: ParticipantDraft = { name: "", cpf: "", birth: "", gender: "", phone: "", shirtSize: "" };
+
   const [isSelf, setIsSelf] = useState(true);
+  const [selfDraft, setSelfDraft] = useState<ParticipantDraft>(EMPTY_DRAFT);
+  const [otherDraft, setOtherDraft] = useState<ParticipantDraft>(EMPTY_DRAFT);
+  const [doneParticipants, setDoneParticipants] = useState<{ name: string; birth: string; self: boolean }[]>([]);
+  const [showExtras, setShowExtras] = useState(false);
   const prefilledRef = useRef(false);
 
+  const draft = isSelf ? selfDraft : otherDraft;
+  const patchDraft = (patch: Partial<ParticipantDraft>) =>
+    (isSelf ? setSelfDraft : setOtherDraft)((d) => ({ ...d, ...patch }));
+
+  const pName = draft.name;
+  const pCpf = draft.cpf;
+  const pBirth = draft.birth;
+  const pGender = draft.gender;
+  const pPhone = draft.phone;
+  const shirtSize = draft.shirtSize;
+
+  const setPName = (v: string) => patchDraft({ name: v });
+  const setPCpf = (v: string) => patchDraft({ cpf: v });
+  const setPBirth = (v: string) => patchDraft({ birth: v });
+  const setPGender = (v: string) => patchDraft({ gender: v });
+  const setPPhone = (v: string) => patchDraft({ phone: v });
+  const setShirtSize = (v: string) => patchDraft({ shirtSize: v });
+
   const fillWithProfile = () => {
-    setPName(profile?.full_name || "");
-    setPCpf(profile?.cpf || "");
-    setPBirth((profile as any)?.birth_date || "");
-    setPGender((profile as any)?.gender || "");
-    setPPhone(profile?.whatsapp || "");
+    setSelfDraft((d) => ({
+      ...d,
+      name: d.name || profile?.full_name || "",
+      cpf: d.cpf || profile?.cpf || "",
+      birth: d.birth || (profile as any)?.birth_date || "",
+      gender: d.gender || (profile as any)?.gender || "",
+      phone: d.phone || profile?.whatsapp || "",
+    }));
   };
 
   const clearParticipant = () => {
-    setPName(""); setPCpf(""); setPBirth(""); setPGender(""); setPPhone("");
-    setShirtSize("");
+    setSelfDraft(EMPTY_DRAFT);
+    setOtherDraft(EMPTY_DRAFT);
   };
 
   useEffect(() => {
@@ -172,6 +197,7 @@ const ProvaInscricao = () => {
     prefilledRef.current = true;
     fillWithProfile();
   }, [profile]);
+
 
 
 
@@ -321,7 +347,28 @@ const ProvaInscricao = () => {
   useEffect(() => { setBracket(autoBracket); }, [autoBracket]);
 
   const profileComplete = profile && profile.full_name && profile.cpf && profile.whatsapp && profile.cep;
-  const participantComplete = !!(pName.trim() && pCpf.trim() && pBirth && pGender);
+
+  /** Menor de 18 na data da prova -> CPF opcional. */
+  const isMinor = categoryAge != null && categoryAge < 18;
+  const cpfRequired = !isMinor;
+  const participantComplete = !!(pName.trim() && pBirth && pGender && (!cpfRequired || pCpf.trim()));
+
+  const kidsDistances = useMemo(() => distances.filter((d) => isKidsDistance(d.distance)), [distances]);
+  const adultDistances = useMemo(() => distances.filter((d) => !isKidsDistance(d.distance)), [distances]);
+
+  /** Idade x modalidade: evita "KIDS • Feminino • 30–34 anos". */
+  const ageMismatch = useMemo(() => {
+    if (!distance || categoryAge == null) return null;
+    const selKids = isKidsDistance(distance);
+    if (selKids && categoryAge >= 18 && adultDistances.length) {
+      return { message: "Esta modalidade é destinada a crianças.", options: adultDistances };
+    }
+    if (!selKids && categoryAge <= 12 && kidsDistances.length) {
+      return { message: "Esta modalidade não corresponde à idade do participante.", options: kidsDistances };
+    }
+    return null;
+  }, [distance, categoryAge, kidsDistances, adultDistances]);
+
 
 
   const distanceObj = distances.find((d) => d.distance === distance);
@@ -346,6 +393,15 @@ const ProvaInscricao = () => {
     const parts = [distance, gender, bracket && `${bracket} anos`].filter(Boolean);
     return parts.join(" · ");
   }, [distance, gender, bracket]);
+
+  /** Rótulo amigável exibido na tela (o categoryLabel continua igual no banco). */
+  const categoryDisplay = useMemo(() => {
+    const ageLabel = isKidsDistance(distance) ? "Infantil" : bracket ? `${bracket.replace("-", "–")} anos` : "";
+    return [distance && cleanDistanceLabel(distance), gender, ageLabel].filter(Boolean).join(" • ");
+  }, [distance, gender, bracket]);
+
+  const categoryReady = !!distance && !!gender && (!ageBrackets.length || !!bracket || isKidsDistance(distance)) && !ageMismatch;
+
 
   const whatsMessage = useMemo(() => {
     const lines = [
@@ -382,8 +438,7 @@ const ProvaInscricao = () => {
       if (signup.kit_option) kits = [signup.kit_option];
     }
     if (kits.length) setSelectedKits(kits);
-    const savedSize = (signup as any)?.shirt_size;
-    if (savedSize) setShirtSize(savedSize);
+    const savedSize = (signup as any)?.shirt_size || "";
     if (signup.team_name) setTeamName(signup.team_name);
     if (signup.coupon_code) {
       const found = coupons.find((c) => c.code.toUpperCase() === signup.coupon_code!.toUpperCase());
@@ -391,13 +446,20 @@ const ProvaInscricao = () => {
     }
     const sg = signup as any;
     if (sg.participant_full_name) {
-      setPName(sg.participant_full_name);
-      setPCpf(sg.participant_cpf || "");
-      setPBirth(sg.participant_birth_date || "");
-      setPGender(sg.participant_gender || "");
-      setPPhone(sg.participant_phone || "");
-      setIsSelf((sg.participant_full_name || "") === (profile?.full_name || ""));
+      const self = (sg.participant_full_name || "") === (profile?.full_name || "");
+      const restored = {
+        name: sg.participant_full_name,
+        cpf: sg.participant_cpf || "",
+        birth: sg.participant_birth_date || "",
+        gender: sg.participant_gender || "",
+        phone: sg.participant_phone || "",
+        shirtSize: savedSize,
+      };
+      (self ? setSelfDraft : setOtherDraft)(restored);
+      setIsSelf(self);
       prefilledRef.current = true;
+    } else if (savedSize) {
+      setShirtSize(savedSize);
     }
     setSignupId(signup.id);
     setAcceptedTerms(true);
@@ -408,9 +470,10 @@ const ProvaInscricao = () => {
       setDone(true);
       setStep(2);
     } else {
-      setStep(savedDistance ? 1 : 0);
-      if (!sg.participant_full_name) toast.info("Confirme os dados do participante para seguir ao pagamento.");
+      setStep(sg.participant_full_name ? 1 : 0);
+      if (!sg.participant_full_name) toast.info("Confirme os dados do participante para seguir.");
     }
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -439,17 +502,23 @@ const ProvaInscricao = () => {
     toast.success(`Cupom ${found.code} aplicado.`);
   };
 
+  /** Etapa 1 -> 2: valida apenas os dados do participante. */
   const goStep2 = () => {
     const newErrors: Record<string, boolean> = {};
     const missing: string[] = [];
-    if (distances.length > 0 && !distance) { newErrors.distance = true; missing.push("Modalidade"); }
-    if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missing.push("Kit"); }
-    if (availableSizes.length > 0 && !shirtSize) { newErrors.shirtSize = true; missing.push("Tamanho da camiseta"); }
+    if (!pName.trim()) { newErrors.pName = true; missing.push("Nome completo"); }
+    if (!pBirth) { newErrors.pBirth = true; missing.push("Data de nascimento"); }
+    if (!pGender) { newErrors.pGender = true; missing.push("Sexo"); }
+    if (cpfRequired && !pCpf.trim()) { newErrors.pCpf = true; missing.push("CPF"); }
     if (missing.length) {
       setErrors(newErrors);
-      toast.error("Selecione para continuar", { description: missing.join(" · "), position: "top-center" });
+      toast.error("Preencha para continuar", { description: missing.join(" · "), position: "top-center" });
       return;
     }
+    const dup = doneParticipants.some(
+      (p) => p.name.trim().toLowerCase() === pName.trim().toLowerCase() && p.birth === pBirth
+    );
+    if (dup) toast.warning("Você já inscreveu alguém com este nome e data de nascimento nesta sessão.");
     setErrors({});
     setStep(1);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -459,16 +528,21 @@ const ProvaInscricao = () => {
     if (!user || !event) return;
     const newErrors: Record<string, boolean> = {};
     const missingLabels: string[] = [];
-    if (distances.length > 0 && !distance) { newErrors.distance = true; missingLabels.push("Distância"); }
-    if (!pName.trim()) { newErrors.pName = true; missingLabels.push("Nome do participante"); }
-    if (!pCpf.trim()) { newErrors.pCpf = true; missingLabels.push("CPF do participante"); }
-    if (!pBirth) { newErrors.pBirth = true; missingLabels.push("Data de nascimento do participante"); }
-    if (!pGender) { newErrors.pGender = true; missingLabels.push("Sexo do participante"); }
-    if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo do participante"); }
-    if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Data de nascimento do participante"); }
-    if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Opção de kit"); }
+    if (distances.length > 0 && !distance) { newErrors.distance = true; missingLabels.push("Modalidade"); }
+    if (!pName.trim()) { newErrors.pName = true; missingLabels.push("Nome completo"); }
+    if (cpfRequired && !pCpf.trim()) { newErrors.pCpf = true; missingLabels.push("CPF"); }
+    if (!pBirth) { newErrors.pBirth = true; missingLabels.push("Data de nascimento"); }
+    if (!pGender) { newErrors.pGender = true; missingLabels.push("Sexo"); }
+    if (ageBrackets.length > 0 && !bracket && !isKidsDistance(distance)) { newErrors.bracket = true; missingLabels.push("Data de nascimento"); }
+    if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Kit"); }
     if (availableSizes.length > 0 && !shirtSize) { newErrors.shirtSize = true; missingLabels.push("Tamanho da camiseta"); }
     if (!acceptedTerms) { newErrors.terms = true; missingLabels.push("Aceitar os termos"); }
+    if (ageMismatch) {
+      setErrors({ ...newErrors, distance: true });
+      toast.error("Ajuste a modalidade", { description: ageMismatch.message, position: "top-center" });
+      return;
+    }
+
 
     if (missingLabels.length) {
       setErrors(newErrors);
@@ -550,6 +624,7 @@ const ProvaInscricao = () => {
       return;
     }
     if (createdId) setSignupId(createdId);
+    setDoneParticipants((prev) => [...prev, { name: pName.trim(), birth: pBirth, self: isSelf }]);
     qc.invalidateQueries({ queryKey: ["my_signups"] });
     qc.invalidateQueries({ queryKey: ["event_signup_existing", id, user.id] });
     setDone(true);
@@ -563,16 +638,18 @@ const ProvaInscricao = () => {
     setSignupId(null);
     setStep(0);
     setSelectedKits(kitOptions.length === 1 ? [kitOptions[0].name] : []);
-    setShirtSize("");
     setNotes("");
     setAcceptedTerms(false);
     setAppliedCoupon(null);
     setCouponInput("");
+    setOtherDraft(EMPTY_DRAFT);
+    const selfDone = doneParticipants.some((p) => p.self);
+    if (selfDone) setSelfDraft(EMPTY_DRAFT);
     setIsSelf(false);
-    clearParticipant();
     setErrors({});
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
 
 
 
@@ -668,7 +745,7 @@ const ProvaInscricao = () => {
                   <div className="bg-secondary/40 rounded-xl p-4 space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-muted-foreground">Prova</span><span className="font-medium">{event.name}</span></div>
                     {pName && <div className="flex justify-between"><span className="text-muted-foreground">Participante</span><span className="font-medium">{pName}</span></div>}
-                    <div className="flex justify-between"><span className="text-muted-foreground">Categoria</span><span className="font-medium">{categoryLabel}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Categoria</span><span className="font-medium">{categoryDisplay || categoryLabel}</span></div>
                     {shirtSize && <div className="flex justify-between"><span className="text-muted-foreground">Camiseta</span><span className="font-medium">{shirtSize}</span></div>}
                     {total > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
                   </div>
@@ -694,13 +771,20 @@ const ProvaInscricao = () => {
 
 
                   <Button onClick={startAnotherParticipant} variant="outline" size="lg" className="w-full">
-                    Adicionar outro participante
+                    + Inscrever outra pessoa nesta prova
                   </Button>
+
+                  {doneParticipants.length > 1 && (
+                    <p className="text-center text-xs text-muted-foreground">
+                      Nesta sessão você já inscreveu: {doneParticipants.map((p) => p.name).join(", ")}.
+                    </p>
+                  )}
 
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <Button asChild variant="ghost" size="sm"><Link to="/minha-conta">Ver minhas inscrições</Link></Button>
                     <Button asChild variant="ghost" size="sm"><Link to="/provas">Ver outras provas</Link></Button>
                   </div>
+
                 </div>
               ) : (
                 <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
@@ -725,24 +809,154 @@ const ProvaInscricao = () => {
                       </div>
                     )}
                     {step === 0 && (
+                      <>
+                        <div>
+                          <h1 className="font-display text-2xl sm:text-3xl font-bold">Quem você quer inscrever?</h1>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            A inscrição fica vinculada à sua conta ({profile?.full_name || user.email}).
+                          </p>
+                        </div>
 
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          {[
+                            { self: true, title: "Eu mesmo", desc: "Usar meus dados cadastrados", Icon: User },
+                            { self: false, title: "Outra pessoa", desc: "Filho, familiar, amigo ou aluno", Icon: Users },
+                          ].map(({ self, title, desc, Icon }) => {
+                            const active = isSelf === self;
+                            return (
+                              <button
+                                key={title}
+                                type="button"
+                                onClick={() => { setIsSelf(self); if (self) fillWithProfile(); }}
+                                className={[
+                                  "text-left rounded-2xl border p-4 sm:p-5 transition-all flex items-start gap-3 min-h-[88px]",
+                                  active
+                                    ? "border-brand bg-brand/10 ring-1 ring-brand/40"
+                                    : "border-border bg-secondary/30 hover:bg-secondary/60",
+                                ].join(" ")}
+                              >
+                                <span className={[
+                                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                                  active ? "bg-brand text-brand-foreground" : "bg-background text-muted-foreground border border-border",
+                                ].join(" ")}>
+                                  <Icon className="w-5 h-5" />
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block font-display font-bold">{title}</span>
+                                  <span className="block text-sm text-muted-foreground">{desc}</span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
+                          <h2 className="font-display text-lg font-bold">
+                            {isSelf ? "Seus dados" : "Dados da pessoa inscrita"}
+                          </h2>
+
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <div className="sm:col-span-2" data-invalid={errors.pName || undefined}>
+                              <Label htmlFor="p-name">Nome completo *</Label>
+                              <Input id="p-name" value={pName} onChange={(e) => setPName(e.target.value)} className="mt-1" maxLength={160}
+                                aria-invalid={!!errors.pName} />
+                            </div>
+                            <div data-invalid={errors.pBirth || undefined}>
+                              <Label htmlFor="p-birth">Data de nascimento *</Label>
+                              <Input id="p-birth" type="date" value={pBirth} onChange={(e) => setPBirth(e.target.value)} className="mt-1"
+                                aria-invalid={!!errors.pBirth} />
+                            </div>
+                            <div data-invalid={errors.pGender || undefined}>
+                              <Label>Sexo *</Label>
+                              <Select value={pGender} onValueChange={setPGender}>
+                                <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Masculino">Masculino</SelectItem>
+                                  <SelectItem value="Feminino">Feminino</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div data-invalid={errors.pCpf || undefined}>
+                              <Label htmlFor="p-cpf">CPF {cpfRequired ? "*" : "(opcional)"}</Label>
+                              <Input id="p-cpf" value={pCpf} onChange={(e) => setPCpf(e.target.value)} className="mt-1" inputMode="numeric" maxLength={14}
+                                aria-invalid={!!errors.pCpf} />
+                              {!cpfRequired && (
+                                <p className="mt-1 text-xs text-muted-foreground">Menor de 18 anos: o CPF não é obrigatório.</p>
+                              )}
+                            </div>
+                            <div>
+                              <Label htmlFor="p-phone">Telefone/WhatsApp (opcional)</Label>
+                              <Input id="p-phone" value={pPhone} onChange={(e) => setPPhone(e.target.value)} className="mt-1" maxLength={20} />
+                            </div>
+                          </div>
+
+                          {categoryAge != null && (
+                            <div className="rounded-xl border border-border bg-secondary/30 px-4 py-3 text-sm">
+                              <span className="text-muted-foreground">Idade na data da prova: </span>
+                              <span className="font-semibold">{categoryAge} anos</span>
+                              {senior && !isKidsDistance(distance) && (
+                                <span className="ml-2 text-success font-semibold">• Benefício 60+ (50%)</span>
+                              )}
+                            </div>
+                          )}
+
+                          <p className="text-xs text-muted-foreground">
+                            A categoria e os benefícios são calculados automaticamente por estes dados.
+                          </p>
+                        </div>
+
+                        <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                          <Button onClick={goStep2} variant="brand" size="lg" className="w-full min-h-12 sm:w-auto sm:min-w-56">
+                            Continuar
+                          </Button>
+                        </div>
+                      </>
+                    )}
+
+                    {step === 1 && (
                       <>
                         <div>
                           <h1 className="font-display text-2xl sm:text-3xl font-bold">{event.name}</h1>
-                          <p className="text-sm text-muted-foreground mt-1">Selecione a modalidade e o kit para ver o valor da inscrição.</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Inscrição de <span className="font-semibold text-foreground">{pName}</span> — escolha a modalidade e o kit.
+                          </p>
                         </div>
+
+                        {categoryReady && (
+                          <div className="rounded-2xl border border-brand/40 bg-brand/10 px-4 py-3 text-sm">
+                            <span className="text-muted-foreground">Categoria automática: </span>
+                            <span className="font-semibold">{categoryDisplay}</span>
+                          </div>
+                        )}
+
+                        {ageMismatch && (
+                          <div className="rounded-2xl border border-warning/50 bg-warning/10 px-4 py-3 space-y-2 text-sm">
+                            <p className="font-semibold">{ageMismatch.message}</p>
+                            <p className="text-muted-foreground">
+                              {pName || "O participante"} terá {categoryAge} anos na data da prova. Escolha uma modalidade compatível:
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {ageMismatch.options.map((d: any) => (
+                                <Button key={d.distance} size="sm" variant="outline" className="min-h-10"
+                                  onClick={() => { const g = groupOf(d.distance); if (groups.includes(g)) setGroup(g); setDistance(d.distance); }}>
+                                  {cleanDistanceLabel(d.distance)}
+                                </Button>
+                              ))}
+                              <Button size="sm" variant="ghost" className="min-h-10" onClick={() => setStep(0)}>
+                                Corrigir data de nascimento
+                              </Button>
+                            </div>
+                          </div>
+                        )}
 
                         {distanceObj && seniorApplied(distanceObj) && (
                           <div className="rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-sm">
                             <span className="font-semibold text-success">Benefício 60+ aplicado</span>{" "}
                             <span className="text-muted-foreground">
-                              — valor especial definido para a modalidade {cleanDistanceLabel(distanceObj.distance)}.
+                              — valor especial para {cleanDistanceLabel(distanceObj.distance)}.
                             </span>
                           </div>
                         )}
-
-
-
 
                         {distances.length > 0 && (
                           <div
@@ -813,7 +1027,6 @@ const ProvaInscricao = () => {
                           </div>
                         )}
 
-
                         {kitOptions.length > 0 && (
                           <div
                             data-invalid={errors.kitOption || undefined}
@@ -855,7 +1068,9 @@ const ProvaInscricao = () => {
                                 className={`mt-4 rounded-xl border p-4 ${errors.shirtSize ? "border-destructive" : "border-border"} bg-secondary/20`}
                               >
                                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                                  <h4 className="text-sm font-semibold">Escolha o tamanho da camiseta</h4>
+                                  <h4 className="text-sm font-semibold">
+                                    Tamanho da camiseta {pName ? `de ${pName.split(" ")[0]}` : ""}
+                                  </h4>
                                   {(shirtKit?.size_chart_url || shirtKit?.size_chart_info) && (
                                     <button
                                       type="button"
@@ -894,136 +1109,6 @@ const ProvaInscricao = () => {
                           </div>
                         )}
 
-
-
-                        <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
-                          <Button onClick={goStep2} variant="brand" size="lg" className="w-full min-h-12 sm:w-auto sm:min-w-56">
-                            Continuar
-                          </Button>
-                        </div>
-                      </>
-                    )}
-
-                    {step === 1 && (
-                      <>
-                        <div>
-                          <h1 className="font-display text-2xl sm:text-3xl font-bold">Quem você quer inscrever?</h1>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            A inscrição fica vinculada à sua conta ({profile?.full_name || user.email}).
-                          </p>
-                        </div>
-
-                        <div className="grid sm:grid-cols-2 gap-3">
-                          {[
-                            { self: true, title: "Eu mesmo", desc: "Usar meus dados cadastrados", Icon: User },
-                            { self: false, title: "Outra pessoa", desc: "Filho, familiar, amigo ou aluno", Icon: Users },
-                          ].map(({ self, title, desc, Icon }) => {
-                            const active = isSelf === self;
-                            return (
-                              <button
-                                key={title}
-                                type="button"
-                                onClick={() => { setIsSelf(self); self ? fillWithProfile() : clearParticipant(); }}
-                                className={[
-                                  "text-left rounded-2xl border p-4 sm:p-5 transition-all flex items-start gap-3 min-h-[88px]",
-                                  active
-                                    ? "border-brand bg-brand/10 ring-1 ring-brand/40"
-                                    : "border-border bg-secondary/30 hover:bg-secondary/60",
-                                ].join(" ")}
-                              >
-                                <span className={[
-                                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                                  active ? "bg-brand text-brand-foreground" : "bg-background text-muted-foreground border border-border",
-                                ].join(" ")}>
-                                  <Icon className="w-5 h-5" />
-                                </span>
-                                <span className="min-w-0">
-                                  <span className="block font-display font-bold">{title}</span>
-                                  <span className="block text-sm text-muted-foreground">{desc}</span>
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <div>
-                          <h2 className="font-display text-lg font-bold">Dados do participante</h2>
-                          <p className="text-xs text-muted-foreground">
-                            Em breve você poderá salvar participantes frequentes em "Meus participantes" e reutilizá-los aqui.
-                          </p>
-                        </div>
-
-                        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
-
-
-                          <div className="grid sm:grid-cols-2 gap-3">
-                            <div className="sm:col-span-2" data-invalid={errors.pName || undefined}>
-                              <Label htmlFor="p-name">Nome completo do participante *</Label>
-                              <Input id="p-name" value={pName} onChange={(e) => setPName(e.target.value)} className="mt-1" maxLength={160}
-                                aria-invalid={!!errors.pName} />
-                            </div>
-                            <div data-invalid={errors.pCpf || undefined}>
-                              <Label htmlFor="p-cpf">CPF *</Label>
-                              <Input id="p-cpf" value={pCpf} onChange={(e) => setPCpf(e.target.value)} className="mt-1" inputMode="numeric" maxLength={14}
-                                aria-invalid={!!errors.pCpf} />
-                            </div>
-                            <div data-invalid={errors.pBirth || undefined}>
-                              <Label htmlFor="p-birth">Data de nascimento *</Label>
-                              <Input id="p-birth" type="date" value={pBirth} onChange={(e) => setPBirth(e.target.value)} className="mt-1"
-                                aria-invalid={!!errors.pBirth} />
-                            </div>
-                            <div data-invalid={errors.pGender || undefined}>
-                              <Label>Sexo *</Label>
-                              <Select value={pGender} onValueChange={setPGender}>
-                                <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Masculino">Masculino</SelectItem>
-                                  <SelectItem value="Feminino">Feminino</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label htmlFor="p-phone">Telefone/WhatsApp (opcional)</Label>
-                              <Input id="p-phone" value={pPhone} onChange={(e) => setPPhone(e.target.value)} className="mt-1" maxLength={20} />
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            A categoria e o benefício 60+ são definidos por estes dados do participante.
-                          </p>
-                        </div>
-
-                        {(genders.length > 0 || ageBrackets.length > 0) && (
-                          <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-3">
-                            <h3 className="text-sm uppercase tracking-wide text-muted-foreground">Categoria (automática)</h3>
-                            <div className="grid sm:grid-cols-2 gap-3 text-sm">
-                              {genders.length > 0 && (
-                                <div data-invalid={errors.gender || undefined}>
-                                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Sexo</dt>
-                                  <dd className={`font-medium ${errors.gender ? "text-destructive" : ""}`}>
-                                    {gender || "informe o sexo do participante"}
-                                  </dd>
-                                </div>
-                              )}
-                              {ageBrackets.length > 0 && (
-                                <div data-invalid={errors.bracket || undefined}>
-                                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Faixa etária</dt>
-                                  <dd className={`font-medium ${errors.bracket ? "text-destructive" : ""}`}>
-                                    {bracket ? `${bracket.replace("-", " a ")} anos` : "informe a data de nascimento"}
-                                    {categoryAge != null && bracket && (
-                                      <span className="text-muted-foreground font-normal"> · {categoryAge} anos no ano da prova</span>
-                                    )}
-                                  </dd>
-                                </div>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Calculada pelos dados do participante (ano da prova menos o ano de nascimento).
-                            </p>
-                          </div>
-                        )}
-
-
-
                         <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
                           <div>
                             <Label htmlFor="team">Nome da equipe (opcional)</Label>
@@ -1061,19 +1146,36 @@ const ProvaInscricao = () => {
                           </label>
                         </div>
 
-                        <div className="sticky bottom-0 z-30 -mx-4 flex flex-col-reverse gap-2 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:flex-row sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
-                          <Button variant="outline" size="lg" className="min-h-12" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
-                            <ChevronLeft className="w-4 h-4" /> Voltar
-                          </Button>
-                          <Button onClick={submit} disabled={submitting || !participantComplete} variant="brand" size="lg" className="min-h-12 flex-1">
-                            {submitting ? "Enviando..." : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
-                          </Button>
+                        <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                          <div className="mb-2 flex items-center justify-between text-sm sm:hidden">
+                            <span className="text-muted-foreground truncate">{pName || "Participante"}</span>
+                            <span className="font-bold text-brand">{total > 0 ? brl(total) : "—"}</span>
+                          </div>
+                          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
+                            <Button variant="outline" size="lg" className="min-h-12" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                              <ChevronLeft className="w-4 h-4" /> Voltar
+                            </Button>
+                            <Button onClick={submit} disabled={submitting || !participantComplete} variant="brand" size="lg" className="min-h-12 flex-1">
+                              {submitting ? "Enviando..." : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
+                            </Button>
+                          </div>
                         </div>
                       </>
                     )}
+
                   </div>
 
-                  <div>{summaryCard}</div>
+                  <div>
+                    <details className="lg:hidden rounded-2xl border border-border bg-card overflow-hidden">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold">
+                        <span>Resumo da inscrição</span>
+                        <span className="text-brand">{total > 0 ? brl(total) : ""}</span>
+                      </summary>
+                      <div className="border-t border-border p-1">{summaryCard}</div>
+                    </details>
+                    <div className="hidden lg:block">{summaryCard}</div>
+                  </div>
+
                 </div>
               )}
             </>
