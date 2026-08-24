@@ -450,8 +450,12 @@ const ProvaInscricao = () => {
     const newErrors: Record<string, boolean> = {};
     const missingLabels: string[] = [];
     if (distances.length > 0 && !distance) { newErrors.distance = true; missingLabels.push("Distância"); }
-    if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo (complete no seu cadastro)"); }
-    if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Data de nascimento (complete no seu cadastro)"); }
+    if (!pName.trim()) { newErrors.pName = true; missingLabels.push("Nome do participante"); }
+    if (!pCpf.trim()) { newErrors.pCpf = true; missingLabels.push("CPF do participante"); }
+    if (!pBirth) { newErrors.pBirth = true; missingLabels.push("Data de nascimento do participante"); }
+    if (!pGender) { newErrors.pGender = true; missingLabels.push("Sexo do participante"); }
+    if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo do participante"); }
+    if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Data de nascimento do participante"); }
     if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Opção de kit"); }
     if (availableSizes.length > 0 && !shirtSize) { newErrors.shirtSize = true; missingLabels.push("Tamanho da camiseta"); }
     if (!acceptedTerms) { newErrors.terms = true; missingLabels.push("Aceitar os termos"); }
@@ -459,7 +463,7 @@ const ProvaInscricao = () => {
     if (missingLabels.length) {
       setErrors(newErrors);
       toast.error("Preencha os campos destacados", {
-        description: missingLabels.join(" · "),
+        description: Array.from(new Set(missingLabels)).join(" · "),
         position: "top-center",
         duration: 5000,
       });
@@ -476,41 +480,27 @@ const ProvaInscricao = () => {
     const payload = {
       category: categoryLabel,
       status: "pendente",
-      notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: valor fixo ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
+      notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
       kit_option: selectedKits.length ? JSON.stringify(selectedKits) : "",
       shirt_size: shirtSize || null,
       coupon_code: appliedCoupon?.code || "",
       team_name: teamName,
       accepted_event_terms_at: new Date().toISOString(),
+      participant_full_name: pName.trim(),
+      participant_cpf: pCpf.trim(),
+      participant_birth_date: pBirth,
+      participant_gender: pGender,
+      participant_phone: pPhone.trim() || null,
     };
 
-    // Já existe inscrição desta pessoa nesta prova/categoria?
-    const { data: existing, error: findError } = await supabase
-      .from("event_signups")
-      .select("id, status")
-      .eq("user_id", user.id)
-      .eq("event_id", event.id)
-      .eq("category", categoryLabel)
-      .maybeSingle();
-
-    if (findError) {
-      setSubmitting(false);
-      toast.error(findError.message);
-      return;
-    }
-
-    if (existing && existing.status === "confirmada") {
-      setSubmitting(false);
-      toast.error("Você já está inscrito nesta categoria.");
-      return;
-    }
-
     let error = null as { code?: string; message: string } | null;
-    if (existing) {
-      // Retoma o rascunho pendente/cancelado: atualiza, nunca duplica
-      const res = await supabase.from("event_signups").update(payload as any).eq("id", existing.id);
+    let createdId: string | null = null;
+
+    if (signupId) {
+      // Retomando um rascunho pendente já existente
+      const res = await supabase.from("event_signups").update(payload as any).eq("id", signupId);
       error = res.error;
-      if (!error) setSignupId(existing.id);
+      createdId = signupId;
     } else {
       const res = await supabase
         .from("event_signups")
@@ -518,21 +508,62 @@ const ProvaInscricao = () => {
         .select("id")
         .maybeSingle();
       error = res.error;
-      if (!error && res.data?.id) setSignupId(res.data.id);
+      createdId = res.data?.id ?? null;
+
+      // Compatibilidade com a restrição antiga (user_id + event_id + category):
+      // se colidir, reaproveita o registro pendente/cancelado existente.
+      if (error?.code === "23505") {
+        const { data: existing } = await supabase
+          .from("event_signups")
+          .select("id, status, participant_full_name")
+          .eq("user_id", user.id)
+          .eq("event_id", event.id)
+          .eq("category", categoryLabel)
+          .maybeSingle();
+        if (existing && existing.status !== "confirmada") {
+          const res2 = await supabase.from("event_signups").update(payload as any).eq("id", existing.id);
+          error = res2.error;
+          createdId = existing.id;
+        } else {
+          setSubmitting(false);
+          toast.error(
+            "Já existe uma inscrição confirmada nesta categoria por esta conta. Fale com a organização para incluir outro participante nesta mesma categoria."
+          );
+          return;
+        }
+      }
     }
 
     setSubmitting(false);
     if (error) {
-      if (error.code === "23505") toast.error("Você já está inscrito nesta categoria.");
-      else toast.error(error.message);
+      toast.error(error.message);
       return;
     }
+    if (createdId) setSignupId(createdId);
     qc.invalidateQueries({ queryKey: ["my_signups"] });
     qc.invalidateQueries({ queryKey: ["event_signup_existing", id, user.id] });
     setDone(true);
     setStep(2);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  /** Recomeça o fluxo para inscrever outro participante na mesma prova. */
+  const startAnotherParticipant = () => {
+    setDone(false);
+    setSignupId(null);
+    setStep(0);
+    setSelectedKits(kitOptions.length === 1 ? [kitOptions[0].name] : []);
+    setShirtSize("");
+    setNotes("");
+    setAcceptedTerms(false);
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setIsSelf(false);
+    clearParticipant();
+    setErrors({});
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
 
 
   if (loading || !user) return null;
