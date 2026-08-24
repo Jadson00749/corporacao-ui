@@ -61,6 +61,20 @@ const MinhaConta = () => {
   const signupsRef = useRef<HTMLDivElement>(null);
   const cadastroRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<"signups" | "data">("signups");
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  // Sempre buscar do banco ao abrir a área do atleta (evita estado local desatualizado)
+  useEffect(() => {
+    refetchSignups();
+    try {
+      const id = sessionStorage.getItem("corporacao:last_signup_id");
+      if (id) {
+        setHighlightId(id);
+        sessionStorage.removeItem("corporacao:last_signup_id");
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const nextTraining = useMemo(() => {
     const now = today();
