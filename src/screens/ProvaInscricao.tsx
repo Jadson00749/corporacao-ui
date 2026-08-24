@@ -13,6 +13,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
+import {
+  useParticipants,
+  useParticipantMutations,
+  findExistingParticipant,
+} from "@/hooks/useParticipants";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt, Ruler, User, Users } from "lucide-react";
@@ -164,6 +169,10 @@ const ProvaInscricao = () => {
   const [isSelf, setIsSelf] = useState(true);
   const [selfDraft, setSelfDraft] = useState<ParticipantDraft>(EMPTY_DRAFT);
   const [otherDraft, setOtherDraft] = useState<ParticipantDraft>(EMPTY_DRAFT);
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
+  const [saveToParticipants, setSaveToParticipants] = useState(false);
+  const { data: savedParticipants = [] } = useParticipants();
+  const { create: createParticipant } = useParticipantMutations();
   const [doneParticipants, setDoneParticipants] = useState<{ name: string; birth: string; self: boolean }[]>([]);
   const [showExtras, setShowExtras] = useState(false);
   const prefilledRef = useRef(false);
@@ -668,6 +677,33 @@ const ProvaInscricao = () => {
     setSignupId(persisted.id);
     setSubmitError(null);
     setDoneParticipants((prev) => [...prev, { name: pName.trim(), birth: pBirth, self: isSelf }]);
+
+    // Opcional: salvar essa pessoa em "Meus participantes" (não altera a inscrição).
+    if (!isSelf && selectedParticipantId === null && saveToParticipants) {
+      const dup = findExistingParticipant(savedParticipants, {
+        full_name: pName.trim(),
+        cpf: pCpf,
+        birth_date: pBirth,
+      });
+      if (dup) {
+        toast.info("Este participante já está salvo em Meus participantes.");
+      } else {
+        try {
+          await createParticipant.mutateAsync({
+            full_name: pName.trim(),
+            cpf: pCpf.trim() || null,
+            birth_date: pBirth || null,
+            gender: pGender || null,
+            phone: pPhone.trim() || null,
+          });
+          toast.success("Participante salvo para as próximas provas.");
+        } catch (e: any) {
+          toast.error("Inscrição registrada, mas não conseguimos salvar o participante.");
+        }
+      }
+      setSaveToParticipants(false);
+    }
+
     qc.invalidateQueries({ queryKey: ["my_signups"] });
     qc.invalidateQueries({ queryKey: ["event_signup_existing", id, user.id] });
     try {
@@ -689,6 +725,8 @@ const ProvaInscricao = () => {
     setAppliedCoupon(null);
     setCouponInput("");
     setOtherDraft(EMPTY_DRAFT);
+    setSelectedParticipantId(null);
+    setSaveToParticipants(false);
     const selfDone = doneParticipants.some((p) => p.self);
     if (selfDone) setSelfDraft(EMPTY_DRAFT);
     setIsSelf(false);
@@ -897,16 +935,55 @@ const ProvaInscricao = () => {
                         </div>
 
                         <div className="grid sm:grid-cols-2 gap-3">
-                          {[
-                            { self: true, title: "Eu mesmo", desc: "Usar meus dados cadastrados", Icon: User },
-                            { self: false, title: "Outra pessoa", desc: "Filho, familiar, amigo ou aluno", Icon: Users },
-                          ].map(({ self, title, desc, Icon }) => {
-                            const active = isSelf === self;
-                            return (
+                          {(() => {
+                            type Choice = { key: string; title: string; desc: string; Icon: typeof User; active: boolean; onSelect: () => void };
+                            const choices: Choice[] = [
+                              {
+                                key: "self",
+                                title: "Eu mesmo",
+                                desc: "Usar meus dados cadastrados",
+                                Icon: User,
+                                active: isSelf,
+                                onSelect: () => { setIsSelf(true); setSelectedParticipantId(null); fillWithProfile(); },
+                              },
+                              ...savedParticipants.map((p) => ({
+                                key: p.id,
+                                title: p.full_name,
+                                desc: p.relationship || "Participante salvo",
+                                Icon: Users,
+                                active: !isSelf && selectedParticipantId === p.id,
+                                onSelect: () => {
+                                  setIsSelf(false);
+                                  setSelectedParticipantId(p.id);
+                                  setSaveToParticipants(false);
+                                  setOtherDraft((d) => ({
+                                    ...d,
+                                    name: p.full_name || "",
+                                    cpf: p.cpf || "",
+                                    birth: p.birth_date || "",
+                                    gender: p.gender || "",
+                                    phone: p.phone || "",
+                                  }));
+                                },
+                              })),
+                              {
+                                key: "other",
+                                title: "+ Outra pessoa",
+                                desc: "Filho, familiar, amigo ou aluno",
+                                Icon: Users,
+                                active: !isSelf && selectedParticipantId === null,
+                                onSelect: () => {
+                                  setIsSelf(false);
+                                  if (selectedParticipantId !== null) setOtherDraft(EMPTY_DRAFT);
+                                  setSelectedParticipantId(null);
+                                },
+                              },
+                            ];
+                            return choices.map(({ key, title, desc, Icon, active, onSelect }) => (
                               <button
-                                key={title}
+                                key={key}
                                 type="button"
-                                onClick={() => { setIsSelf(self); if (self) fillWithProfile(); }}
+                                onClick={onSelect}
                                 className={[
                                   "text-left rounded-2xl border p-4 sm:p-5 transition-all flex items-start gap-3 min-h-[88px]",
                                   active
@@ -921,12 +998,12 @@ const ProvaInscricao = () => {
                                   <Icon className="w-5 h-5" />
                                 </span>
                                 <span className="min-w-0">
-                                  <span className="block font-display font-bold">{title}</span>
-                                  <span className="block text-sm text-muted-foreground">{desc}</span>
+                                  <span className="block font-display font-bold truncate">{title}</span>
+                                  <span className="block text-sm text-muted-foreground truncate">{desc}</span>
                                 </span>
                               </button>
-                            );
-                          })}
+                            ));
+                          })()}
                         </div>
 
                         <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
@@ -982,6 +1059,22 @@ const ProvaInscricao = () => {
                           <p className="text-xs text-muted-foreground">
                             A categoria e os benefícios são calculados automaticamente por estes dados.
                           </p>
+
+                          {!isSelf && selectedParticipantId === null && (
+                            <label className="flex items-start gap-3 rounded-xl border border-border bg-secondary/30 p-3 cursor-pointer">
+                              <Checkbox
+                                checked={saveToParticipants}
+                                onCheckedChange={(v) => setSaveToParticipants(v === true)}
+                                className="mt-0.5"
+                              />
+                              <span className="min-w-0">
+                                <span className="block text-sm font-semibold">Salvar em Meus participantes</span>
+                                <span className="block text-xs text-muted-foreground">
+                                  Assim você não precisará preencher esses dados novamente nas próximas provas.
+                                </span>
+                              </span>
+                            </label>
+                          )}
                         </div>
 
                         <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
