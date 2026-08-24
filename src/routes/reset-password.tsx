@@ -1,16 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { buildMeta } from "@/lib/seo";
 import ResetPassword from "@/screens/ResetPassword";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
-    meta: [
-      { title: "Redefinir senha — Corporação Running" },
-      { name: "description", content: "Defina uma nova senha para sua conta." },
-      { property: "og:title", content: "Redefinir senha — Corporação Running" },
-      { property: "og:description", content: "Defina uma nova senha para sua conta." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
+    meta: buildMeta({
+      title: "Redefinir senha",
+      description: "Redefina a senha da sua conta na Corporação Assessoria Esportiva.",
+      path: "/reset-password",
+    }),
   }),
   component: ResetPassword,
 });

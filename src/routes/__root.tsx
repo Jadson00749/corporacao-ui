@@ -9,6 +9,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { buildMeta } from "@/lib/seo";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -62,27 +63,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Corporação Assessoria Esportiva" },
-      {
-        name: "description",
-        content: "Assessoria de corrida: treinos, provas, planos e produtos da Corporação.",
-      },
-      { property: "og:type", content: "website" },
-      { property: "og:site_name", content: "Corporação Assessoria Esportiva" },
-      { property: "og:title", content: "Corporação Assessoria Esportiva" },
-      {
-        property: "og:description",
-        content: "Assessoria de corrida: treinos, provas, planos e produtos da Corporação.",
-      },
-      { property: "og:url", content: "https://novacorporacao.lovable.app/" },
-      { property: "og:image", content: "https://novacorporacao.lovable.app/og-corporacao.jpg" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Corporação Assessoria Esportiva" },
-      {
-        name: "twitter:description",
-        content: "Assessoria de corrida: treinos, provas, planos e produtos da Corporação.",
-      },
-      { name: "twitter:image", content: "https://novacorporacao.lovable.app/og-corporacao.jpg" },
+      ...buildMeta(),
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -95,8 +76,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.ico", sizes: "any" },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/site.webmanifest" },
     ],
   }),
+
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFound,
