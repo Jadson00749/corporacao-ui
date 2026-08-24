@@ -615,60 +615,46 @@ const DetailRow = ({ label, value, mono = false }: { label: string; value: strin
 );
 
 
-const DashboardCard = ({
+const MiniRow = ({
   icon,
   label,
   loading,
-  empty,
-  emptyTitle,
-  emptyAction,
-  children,
-  className = "",
-  highlight = false,
+  title,
+  meta,
+  to,
+  action,
 }: {
   icon: React.ReactNode;
   label: string;
   loading: boolean;
-  empty: boolean;
-  emptyTitle?: string;
-  emptyAction?: React.ReactNode;
-  children?: React.ReactNode;
-  className?: string;
-  highlight?: boolean;
-}) => {
-  return (
-    <div
-      className={cn(
-        "bg-card border rounded-2xl p-5 flex flex-col transition-all hover:shadow-card hover:-translate-y-0.5",
-        highlight ? "border-brand/30 bg-gradient-to-br from-card to-brand/5" : "border-border/60",
-        className
+  title: string;
+  meta?: string;
+  to: string;
+  action: string;
+}) => (
+  <Link
+    to={to}
+    className="flex items-center gap-3 px-4 py-3.5 bg-card transition-colors hover:bg-muted/40"
+  >
+    <span className="w-8 h-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
+      {icon}
+    </span>
+    <span className="min-w-0 flex-1">
+      <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+      {loading ? (
+        <Skeleton className="h-4 w-32 mt-1" />
+      ) : (
+        <>
+          <span className="block text-sm font-semibold truncate">{title}</span>
+          {meta && <span className="block text-xs text-muted-foreground truncate">{meta}</span>}
+        </>
       )}
-    >
-      <div className="flex items-center gap-2.5 mb-4">
-        <div className="w-9 h-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
-          {icon}
-        </div>
-        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
-      </div>
-      <div className="flex-1">
-        {loading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-5 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-9 w-full" />
-          </div>
-        ) : empty ? (
-          <div className="h-full flex flex-col justify-between">
-            <p className="text-sm text-muted-foreground mb-4">{emptyTitle}</p>
-            {emptyAction}
-          </div>
-        ) : (
-          children
-        )}
-      </div>
-    </div>
-  );
-};
+    </span>
+    <span className="text-xs font-medium text-muted-foreground hidden sm:inline">{action}</span>
+    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+  </Link>
+);
+
 
 const ProfileEditor = ({ profile }: { profile: any }) => {
   const qc = useQueryClient();
