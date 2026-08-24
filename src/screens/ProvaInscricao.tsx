@@ -347,7 +347,28 @@ const ProvaInscricao = () => {
   useEffect(() => { setBracket(autoBracket); }, [autoBracket]);
 
   const profileComplete = profile && profile.full_name && profile.cpf && profile.whatsapp && profile.cep;
-  const participantComplete = !!(pName.trim() && pCpf.trim() && pBirth && pGender);
+
+  /** Menor de 18 na data da prova -> CPF opcional. */
+  const isMinor = categoryAge != null && categoryAge < 18;
+  const cpfRequired = !isMinor;
+  const participantComplete = !!(pName.trim() && pBirth && pGender && (!cpfRequired || pCpf.trim()));
+
+  const kidsDistances = useMemo(() => distances.filter((d) => isKidsDistance(d.distance)), [distances]);
+  const adultDistances = useMemo(() => distances.filter((d) => !isKidsDistance(d.distance)), [distances]);
+
+  /** Idade x modalidade: evita "KIDS • Feminino • 30–34 anos". */
+  const ageMismatch = useMemo(() => {
+    if (!distance || categoryAge == null) return null;
+    const selKids = isKidsDistance(distance);
+    if (selKids && categoryAge >= 18 && adultDistances.length) {
+      return { message: "Esta modalidade é destinada a crianças.", options: adultDistances };
+    }
+    if (!selKids && categoryAge <= 12 && kidsDistances.length) {
+      return { message: "Esta modalidade não corresponde à idade do participante.", options: kidsDistances };
+    }
+    return null;
+  }, [distance, categoryAge, kidsDistances, adultDistances]);
+
 
 
   const distanceObj = distances.find((d) => d.distance === distance);
