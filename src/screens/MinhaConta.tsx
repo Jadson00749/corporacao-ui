@@ -59,9 +59,18 @@ const MinhaConta = () => {
   const buildWhats = useWhatsappLink();
   const signupsRef = useRef<HTMLDivElement>(null);
   const cadastroRef = useRef<HTMLDivElement>(null);
+  const tabSignupsRef = useRef<HTMLButtonElement>(null);
+  const tabParticipantsRef = useRef<HTMLButtonElement>(null);
+  const tabDataRef = useRef<HTMLButtonElement>(null);
+  const [tabsMounted, setTabsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"signups" | "participants" | "data">("signups");
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "confirmed">("all");
+
+  useEffect(() => {
+    setTabsMounted(true);
+  }, []);
+
 
 
   // Sempre buscar do banco ao abrir a área do atleta (evita estado local desatualizado)
