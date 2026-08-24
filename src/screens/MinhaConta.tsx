@@ -32,9 +32,7 @@ import {
   UserRound,
   ClipboardList,
   Package,
-  Shirt,
-  Clock,
-  Timer,
+
 } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
 import { WelcomeDialog } from "@/components/site/WelcomeDialog";
@@ -62,6 +60,8 @@ const MinhaConta = () => {
   const cadastroRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<"signups" | "data">("signups");
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "confirmed">("all");
+
 
   // Sempre buscar do banco ao abrir a área do atleta (evita estado local desatualizado)
   useEffect(() => {
@@ -130,6 +130,14 @@ const MinhaConta = () => {
   const upcomingSignups = signups.filter(
     (s) => s.status !== "cancelada" && s.events?.date && dateFromYMD(s.events.date) >= startOfToday
   );
+  const filteredSignups =
+    statusFilter === "pending"
+      ? pendingSignups
+      : statusFilter === "confirmed"
+      ? confirmedSignups
+      : signups;
+
+
 
   return (
     <Layout>
@@ -216,7 +224,7 @@ const MinhaConta = () => {
 
 
           {/* Dashboard cards */}
-          <div className="order-3 md:order-2 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
+          <div className="order-3 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
             {/* Next training */}
             <DashboardCard
               icon={<Dumbbell className="w-5 h-5" />}
@@ -367,7 +375,7 @@ const MinhaConta = () => {
           </div>
 
           {/* Detailed sections */}
-          <div className="order-2 md:order-3 mb-8 md:mb-0 bg-card border border-border/60 rounded-3xl overflow-hidden shadow-card">
+          <div className="order-2 mb-8 md:mb-10 bg-card border border-border/60 rounded-3xl overflow-hidden shadow-card">
             <div className="flex border-b border-border/60 overflow-x-auto no-scrollbar">
               <button
                 type="button"
@@ -394,15 +402,40 @@ const MinhaConta = () => {
             <div className="p-4 md:p-6 lg:p-8">
               {activeTab === "signups" && (
                 <div ref={signupsRef}>
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center justify-between gap-3 mb-4">
                     <div>
                       <h2 className="font-display text-xl font-bold">Minhas inscrições</h2>
                       <p className="text-sm text-muted-foreground">Acompanhe o status de todas as suas provas.</p>
                     </div>
-                    <Button asChild variant="brand" size="sm" className="hidden sm:flex">
-                      <Link to="/provas">Ver provas</Link>
+                    <Button asChild variant="outline" size="sm" className="hidden sm:flex shrink-0">
+                      <Link to="/provas">+ Nova inscrição</Link>
                     </Button>
                   </div>
+
+                  {signups.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1">
+                      {([
+                        ["all", `Todas (${signups.length})`],
+                        ["pending", `Aguardando pagamento (${pendingSignups.length})`],
+                        ["confirmed", `Confirmadas (${confirmedSignups.length})`],
+                      ] as const).map(([key, label]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setStatusFilter(key)}
+                          className={cn(
+                            "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                            statusFilter === key
+                              ? "border-brand bg-brand/10 text-brand"
+                              : "border-border/60 text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   {signupsLoading ? (
                     <div className="space-y-3">
                       <Skeleton className="h-24" />
@@ -413,16 +446,25 @@ const MinhaConta = () => {
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <ClipboardList className="w-7 h-7 text-muted-foreground" />
                       </div>
-                      <p className="text-muted-foreground mb-4">Você ainda não tem inscrições.</p>
-                      <Button asChild variant="brand"><Link to="/provas">Ver provas disponíveis</Link></Button>
+                      <p className="font-display font-semibold">Você ainda não tem inscrições</p>
+                      <p className="text-sm text-muted-foreground mb-4">Escolha uma prova e faça sua primeira inscrição.</p>
+                      <Button asChild variant="brand"><Link to="/provas">Ver provas</Link></Button>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {signups.map((s) => (
-                        <SignupCard key={s.id} signup={s} buildWhats={buildWhats} highlight={s.id === highlightId} />
-                      ))}
+                    <div className="space-y-3">
+                      {filteredSignups.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma inscrição neste filtro.</p>
+                      ) : (
+                        filteredSignups.map((s) => (
+                          <SignupCard key={s.id} signup={s} buildWhats={buildWhats} highlight={s.id === highlightId} />
+                        ))
+                      )}
+                      <Button asChild variant="outline" className="w-full min-h-11 mt-1">
+                        <Link to="/provas">+ Inscrever outra pessoa</Link>
+                      </Button>
                     </div>
                   )}
+
                 </div>
               )}
 
@@ -473,51 +515,32 @@ const SignupCard = ({
   const kits = parseKits(s.kit_option);
   const kitDelivery = (s.events?.kit_delivery || "").trim();
   const kitInfo = (s.events?.kit_info || "").trim();
+  const athlete = s.participant_full_name || s.events?.name || "Prova";
 
   return (
     <article
       className={cn(
-        "rounded-2xl border bg-background p-4 sm:p-5 transition-shadow hover:shadow-card",
+        "rounded-2xl border bg-background p-3.5 sm:p-4 transition-shadow",
         isPending ? "border-warning/40" : isConfirmed ? "border-success/30" : "border-border/60",
-        isCancelled && "opacity-70",
+        isCancelled && "opacity-60",
         highlight && "ring-2 ring-brand ring-offset-2 ring-offset-background"
       )}
     >
       {highlight && (
-        <p className="mb-2.5 inline-flex rounded-full bg-brand/15 px-2.5 py-1 text-[11px] font-semibold text-brand">
-          Inscrição recém-criada
+        <p className="mb-2 inline-flex rounded-full bg-brand/15 px-2.5 py-1 text-[11px] font-semibold text-brand">
+          Sua inscrição está aqui ✓
         </p>
       )}
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-display text-base sm:text-lg font-semibold leading-snug break-words">
-            {s.events?.name || "Prova"}
-          </h3>
+          <h3 className="font-display text-base sm:text-lg font-bold leading-snug break-words">{athlete}</h3>
           {s.participant_full_name && (
-            <p className="mt-0.5 text-xs sm:text-sm font-medium text-brand break-words">
-              Atleta: {s.participant_full_name}
-            </p>
+            <p className="text-sm text-muted-foreground break-words">{s.events?.name || "Prova"}</p>
           )}
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
-            {s.events?.date && (
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 shrink-0" />
-                {formatDate(s.events.date)}
-              </span>
-            )}
-            {s.events?.start_time && (
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 shrink-0" />
-                {s.events.start_time}
-              </span>
-            )}
-            {s.events?.city && (
-              <span className="flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 shrink-0" />
-                {s.events.city}
-              </span>
-            )}
-          </div>
+          <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground break-words">
+            {[modality, category].filter(Boolean).join(" · ")}
+          </p>
         </div>
         <span
           className={cn(
@@ -529,46 +552,21 @@ const SignupCard = ({
               : "bg-warning/15 text-warning border-warning/40"
           )}
         >
-          {isConfirmed ? "Inscrição confirmada" : isCancelled ? "Cancelada" : "Aguardando pagamento"}
+          {isConfirmed ? "🟢 Confirmada" : isCancelled ? "⚪ Cancelada" : "🟡 Aguardando pagamento"}
         </span>
       </div>
 
-      {/* Detalhes da inscrição */}
-      <div className="mt-3.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <DetailChip icon={<Timer className="w-3.5 h-3.5" />} label="Modalidade" value={modality} />
-        <DetailChip icon={<Trophy className="w-3.5 h-3.5" />} label="Categoria" value={category} />
-        <DetailChip icon={<Package className="w-3.5 h-3.5" />} label="Kit" value={kits.join(", ")} />
-        <DetailChip icon={<Shirt className="w-3.5 h-3.5" />} label="Camiseta" value={s.shirt_size || ""} />
-      </div>
-
-      {/* Retirada do kit — apenas informativo, dados do organizador */}
-      {isConfirmed && (kitDelivery || kitInfo) && (
-        <div className="mt-3.5 rounded-xl border border-brand/25 bg-brand/5 p-3.5">
-          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-brand">
-            <Package className="w-4 h-4" /> Retirada do kit
-          </p>
-          {kitDelivery && (
-            <p className="mt-1.5 whitespace-pre-line text-sm font-medium leading-relaxed break-words">{kitDelivery}</p>
-          )}
-          {kitInfo && (
-            <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-muted-foreground break-words">
-              {kitInfo}
-            </p>
-          )}
-        </div>
-      )}
-
       {isPending && (
-        <div className="mt-3.5 flex flex-col gap-2 sm:flex-row">
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           {s.events?.id && (
             <Button asChild variant="brand" className="min-h-11 flex-1">
-              <Link to={`/provas/${s.events.id}/inscricao?retomar=${s.id}`}>Continuar inscrição</Link>
+              <Link to={`/provas/${s.events.id}/inscricao?retomar=${s.id}`}>Pagar agora</Link>
             </Button>
           )}
           <Button asChild variant="outline" className="min-h-11 flex-1 sm:flex-none">
             <a
               href={buildWhats(
-                `Olá! Fiz minha inscrição na prova ${s.events?.name || ""} (categoria ${s.category || ""}) e gostaria de enviar o comprovante do PIX.`
+                `Olá! Fiz minha inscrição na prova ${s.events?.name || ""} (atleta ${s.participant_full_name || ""}) e gostaria de enviar o comprovante do PIX.`
               )}
               target="_blank"
               rel="noreferrer"
@@ -580,25 +578,53 @@ const SignupCard = ({
         </div>
       )}
 
-      {isConfirmed && s.events?.id && (
-        <Button asChild variant="outline" className="mt-3.5 min-h-11 w-full sm:w-auto">
-          <Link to={`/provas/${s.events.id}`}>Ver detalhes da prova</Link>
-        </Button>
-      )}
+      <details className="group mt-2.5">
+        <summary className="cursor-pointer list-none flex items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground py-1.5">
+          <span>Ver detalhes</span>
+          <ChevronRight className="w-4 h-4 group-open:rotate-90 transition-transform" />
+        </summary>
+        <div className="pt-2 space-y-1.5 text-sm border-t border-border/60 mt-1">
+          <DetailRow label="Modalidade" value={modality} />
+          <DetailRow label="Categoria" value={category} />
+          <DetailRow label="Kit" value={kits.join(", ")} />
+          <DetailRow label="Camiseta" value={s.shirt_size || ""} />
+          <DetailRow label="Data" value={s.events?.date ? formatDate(s.events.date) : ""} />
+          <DetailRow label="Horário" value={s.events?.start_time || ""} />
+          <DetailRow label="Local" value={s.events?.city || ""} />
+          <DetailRow label="Nº da inscrição" value={s.id} mono />
+
+          {isConfirmed && (kitDelivery || kitInfo) && (
+            <div className="mt-2.5 rounded-xl border border-brand/25 bg-brand/5 p-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-brand">
+                <Package className="w-4 h-4" /> Retirada do kit
+              </p>
+              {kitDelivery && <p className="mt-1.5 whitespace-pre-line text-sm font-medium break-words">{kitDelivery}</p>}
+              {kitInfo && (
+                <p className="mt-1.5 whitespace-pre-line text-sm text-muted-foreground break-words">{kitInfo}</p>
+              )}
+            </div>
+          )}
+
+          {s.events?.id && (
+            <Button asChild variant="ghost" size="sm" className="mt-1.5 w-full sm:w-auto">
+              <Link to={`/provas/${s.events.id}`}>Ver detalhes da prova</Link>
+            </Button>
+          )}
+        </div>
+      </details>
     </article>
   );
 };
 
-const DetailChip = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
-  <div className="rounded-xl border border-border/60 bg-card px-3 py-2 min-w-0">
-    <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-      <span className="text-brand">{icon}</span> {label}
-    </p>
-    <p className={cn("mt-0.5 text-sm font-medium break-words", !value && "text-muted-foreground/60")}>
+const DetailRow = ({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) => (
+  <div className="flex justify-between gap-3">
+    <span className="text-muted-foreground">{label}</span>
+    <span className={cn("font-medium text-right break-all", mono && "font-mono text-xs", !value && "text-muted-foreground/60")}>
       {value || "—"}
-    </p>
+    </span>
   </div>
 );
+
 
 const DashboardCard = ({
   icon,
