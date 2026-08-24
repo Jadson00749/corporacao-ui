@@ -32,9 +32,7 @@ import {
   UserRound,
   ClipboardList,
   Package,
-  Shirt,
-  Clock,
-  Timer,
+
 } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
 import { WelcomeDialog } from "@/components/site/WelcomeDialog";
