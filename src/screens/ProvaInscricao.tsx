@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt, Ruler } from "lucide-react";
+import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt, Ruler, User, Users } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
 import {
   activeLote,
@@ -659,7 +659,7 @@ const ProvaInscricao = () => {
                 <div className="max-w-2xl mx-auto bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-6">
                   <div className="text-center">
                     <CheckCircle2 className="w-14 h-14 text-success mx-auto mb-3" />
-                    <h1 className="font-display text-2xl font-bold mb-2">Inscrição recebida!</h1>
+                    <h1 className="font-display text-2xl font-bold mb-2">Inscrição realizada com sucesso</h1>
                     <p className="text-muted-foreground">
                       Copie a chave PIX abaixo, faça o pagamento e envie o comprovante via WhatsApp para confirmarmos sua participação.
                     </p>
@@ -907,33 +907,54 @@ const ProvaInscricao = () => {
                     {step === 1 && (
                       <>
                         <div>
-                          <h1 className="font-display text-2xl sm:text-3xl font-bold">Dados do participante</h1>
+                          <h1 className="font-display text-2xl sm:text-3xl font-bold">Quem você quer inscrever?</h1>
                           <p className="text-sm text-muted-foreground mt-1">
-                            Quem vai correr esta prova? A inscrição fica vinculada à sua conta ({profile?.full_name || user.email}).
+                            A inscrição fica vinculada à sua conta ({profile?.full_name || user.email}).
+                          </p>
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          {[
+                            { self: true, title: "Eu mesmo", desc: "Usar meus dados cadastrados", Icon: User },
+                            { self: false, title: "Outra pessoa", desc: "Filho, familiar, amigo ou aluno", Icon: Users },
+                          ].map(({ self, title, desc, Icon }) => {
+                            const active = isSelf === self;
+                            return (
+                              <button
+                                key={title}
+                                type="button"
+                                onClick={() => { setIsSelf(self); self ? fillWithProfile() : clearParticipant(); }}
+                                className={[
+                                  "text-left rounded-2xl border p-4 sm:p-5 transition-all flex items-start gap-3 min-h-[88px]",
+                                  active
+                                    ? "border-brand bg-brand/10 ring-1 ring-brand/40"
+                                    : "border-border bg-secondary/30 hover:bg-secondary/60",
+                                ].join(" ")}
+                              >
+                                <span className={[
+                                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                                  active ? "bg-brand text-brand-foreground" : "bg-background text-muted-foreground border border-border",
+                                ].join(" ")}>
+                                  <Icon className="w-5 h-5" />
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block font-display font-bold">{title}</span>
+                                  <span className="block text-sm text-muted-foreground">{desc}</span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div>
+                          <h2 className="font-display text-lg font-bold">Dados do participante</h2>
+                          <p className="text-xs text-muted-foreground">
+                            Em breve você poderá salvar participantes frequentes em "Meus participantes" e reutilizá-los aqui.
                           </p>
                         </div>
 
                         <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={isSelf ? "brand" : "outline"}
-                              className="min-h-10"
-                              onClick={() => { setIsSelf(true); fillWithProfile(); }}
-                            >
-                              Sou eu
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={!isSelf ? "brand" : "outline"}
-                              className="min-h-10"
-                              onClick={() => { setIsSelf(false); clearParticipant(); }}
-                            >
-                              Inscrever outra pessoa
-                            </Button>
-                          </div>
+
 
                           <div className="grid sm:grid-cols-2 gap-3">
                             <div className="sm:col-span-2" data-invalid={errors.pName || undefined}>
