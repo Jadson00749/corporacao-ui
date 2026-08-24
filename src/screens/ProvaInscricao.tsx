@@ -394,6 +394,15 @@ const ProvaInscricao = () => {
     return parts.join(" · ");
   }, [distance, gender, bracket]);
 
+  /** Rótulo amigável exibido na tela (o categoryLabel continua igual no banco). */
+  const categoryDisplay = useMemo(() => {
+    const ageLabel = isKidsDistance(distance) ? "Infantil" : bracket ? `${bracket.replace("-", "–")} anos` : "";
+    return [distance && cleanDistanceLabel(distance), gender, ageLabel].filter(Boolean).join(" • ");
+  }, [distance, gender, bracket]);
+
+  const categoryReady = !!distance && !!gender && (!ageBrackets.length || !!bracket || isKidsDistance(distance)) && !ageMismatch;
+
+
   const whatsMessage = useMemo(() => {
     const lines = [
       `Olá! Sou ${profile?.full_name || "atleta"} e fiz uma inscrição na ${event?.name || "prova"}.`,
