@@ -1165,7 +1165,17 @@ const ProvaInscricao = () => {
 
                   </div>
 
-                  <div>{summaryCard}</div>
+                  <div>
+                    <details className="lg:hidden rounded-2xl border border-border bg-card overflow-hidden">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold">
+                        <span>Resumo da inscrição</span>
+                        <span className="text-brand">{total > 0 ? brl(total) : ""}</span>
+                      </summary>
+                      <div className="border-t border-border p-1">{summaryCard}</div>
+                    </details>
+                    <div className="hidden lg:block">{summaryCard}</div>
+                  </div>
+
                 </div>
               )}
             </>
