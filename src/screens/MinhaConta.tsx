@@ -61,6 +61,20 @@ const MinhaConta = () => {
   const signupsRef = useRef<HTMLDivElement>(null);
   const cadastroRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<"signups" | "data">("signups");
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  // Sempre buscar do banco ao abrir a área do atleta (evita estado local desatualizado)
+  useEffect(() => {
+    refetchSignups();
+    try {
+      const id = sessionStorage.getItem("corporacao:last_signup_id");
+      if (id) {
+        setHighlightId(id);
+        sessionStorage.removeItem("corporacao:last_signup_id");
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const nextTraining = useMemo(() => {
     const now = today();
@@ -148,8 +162,18 @@ const MinhaConta = () => {
 
           <IncompleteProfileBanner className="mb-6 rounded-2xl border" />
 
+          <div className="flex flex-col">
+
+          {/* Contador compacto (mobile) */}
+          <p className="order-1 md:hidden mb-3 text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{signups.length}</span> inscriç{signups.length === 1 ? "ão" : "ões"}
+            {pendingSignups.length > 0 && (
+              <> • <span className="font-semibold text-warning">{pendingSignups.length}</span> aguardando pagamento</>
+            )}
+          </p>
+
           {/* Quick stats row */}
-          <div className="grid grid-cols-3 gap-2.5 md:gap-4 mb-6 md:mb-8">
+          <div className="order-4 md:order-1 hidden md:grid grid-cols-3 gap-2.5 md:gap-4 mb-6 md:mb-8">
             <button
               type="button"
               onClick={() => {
@@ -192,7 +216,7 @@ const MinhaConta = () => {
 
 
           {/* Dashboard cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
+          <div className="order-3 md:order-2 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
             {/* Next training */}
             <DashboardCard
               icon={<Dumbbell className="w-5 h-5" />}
@@ -343,7 +367,7 @@ const MinhaConta = () => {
           </div>
 
           {/* Detailed sections */}
-          <div className="bg-card border border-border/60 rounded-3xl overflow-hidden shadow-card">
+          <div className="order-2 md:order-3 mb-8 md:mb-0 bg-card border border-border/60 rounded-3xl overflow-hidden shadow-card">
             <div className="flex border-b border-border/60 overflow-x-auto no-scrollbar">
               <button
                 type="button"
@@ -395,7 +419,7 @@ const MinhaConta = () => {
                   ) : (
                     <div className="space-y-4">
                       {signups.map((s) => (
-                        <SignupCard key={s.id} signup={s} buildWhats={buildWhats} />
+                        <SignupCard key={s.id} signup={s} buildWhats={buildWhats} highlight={s.id === highlightId} />
                       ))}
                     </div>
                   )}
@@ -412,6 +436,8 @@ const MinhaConta = () => {
                 </div>
               )}
             </div>
+          </div>
+
           </div>
         </div>
       </section>
@@ -431,9 +457,11 @@ const parseKits = (value?: string | null): string[] => {
 const SignupCard = ({
   signup: s,
   buildWhats,
+  highlight = false,
 }: {
   signup: EventSignup;
   buildWhats: (msg: string) => string;
+  highlight?: boolean;
 }) => {
   const isConfirmed = s.status === "confirmada";
   const isCancelled = s.status === "cancelada";
@@ -451,9 +479,15 @@ const SignupCard = ({
       className={cn(
         "rounded-2xl border bg-background p-4 sm:p-5 transition-shadow hover:shadow-card",
         isPending ? "border-warning/40" : isConfirmed ? "border-success/30" : "border-border/60",
-        isCancelled && "opacity-70"
+        isCancelled && "opacity-70",
+        highlight && "ring-2 ring-brand ring-offset-2 ring-offset-background"
       )}
     >
+      {highlight && (
+        <p className="mb-2.5 inline-flex rounded-full bg-brand/15 px-2.5 py-1 text-[11px] font-semibold text-brand">
+          Inscrição recém-criada
+        </p>
+      )}
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
           <h3 className="font-display text-base sm:text-lg font-semibold leading-snug break-words">
