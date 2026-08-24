@@ -128,6 +128,7 @@ const ProvaInscricao = () => {
   const buildWhats = useWhatsappLink();
 
   const [step, setStep] = useState(0);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [distance, setDistance] = useState("");
   const [gender, setGender] = useState("");
   const [bracket, setBracket] = useState("");
