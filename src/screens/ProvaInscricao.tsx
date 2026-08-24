@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt, Ruler } from "lucide-react";
+import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt, Ruler, User, Users } from "lucide-react";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
 import {
   activeLote,
@@ -659,7 +659,7 @@ const ProvaInscricao = () => {
                 <div className="max-w-2xl mx-auto bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-6">
                   <div className="text-center">
                     <CheckCircle2 className="w-14 h-14 text-success mx-auto mb-3" />
-                    <h1 className="font-display text-2xl font-bold mb-2">Inscrição recebida!</h1>
+                    <h1 className="font-display text-2xl font-bold mb-2">Inscrição realizada com sucesso</h1>
                     <p className="text-muted-foreground">
                       Copie a chave PIX abaixo, faça o pagamento e envie o comprovante via WhatsApp para confirmarmos sua participação.
                     </p>
