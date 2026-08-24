@@ -13,6 +13,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
+import {
+  useParticipants,
+  useParticipantMutations,
+  findExistingParticipant,
+} from "@/hooks/useParticipants";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt, Ruler, User, Users } from "lucide-react";
@@ -164,6 +169,10 @@ const ProvaInscricao = () => {
   const [isSelf, setIsSelf] = useState(true);
   const [selfDraft, setSelfDraft] = useState<ParticipantDraft>(EMPTY_DRAFT);
   const [otherDraft, setOtherDraft] = useState<ParticipantDraft>(EMPTY_DRAFT);
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
+  const [saveToParticipants, setSaveToParticipants] = useState(false);
+  const { data: savedParticipants = [] } = useParticipants();
+  const { create: createParticipant } = useParticipantMutations();
   const [doneParticipants, setDoneParticipants] = useState<{ name: string; birth: string; self: boolean }[]>([]);
   const [showExtras, setShowExtras] = useState(false);
   const prefilledRef = useRef(false);
