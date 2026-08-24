@@ -392,15 +392,40 @@ const MinhaConta = () => {
             <div className="p-4 md:p-6 lg:p-8">
               {activeTab === "signups" && (
                 <div ref={signupsRef}>
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center justify-between gap-3 mb-4">
                     <div>
                       <h2 className="font-display text-xl font-bold">Minhas inscrições</h2>
                       <p className="text-sm text-muted-foreground">Acompanhe o status de todas as suas provas.</p>
                     </div>
-                    <Button asChild variant="brand" size="sm" className="hidden sm:flex">
-                      <Link to="/provas">Ver provas</Link>
+                    <Button asChild variant="outline" size="sm" className="hidden sm:flex shrink-0">
+                      <Link to="/provas">+ Nova inscrição</Link>
                     </Button>
                   </div>
+
+                  {signups.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1">
+                      {([
+                        ["all", `Todas (${signups.length})`],
+                        ["pending", `Aguardando pagamento (${pendingSignups.length})`],
+                        ["confirmed", `Confirmadas (${confirmedSignups.length})`],
+                      ] as const).map(([key, label]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setStatusFilter(key)}
+                          className={cn(
+                            "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                            statusFilter === key
+                              ? "border-brand bg-brand/10 text-brand"
+                              : "border-border/60 text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   {signupsLoading ? (
                     <div className="space-y-3">
                       <Skeleton className="h-24" />
@@ -411,16 +436,25 @@ const MinhaConta = () => {
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <ClipboardList className="w-7 h-7 text-muted-foreground" />
                       </div>
-                      <p className="text-muted-foreground mb-4">Você ainda não tem inscrições.</p>
-                      <Button asChild variant="brand"><Link to="/provas">Ver provas disponíveis</Link></Button>
+                      <p className="font-display font-semibold">Você ainda não tem inscrições</p>
+                      <p className="text-sm text-muted-foreground mb-4">Escolha uma prova e faça sua primeira inscrição.</p>
+                      <Button asChild variant="brand"><Link to="/provas">Ver provas</Link></Button>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {signups.map((s) => (
-                        <SignupCard key={s.id} signup={s} buildWhats={buildWhats} highlight={s.id === highlightId} />
-                      ))}
+                    <div className="space-y-3">
+                      {filteredSignups.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma inscrição neste filtro.</p>
+                      ) : (
+                        filteredSignups.map((s) => (
+                          <SignupCard key={s.id} signup={s} buildWhats={buildWhats} highlight={s.id === highlightId} />
+                        ))
+                      )}
+                      <Button asChild variant="outline" className="w-full min-h-11 mt-1">
+                        <Link to="/provas">+ Inscrever outra pessoa</Link>
+                      </Button>
                     </div>
                   )}
+
                 </div>
               )}
 
