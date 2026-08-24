@@ -214,7 +214,7 @@ const MinhaConta = () => {
 
 
           {/* Dashboard cards */}
-          <div className="order-3 md:order-2 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
+          <div className="order-3 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
             {/* Next training */}
             <DashboardCard
               icon={<Dumbbell className="w-5 h-5" />}
@@ -365,7 +365,7 @@ const MinhaConta = () => {
           </div>
 
           {/* Detailed sections */}
-          <div className="order-2 md:order-3 mb-8 md:mb-0 bg-card border border-border/60 rounded-3xl overflow-hidden shadow-card">
+          <div className="order-2 mb-8 md:mb-10 bg-card border border-border/60 rounded-3xl overflow-hidden shadow-card">
             <div className="flex border-b border-border/60 overflow-x-auto no-scrollbar">
               <button
                 type="button"
