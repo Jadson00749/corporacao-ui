@@ -304,14 +304,14 @@ const ProvaInscricao = () => {
   useEffect(() => { if (distances.length === 1) setDistance(distances[0].distance); }, [distances]);
   useEffect(() => { if (kitOptions.length === 1) setSelectedKits([kitOptions[0].name]); }, [kitOptions]);
 
-  // Sexo automático a partir do cadastro (profiles.gender)
-  const profileGender = useMemo(() => genderLabelFrom(profile?.gender, genders), [profile?.gender, genders]);
-  useEffect(() => { setGender(profileGender); }, [profileGender]);
+  // Sexo derivado do PARTICIPANTE
+  const participantGenderLabel = useMemo(() => genderLabelFrom(pGender, genders), [pGender, genders]);
+  useEffect(() => { setGender(participantGenderLabel); }, [participantGenderLabel]);
 
-  // Idade esportiva (ano da prova - ano de nascimento) e faixa etária automática
+  // Idade esportiva do PARTICIPANTE (ano da prova - ano de nascimento)
   const categoryAge = useMemo(
-    () => sportAge(profile?.birth_date, (event as any)?.date),
-    [profile?.birth_date, event]
+    () => sportAge(pBirth, (event as any)?.date),
+    [pBirth, event]
   );
   const autoBracket = useMemo(() => {
     if (categoryAge == null || !ageBrackets.length) return "";
@@ -321,14 +321,16 @@ const ProvaInscricao = () => {
   useEffect(() => { setBracket(autoBracket); }, [autoBracket]);
 
   const profileComplete = profile && profile.full_name && profile.cpf && profile.whatsapp && profile.cep;
+  const participantComplete = !!(pName.trim() && pCpf.trim() && pBirth && pGender);
 
 
   const distanceObj = distances.find((d) => d.distance === distance);
-  const senior = isSenior(profile?.birth_date);
+  // 60+ pela idade do PARTICIPANTE na data da prova
+  const senior = isSeniorAtEvent(pBirth, (event as any)?.date);
   const basePriceOf = (d: any) => currentPrice(d ?? {});
   const seniorForDistance = (d: any) => senior && !isKidsDistance(d?.distance);
   const priceOf = (d: any) => effectivePrice(d ?? {}, seniorForDistance(d));
-  const seniorApplied = (d: any) => seniorForDistance(d) && hasSeniorPrice(d ?? {});
+  const seniorApplied = (d: any) => seniorForDistance(d) && (hasSeniorPrice(d ?? {}) || basePriceOf(d) > 0);
   const loteOf = (d: any) => activeLote(d ?? {});
   const currentLote = loteOf(distanceObj);
   const baseDistancePrice = basePriceOf(distanceObj);
@@ -347,18 +349,20 @@ const ProvaInscricao = () => {
 
   const whatsMessage = useMemo(() => {
     const lines = [
-      `Olá! Sou ${profile?.full_name || "atleta"} e fiz minha inscrição na ${event?.name || "prova"}.`,
+      `Olá! Sou ${profile?.full_name || "atleta"} e fiz uma inscrição na ${event?.name || "prova"}.`,
       "",
+      pName && `Participante: ${pName}`,
       distance && `Modalidade: ${distance}`,
       (gender || bracket) && `Categoria: ${[gender, bracket && `${bracket} anos`].filter(Boolean).join(" · ")}`,
       selectedKits.length && `Kit: ${selectedKits.join(", ")}`,
       shirtSize && `Tamanho da camiseta: ${shirtSize}`,
       total > 0 && `Valor: ${brl(total)}`,
       "",
-      "Gostaria de enviar meu comprovante PIX.",
+      "Gostaria de enviar o comprovante PIX.",
     ].filter((l) => l !== false && l !== 0 && l !== undefined && l !== null && l !== "" || l === "");
     return (lines as string[]).join("\n");
-  }, [profile?.full_name, event?.name, distance, gender, bracket, selectedKits, shirtSize, total]);
+  }, [profile?.full_name, pName, event?.name, distance, gender, bracket, selectedKits, shirtSize, total]);
+
 
   // Retomar rascunho pendente sem criar nova inscrição
   const resumeSignup = (signup: { id: string; category: string | null; kit_option?: string | null; team_name?: string | null; coupon_code?: string | null; shirt_size?: string | null }) => {
