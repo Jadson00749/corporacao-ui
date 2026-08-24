@@ -39,6 +39,7 @@ import { WelcomeDialog } from "@/components/site/WelcomeDialog";
 import { OnboardingTour } from "@/components/site/OnboardingTour";
 import { IncompleteProfileBanner } from "@/components/site/IncompleteProfileBanner";
 import type { EventSignup } from "@/hooks/useProfile";
+import { ParticipantsPanel } from "@/components/account/ParticipantsPanel";
 
 const today = () => new Date();
 const dateFromYMD = (d: string) => new Date(d + "T12:00:00");
@@ -58,7 +59,7 @@ const MinhaConta = () => {
   const buildWhats = useWhatsappLink();
   const signupsRef = useRef<HTMLDivElement>(null);
   const cadastroRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<"signups" | "data">("signups");
+  const [activeTab, setActiveTab] = useState<"signups" | "participants" | "data">("signups");
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "confirmed">("all");
 
@@ -389,6 +390,16 @@ const MinhaConta = () => {
               </button>
               <button
                 type="button"
+                onClick={() => setActiveTab("participants")}
+                className={cn(
+                  "px-5 py-3.5 text-sm font-semibold whitespace-nowrap transition-colors border-b-2 -mb-px",
+                  activeTab === "participants" ? "text-brand border-brand" : "text-muted-foreground border-transparent hover:text-foreground"
+                )}
+              >
+                Meus participantes
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab("data")}
                 className={cn(
                   "px-5 py-3.5 text-sm font-semibold whitespace-nowrap transition-colors border-b-2 -mb-px",
@@ -467,6 +478,8 @@ const MinhaConta = () => {
 
                 </div>
               )}
+
+              {activeTab === "participants" && <ParticipantsPanel />}
 
               {activeTab === "data" && (
                 <div ref={cadastroRef}>
