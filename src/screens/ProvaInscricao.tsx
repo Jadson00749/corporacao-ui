@@ -22,10 +22,12 @@ import {
   currentPrice,
   effectivePrice,
   hasSeniorPrice,
-  isSenior,
+  isSeniorAtEvent,
+  ageAtEvent,
   isSeniorOnlyDistance,
   isKidsDistance,
 } from "@/lib/eventPricing";
+
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 
 import { PixPayment } from "@/components/site/PixPayment";
