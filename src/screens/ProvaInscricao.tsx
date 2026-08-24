@@ -802,24 +802,154 @@ const ProvaInscricao = () => {
                       </div>
                     )}
                     {step === 0 && (
+                      <>
+                        <div>
+                          <h1 className="font-display text-2xl sm:text-3xl font-bold">Quem você quer inscrever?</h1>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            A inscrição fica vinculada à sua conta ({profile?.full_name || user.email}).
+                          </p>
+                        </div>
 
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          {[
+                            { self: true, title: "Eu mesmo", desc: "Usar meus dados cadastrados", Icon: User },
+                            { self: false, title: "Outra pessoa", desc: "Filho, familiar, amigo ou aluno", Icon: Users },
+                          ].map(({ self, title, desc, Icon }) => {
+                            const active = isSelf === self;
+                            return (
+                              <button
+                                key={title}
+                                type="button"
+                                onClick={() => { setIsSelf(self); if (self) fillWithProfile(); }}
+                                className={[
+                                  "text-left rounded-2xl border p-4 sm:p-5 transition-all flex items-start gap-3 min-h-[88px]",
+                                  active
+                                    ? "border-brand bg-brand/10 ring-1 ring-brand/40"
+                                    : "border-border bg-secondary/30 hover:bg-secondary/60",
+                                ].join(" ")}
+                              >
+                                <span className={[
+                                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                                  active ? "bg-brand text-brand-foreground" : "bg-background text-muted-foreground border border-border",
+                                ].join(" ")}>
+                                  <Icon className="w-5 h-5" />
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block font-display font-bold">{title}</span>
+                                  <span className="block text-sm text-muted-foreground">{desc}</span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
+                          <h2 className="font-display text-lg font-bold">
+                            {isSelf ? "Seus dados" : "Dados da pessoa inscrita"}
+                          </h2>
+
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <div className="sm:col-span-2" data-invalid={errors.pName || undefined}>
+                              <Label htmlFor="p-name">Nome completo *</Label>
+                              <Input id="p-name" value={pName} onChange={(e) => setPName(e.target.value)} className="mt-1" maxLength={160}
+                                aria-invalid={!!errors.pName} />
+                            </div>
+                            <div data-invalid={errors.pBirth || undefined}>
+                              <Label htmlFor="p-birth">Data de nascimento *</Label>
+                              <Input id="p-birth" type="date" value={pBirth} onChange={(e) => setPBirth(e.target.value)} className="mt-1"
+                                aria-invalid={!!errors.pBirth} />
+                            </div>
+                            <div data-invalid={errors.pGender || undefined}>
+                              <Label>Sexo *</Label>
+                              <Select value={pGender} onValueChange={setPGender}>
+                                <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Masculino">Masculino</SelectItem>
+                                  <SelectItem value="Feminino">Feminino</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div data-invalid={errors.pCpf || undefined}>
+                              <Label htmlFor="p-cpf">CPF {cpfRequired ? "*" : "(opcional)"}</Label>
+                              <Input id="p-cpf" value={pCpf} onChange={(e) => setPCpf(e.target.value)} className="mt-1" inputMode="numeric" maxLength={14}
+                                aria-invalid={!!errors.pCpf} />
+                              {!cpfRequired && (
+                                <p className="mt-1 text-xs text-muted-foreground">Menor de 18 anos: o CPF não é obrigatório.</p>
+                              )}
+                            </div>
+                            <div>
+                              <Label htmlFor="p-phone">Telefone/WhatsApp (opcional)</Label>
+                              <Input id="p-phone" value={pPhone} onChange={(e) => setPPhone(e.target.value)} className="mt-1" maxLength={20} />
+                            </div>
+                          </div>
+
+                          {categoryAge != null && (
+                            <div className="rounded-xl border border-border bg-secondary/30 px-4 py-3 text-sm">
+                              <span className="text-muted-foreground">Idade na data da prova: </span>
+                              <span className="font-semibold">{categoryAge} anos</span>
+                              {senior && !isKidsDistance(distance) && (
+                                <span className="ml-2 text-success font-semibold">• Benefício 60+ (50%)</span>
+                              )}
+                            </div>
+                          )}
+
+                          <p className="text-xs text-muted-foreground">
+                            A categoria e os benefícios são calculados automaticamente por estes dados.
+                          </p>
+                        </div>
+
+                        <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                          <Button onClick={goStep2} variant="brand" size="lg" className="w-full min-h-12 sm:w-auto sm:min-w-56">
+                            Continuar
+                          </Button>
+                        </div>
+                      </>
+                    )}
+
+                    {step === 1 && (
                       <>
                         <div>
                           <h1 className="font-display text-2xl sm:text-3xl font-bold">{event.name}</h1>
-                          <p className="text-sm text-muted-foreground mt-1">Selecione a modalidade e o kit para ver o valor da inscrição.</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Inscrição de <span className="font-semibold text-foreground">{pName}</span> — escolha a modalidade e o kit.
+                          </p>
                         </div>
+
+                        {categoryReady && (
+                          <div className="rounded-2xl border border-brand/40 bg-brand/10 px-4 py-3 text-sm">
+                            <span className="text-muted-foreground">Categoria automática: </span>
+                            <span className="font-semibold">{categoryDisplay}</span>
+                          </div>
+                        )}
+
+                        {ageMismatch && (
+                          <div className="rounded-2xl border border-warning/50 bg-warning/10 px-4 py-3 space-y-2 text-sm">
+                            <p className="font-semibold">{ageMismatch.message}</p>
+                            <p className="text-muted-foreground">
+                              {pName || "O participante"} terá {categoryAge} anos na data da prova. Escolha uma modalidade compatível:
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {ageMismatch.options.map((d: any) => (
+                                <Button key={d.distance} size="sm" variant="outline" className="min-h-10"
+                                  onClick={() => { const g = groupOf(d.distance); if (groups.includes(g)) setGroup(g); setDistance(d.distance); }}>
+                                  {cleanDistanceLabel(d.distance)}
+                                </Button>
+                              ))}
+                              <Button size="sm" variant="ghost" className="min-h-10" onClick={() => setStep(0)}>
+                                Corrigir data de nascimento
+                              </Button>
+                            </div>
+                          </div>
+                        )}
 
                         {distanceObj && seniorApplied(distanceObj) && (
                           <div className="rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-sm">
                             <span className="font-semibold text-success">Benefício 60+ aplicado</span>{" "}
                             <span className="text-muted-foreground">
-                              — valor especial definido para a modalidade {cleanDistanceLabel(distanceObj.distance)}.
+                              — valor especial para {cleanDistanceLabel(distanceObj.distance)}.
                             </span>
                           </div>
                         )}
-
-
-
 
                         {distances.length > 0 && (
                           <div
@@ -890,7 +1020,6 @@ const ProvaInscricao = () => {
                           </div>
                         )}
 
-
                         {kitOptions.length > 0 && (
                           <div
                             data-invalid={errors.kitOption || undefined}
@@ -932,7 +1061,9 @@ const ProvaInscricao = () => {
                                 className={`mt-4 rounded-xl border p-4 ${errors.shirtSize ? "border-destructive" : "border-border"} bg-secondary/20`}
                               >
                                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                                  <h4 className="text-sm font-semibold">Escolha o tamanho da camiseta</h4>
+                                  <h4 className="text-sm font-semibold">
+                                    Tamanho da camiseta {pName ? `de ${pName.split(" ")[0]}` : ""}
+                                  </h4>
                                   {(shirtKit?.size_chart_url || shirtKit?.size_chart_info) && (
                                     <button
                                       type="button"
@@ -971,136 +1102,6 @@ const ProvaInscricao = () => {
                           </div>
                         )}
 
-
-
-                        <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
-                          <Button onClick={goStep2} variant="brand" size="lg" className="w-full min-h-12 sm:w-auto sm:min-w-56">
-                            Continuar
-                          </Button>
-                        </div>
-                      </>
-                    )}
-
-                    {step === 1 && (
-                      <>
-                        <div>
-                          <h1 className="font-display text-2xl sm:text-3xl font-bold">Quem você quer inscrever?</h1>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            A inscrição fica vinculada à sua conta ({profile?.full_name || user.email}).
-                          </p>
-                        </div>
-
-                        <div className="grid sm:grid-cols-2 gap-3">
-                          {[
-                            { self: true, title: "Eu mesmo", desc: "Usar meus dados cadastrados", Icon: User },
-                            { self: false, title: "Outra pessoa", desc: "Filho, familiar, amigo ou aluno", Icon: Users },
-                          ].map(({ self, title, desc, Icon }) => {
-                            const active = isSelf === self;
-                            return (
-                              <button
-                                key={title}
-                                type="button"
-                                onClick={() => { setIsSelf(self); self ? fillWithProfile() : clearParticipant(); }}
-                                className={[
-                                  "text-left rounded-2xl border p-4 sm:p-5 transition-all flex items-start gap-3 min-h-[88px]",
-                                  active
-                                    ? "border-brand bg-brand/10 ring-1 ring-brand/40"
-                                    : "border-border bg-secondary/30 hover:bg-secondary/60",
-                                ].join(" ")}
-                              >
-                                <span className={[
-                                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                                  active ? "bg-brand text-brand-foreground" : "bg-background text-muted-foreground border border-border",
-                                ].join(" ")}>
-                                  <Icon className="w-5 h-5" />
-                                </span>
-                                <span className="min-w-0">
-                                  <span className="block font-display font-bold">{title}</span>
-                                  <span className="block text-sm text-muted-foreground">{desc}</span>
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <div>
-                          <h2 className="font-display text-lg font-bold">Dados do participante</h2>
-                          <p className="text-xs text-muted-foreground">
-                            Em breve você poderá salvar participantes frequentes em "Meus participantes" e reutilizá-los aqui.
-                          </p>
-                        </div>
-
-                        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
-
-
-                          <div className="grid sm:grid-cols-2 gap-3">
-                            <div className="sm:col-span-2" data-invalid={errors.pName || undefined}>
-                              <Label htmlFor="p-name">Nome completo do participante *</Label>
-                              <Input id="p-name" value={pName} onChange={(e) => setPName(e.target.value)} className="mt-1" maxLength={160}
-                                aria-invalid={!!errors.pName} />
-                            </div>
-                            <div data-invalid={errors.pCpf || undefined}>
-                              <Label htmlFor="p-cpf">CPF *</Label>
-                              <Input id="p-cpf" value={pCpf} onChange={(e) => setPCpf(e.target.value)} className="mt-1" inputMode="numeric" maxLength={14}
-                                aria-invalid={!!errors.pCpf} />
-                            </div>
-                            <div data-invalid={errors.pBirth || undefined}>
-                              <Label htmlFor="p-birth">Data de nascimento *</Label>
-                              <Input id="p-birth" type="date" value={pBirth} onChange={(e) => setPBirth(e.target.value)} className="mt-1"
-                                aria-invalid={!!errors.pBirth} />
-                            </div>
-                            <div data-invalid={errors.pGender || undefined}>
-                              <Label>Sexo *</Label>
-                              <Select value={pGender} onValueChange={setPGender}>
-                                <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Masculino">Masculino</SelectItem>
-                                  <SelectItem value="Feminino">Feminino</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label htmlFor="p-phone">Telefone/WhatsApp (opcional)</Label>
-                              <Input id="p-phone" value={pPhone} onChange={(e) => setPPhone(e.target.value)} className="mt-1" maxLength={20} />
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            A categoria e o benefício 60+ são definidos por estes dados do participante.
-                          </p>
-                        </div>
-
-                        {(genders.length > 0 || ageBrackets.length > 0) && (
-                          <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-3">
-                            <h3 className="text-sm uppercase tracking-wide text-muted-foreground">Categoria (automática)</h3>
-                            <div className="grid sm:grid-cols-2 gap-3 text-sm">
-                              {genders.length > 0 && (
-                                <div data-invalid={errors.gender || undefined}>
-                                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Sexo</dt>
-                                  <dd className={`font-medium ${errors.gender ? "text-destructive" : ""}`}>
-                                    {gender || "informe o sexo do participante"}
-                                  </dd>
-                                </div>
-                              )}
-                              {ageBrackets.length > 0 && (
-                                <div data-invalid={errors.bracket || undefined}>
-                                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Faixa etária</dt>
-                                  <dd className={`font-medium ${errors.bracket ? "text-destructive" : ""}`}>
-                                    {bracket ? `${bracket.replace("-", " a ")} anos` : "informe a data de nascimento"}
-                                    {categoryAge != null && bracket && (
-                                      <span className="text-muted-foreground font-normal"> · {categoryAge} anos no ano da prova</span>
-                                    )}
-                                  </dd>
-                                </div>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Calculada pelos dados do participante (ano da prova menos o ano de nascimento).
-                            </p>
-                          </div>
-                        )}
-
-
-
                         <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
                           <div>
                             <Label htmlFor="team">Nome da equipe (opcional)</Label>
@@ -1138,16 +1139,23 @@ const ProvaInscricao = () => {
                           </label>
                         </div>
 
-                        <div className="sticky bottom-0 z-30 -mx-4 flex flex-col-reverse gap-2 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:flex-row sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
-                          <Button variant="outline" size="lg" className="min-h-12" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
-                            <ChevronLeft className="w-4 h-4" /> Voltar
-                          </Button>
-                          <Button onClick={submit} disabled={submitting || !participantComplete} variant="brand" size="lg" className="min-h-12 flex-1">
-                            {submitting ? "Enviando..." : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
-                          </Button>
+                        <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                          <div className="mb-2 flex items-center justify-between text-sm sm:hidden">
+                            <span className="text-muted-foreground truncate">{pName || "Participante"}</span>
+                            <span className="font-bold text-brand">{total > 0 ? brl(total) : "—"}</span>
+                          </div>
+                          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
+                            <Button variant="outline" size="lg" className="min-h-12" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                              <ChevronLeft className="w-4 h-4" /> Voltar
+                            </Button>
+                            <Button onClick={submit} disabled={submitting || !participantComplete} variant="brand" size="lg" className="min-h-12 flex-1">
+                              {submitting ? "Enviando..." : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
+                            </Button>
+                          </div>
                         </div>
                       </>
                     )}
+
                   </div>
 
                   <div>{summaryCard}</div>
