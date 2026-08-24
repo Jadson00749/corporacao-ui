@@ -419,7 +419,7 @@ const MinhaConta = () => {
                   ) : (
                     <div className="space-y-4">
                       {signups.map((s) => (
-                        <SignupCard key={s.id} signup={s} buildWhats={buildWhats} />
+                        <SignupCard key={s.id} signup={s} buildWhats={buildWhats} highlight={s.id === highlightId} />
                       ))}
                     </div>
                   )}
@@ -436,6 +436,8 @@ const MinhaConta = () => {
                 </div>
               )}
             </div>
+          </div>
+
           </div>
         </div>
       </section>
