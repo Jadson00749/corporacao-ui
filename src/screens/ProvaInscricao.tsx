@@ -657,6 +657,7 @@ const ProvaInscricao = () => {
 
                   <div className="bg-secondary/40 rounded-xl p-4 space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-muted-foreground">Prova</span><span className="font-medium">{event.name}</span></div>
+                    {pName && <div className="flex justify-between"><span className="text-muted-foreground">Participante</span><span className="font-medium">{pName}</span></div>}
                     <div className="flex justify-between"><span className="text-muted-foreground">Categoria</span><span className="font-medium">{categoryLabel}</span></div>
                     {shirtSize && <div className="flex justify-between"><span className="text-muted-foreground">Camiseta</span><span className="font-medium">{shirtSize}</span></div>}
                     {total > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
@@ -682,8 +683,12 @@ const ProvaInscricao = () => {
                   </Button>
 
 
+                  <Button onClick={startAnotherParticipant} variant="outline" size="lg" className="w-full">
+                    Adicionar outro participante
+                  </Button>
+
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Button asChild variant="outline" size="sm"><Link to="/minha-conta">Ver minhas inscrições</Link></Button>
+                    <Button asChild variant="ghost" size="sm"><Link to="/minha-conta">Ver minhas inscrições</Link></Button>
                     <Button asChild variant="ghost" size="sm"><Link to="/provas">Ver outras provas</Link></Button>
                   </div>
                 </div>
@@ -1029,7 +1034,7 @@ const ProvaInscricao = () => {
                           <Button variant="outline" size="lg" className="min-h-12" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
                             <ChevronLeft className="w-4 h-4" /> Voltar
                           </Button>
-                          <Button onClick={submit} disabled={submitting || !profileComplete} variant="brand" size="lg" className="min-h-12 flex-1">
+                          <Button onClick={submit} disabled={submitting || !participantComplete} variant="brand" size="lg" className="min-h-12 flex-1">
                             {submitting ? "Enviando..." : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
                           </Button>
                         </div>
