@@ -1,16 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { buildMeta } from "@/lib/seo";
 import Agenda from "@/screens/Agenda";
 
 export const Route = createFileRoute("/agenda")({
   head: () => ({
-    meta: [
-      { title: "Agenda — Corporação Running" },
-      { name: "description", content: "Calendário com todos os treinos e provas do mês." },
-      { property: "og:title", content: "Agenda — Corporação Running" },
-      { property: "og:description", content: "Calendário com todos os treinos e provas do mês." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
+    meta: buildMeta({
+      title: "Agenda",
+      description: "Calendário com todos os treinos e provas do mês.",
+      path: "/agenda",
+    }),
   }),
   component: Agenda,
 });

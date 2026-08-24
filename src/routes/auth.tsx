@@ -1,16 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { buildMeta } from "@/lib/seo";
 import Auth from "@/screens/Auth";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
-    meta: [
-      { title: "Entrar — Corporação Running" },
-      { name: "description", content: "Acesse sua conta para gerenciar inscrições e seu perfil." },
-      { property: "og:title", content: "Entrar — Corporação Running" },
-      { property: "og:description", content: "Acesse sua conta para gerenciar inscrições e seu perfil." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
+    meta: buildMeta({
+      title: "Entrar",
+      description: "Acesse sua conta para gerenciar inscrições e seu perfil.",
+      path: "/auth",
+    }),
   }),
   component: Auth,
 });

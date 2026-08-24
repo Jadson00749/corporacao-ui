@@ -1,16 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { buildMeta } from "@/lib/seo";
 import Contato from "@/screens/Contato";
 
 export const Route = createFileRoute("/contato")({
   head: () => ({
-    meta: [
-      { title: "Contato — Corporação Running" },
-      { name: "description", content: "Fale com a equipe e tire suas dúvidas sobre treinos e planos." },
-      { property: "og:title", content: "Contato — Corporação Running" },
-      { property: "og:description", content: "Fale com a equipe e tire suas dúvidas sobre treinos e planos." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
+    meta: buildMeta({
+      title: "Contato",
+      description: "Fale com a equipe e tire suas dúvidas sobre treinos e planos.",
+      path: "/contato",
+    }),
   }),
   component: Contato,
 });
