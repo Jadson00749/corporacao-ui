@@ -145,26 +145,51 @@ const ProvaInscricao = () => {
   const [resumeDismissed, setResumeDismissed] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
 
-  // ---- PARTICIPANTE (pode ser o próprio usuário ou outra pessoa) ----
-  const [pName, setPName] = useState("");
-  const [pCpf, setPCpf] = useState("");
-  const [pBirth, setPBirth] = useState("");
-  const [pGender, setPGender] = useState("");
-  const [pPhone, setPPhone] = useState("");
+  // ---- PARTICIPANTE (rascunhos independentes: "eu mesmo" x "outra pessoa") ----
+  type ParticipantDraft = {
+    name: string; cpf: string; birth: string; gender: string; phone: string; shirtSize: string;
+  };
+  const EMPTY_DRAFT: ParticipantDraft = { name: "", cpf: "", birth: "", gender: "", phone: "", shirtSize: "" };
+
   const [isSelf, setIsSelf] = useState(true);
+  const [selfDraft, setSelfDraft] = useState<ParticipantDraft>(EMPTY_DRAFT);
+  const [otherDraft, setOtherDraft] = useState<ParticipantDraft>(EMPTY_DRAFT);
+  const [doneParticipants, setDoneParticipants] = useState<{ name: string; birth: string; self: boolean }[]>([]);
+  const [showExtras, setShowExtras] = useState(false);
   const prefilledRef = useRef(false);
 
+  const draft = isSelf ? selfDraft : otherDraft;
+  const patchDraft = (patch: Partial<ParticipantDraft>) =>
+    (isSelf ? setSelfDraft : setOtherDraft)((d) => ({ ...d, ...patch }));
+
+  const pName = draft.name;
+  const pCpf = draft.cpf;
+  const pBirth = draft.birth;
+  const pGender = draft.gender;
+  const pPhone = draft.phone;
+  const shirtSize = draft.shirtSize;
+
+  const setPName = (v: string) => patchDraft({ name: v });
+  const setPCpf = (v: string) => patchDraft({ cpf: v });
+  const setPBirth = (v: string) => patchDraft({ birth: v });
+  const setPGender = (v: string) => patchDraft({ gender: v });
+  const setPPhone = (v: string) => patchDraft({ phone: v });
+  const setShirtSize = (v: string) => patchDraft({ shirtSize: v });
+
   const fillWithProfile = () => {
-    setPName(profile?.full_name || "");
-    setPCpf(profile?.cpf || "");
-    setPBirth((profile as any)?.birth_date || "");
-    setPGender((profile as any)?.gender || "");
-    setPPhone(profile?.whatsapp || "");
+    setSelfDraft((d) => ({
+      ...d,
+      name: d.name || profile?.full_name || "",
+      cpf: d.cpf || profile?.cpf || "",
+      birth: d.birth || (profile as any)?.birth_date || "",
+      gender: d.gender || (profile as any)?.gender || "",
+      phone: d.phone || profile?.whatsapp || "",
+    }));
   };
 
   const clearParticipant = () => {
-    setPName(""); setPCpf(""); setPBirth(""); setPGender(""); setPPhone("");
-    setShirtSize("");
+    setSelfDraft(EMPTY_DRAFT);
+    setOtherDraft(EMPTY_DRAFT);
   };
 
   useEffect(() => {
@@ -172,6 +197,7 @@ const ProvaInscricao = () => {
     prefilledRef.current = true;
     fillWithProfile();
   }, [profile]);
+
 
 
 
