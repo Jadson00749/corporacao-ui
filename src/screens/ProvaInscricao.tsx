@@ -677,6 +677,33 @@ const ProvaInscricao = () => {
     setSignupId(persisted.id);
     setSubmitError(null);
     setDoneParticipants((prev) => [...prev, { name: pName.trim(), birth: pBirth, self: isSelf }]);
+
+    // Opcional: salvar essa pessoa em "Meus participantes" (não altera a inscrição).
+    if (!isSelf && selectedParticipantId === null && saveToParticipants) {
+      const dup = findExistingParticipant(savedParticipants, {
+        full_name: pName.trim(),
+        cpf: pCpf,
+        birth_date: pBirth,
+      });
+      if (dup) {
+        toast.info("Este participante já está salvo em Meus participantes.");
+      } else {
+        try {
+          await createParticipant.mutateAsync({
+            full_name: pName.trim(),
+            cpf: pCpf.trim() || null,
+            birth_date: pBirth || null,
+            gender: pGender || null,
+            phone: pPhone.trim() || null,
+          });
+          toast.success("Participante salvo para as próximas provas.");
+        } catch (e: any) {
+          toast.error("Inscrição registrada, mas não conseguimos salvar o participante.");
+        }
+      }
+      setSaveToParticipants(false);
+    }
+
     qc.invalidateQueries({ queryKey: ["my_signups"] });
     qc.invalidateQueries({ queryKey: ["event_signup_existing", id, user.id] });
     try {
@@ -698,6 +725,8 @@ const ProvaInscricao = () => {
     setAppliedCoupon(null);
     setCouponInput("");
     setOtherDraft(EMPTY_DRAFT);
+    setSelectedParticipantId(null);
+    setSaveToParticipants(false);
     const selfDone = doneParticipants.some((p) => p.self);
     if (selfDone) setSelfDraft(EMPTY_DRAFT);
     setIsSelf(false);
