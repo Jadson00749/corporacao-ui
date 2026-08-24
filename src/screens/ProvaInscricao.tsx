@@ -502,17 +502,23 @@ const ProvaInscricao = () => {
     toast.success(`Cupom ${found.code} aplicado.`);
   };
 
+  /** Etapa 1 -> 2: valida apenas os dados do participante. */
   const goStep2 = () => {
     const newErrors: Record<string, boolean> = {};
     const missing: string[] = [];
-    if (distances.length > 0 && !distance) { newErrors.distance = true; missing.push("Modalidade"); }
-    if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missing.push("Kit"); }
-    if (availableSizes.length > 0 && !shirtSize) { newErrors.shirtSize = true; missing.push("Tamanho da camiseta"); }
+    if (!pName.trim()) { newErrors.pName = true; missing.push("Nome completo"); }
+    if (!pBirth) { newErrors.pBirth = true; missing.push("Data de nascimento"); }
+    if (!pGender) { newErrors.pGender = true; missing.push("Sexo"); }
+    if (cpfRequired && !pCpf.trim()) { newErrors.pCpf = true; missing.push("CPF"); }
     if (missing.length) {
       setErrors(newErrors);
-      toast.error("Selecione para continuar", { description: missing.join(" · "), position: "top-center" });
+      toast.error("Preencha para continuar", { description: missing.join(" · "), position: "top-center" });
       return;
     }
+    const dup = doneParticipants.some(
+      (p) => p.name.trim().toLowerCase() === pName.trim().toLowerCase() && p.birth === pBirth
+    );
+    if (dup) toast.warning("Você já inscreveu alguém com este nome e data de nascimento nesta sessão.");
     setErrors({});
     setStep(1);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -522,16 +528,21 @@ const ProvaInscricao = () => {
     if (!user || !event) return;
     const newErrors: Record<string, boolean> = {};
     const missingLabels: string[] = [];
-    if (distances.length > 0 && !distance) { newErrors.distance = true; missingLabels.push("Distância"); }
-    if (!pName.trim()) { newErrors.pName = true; missingLabels.push("Nome do participante"); }
-    if (!pCpf.trim()) { newErrors.pCpf = true; missingLabels.push("CPF do participante"); }
-    if (!pBirth) { newErrors.pBirth = true; missingLabels.push("Data de nascimento do participante"); }
-    if (!pGender) { newErrors.pGender = true; missingLabels.push("Sexo do participante"); }
-    if (genders.length > 0 && !gender) { newErrors.gender = true; missingLabels.push("Sexo do participante"); }
-    if (ageBrackets.length > 0 && !bracket) { newErrors.bracket = true; missingLabels.push("Data de nascimento do participante"); }
-    if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Opção de kit"); }
+    if (distances.length > 0 && !distance) { newErrors.distance = true; missingLabels.push("Modalidade"); }
+    if (!pName.trim()) { newErrors.pName = true; missingLabels.push("Nome completo"); }
+    if (cpfRequired && !pCpf.trim()) { newErrors.pCpf = true; missingLabels.push("CPF"); }
+    if (!pBirth) { newErrors.pBirth = true; missingLabels.push("Data de nascimento"); }
+    if (!pGender) { newErrors.pGender = true; missingLabels.push("Sexo"); }
+    if (ageBrackets.length > 0 && !bracket && !isKidsDistance(distance)) { newErrors.bracket = true; missingLabels.push("Data de nascimento"); }
+    if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Kit"); }
     if (availableSizes.length > 0 && !shirtSize) { newErrors.shirtSize = true; missingLabels.push("Tamanho da camiseta"); }
     if (!acceptedTerms) { newErrors.terms = true; missingLabels.push("Aceitar os termos"); }
+    if (ageMismatch) {
+      setErrors({ ...newErrors, distance: true });
+      toast.error("Ajuste a modalidade", { description: ageMismatch.message, position: "top-center" });
+      return;
+    }
+
 
     if (missingLabels.length) {
       setErrors(newErrors);
