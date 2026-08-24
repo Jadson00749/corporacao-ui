@@ -216,7 +216,7 @@ const MinhaConta = () => {
 
 
           {/* Dashboard cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
+          <div className="order-3 md:order-2 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
             {/* Next training */}
             <DashboardCard
               icon={<Dumbbell className="w-5 h-5" />}
