@@ -132,7 +132,7 @@ const ProvaInscricao = () => {
   const [gender, setGender] = useState("");
   const [bracket, setBracket] = useState("");
   const [selectedKits, setSelectedKits] = useState<string[]>([]);
-  const [sizeChartKit2, setSizeChartKit2] = useState<KitOption | null>(null);
+  
   const [sizeChartKit, setSizeChartKit] = useState<KitOption | null>(null);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
