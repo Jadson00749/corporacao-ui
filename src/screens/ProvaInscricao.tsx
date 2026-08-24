@@ -892,25 +892,68 @@ const ProvaInscricao = () => {
                     {step === 1 && (
                       <>
                         <div>
-                          <h1 className="font-display text-2xl sm:text-3xl font-bold">Seus dados</h1>
-                          <p className="text-sm text-muted-foreground mt-1">Confira as informações e finalize a inscrição.</p>
+                          <h1 className="font-display text-2xl sm:text-3xl font-bold">Dados do participante</h1>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Quem vai correr esta prova? A inscrição fica vinculada à sua conta ({profile?.full_name || user.email}).
+                          </p>
                         </div>
 
-                        {!profileComplete && (
-                          <div className="bg-warning/15 border border-warning/40 text-foreground rounded-xl p-4 text-sm">
-                            Seus dados estão incompletos. <Link to="/minha-conta" className="underline text-brand">Complete seu perfil</Link> antes de finalizar.
+                        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={isSelf ? "brand" : "outline"}
+                              className="min-h-10"
+                              onClick={() => { setIsSelf(true); fillWithProfile(); }}
+                            >
+                              Sou eu
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={!isSelf ? "brand" : "outline"}
+                              className="min-h-10"
+                              onClick={() => { setIsSelf(false); clearParticipant(); }}
+                            >
+                              Inscrever outra pessoa
+                            </Button>
                           </div>
-                        )}
 
-                        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5">
-                          <dl className="grid sm:grid-cols-2 gap-3 text-sm">
-                            <Field label="Nome" value={profile?.full_name} />
-                            <Field label="CPF" value={profile?.cpf} />
-                            <Field label="Idade" value={calcAge(profile?.birth_date) ? `${calcAge(profile?.birth_date)} anos` : ""} />
-                            <Field label="Cidade" value={[profile?.city, profile?.state].filter(Boolean).join(" / ")} />
-                            <Field label="E-mail" value={profile?.email || user.email || ""} />
-                            <Field label="WhatsApp" value={profile?.whatsapp} />
-                          </dl>
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <div className="sm:col-span-2" data-invalid={errors.pName || undefined}>
+                              <Label htmlFor="p-name">Nome completo do participante *</Label>
+                              <Input id="p-name" value={pName} onChange={(e) => setPName(e.target.value)} className="mt-1" maxLength={160}
+                                aria-invalid={!!errors.pName} />
+                            </div>
+                            <div data-invalid={errors.pCpf || undefined}>
+                              <Label htmlFor="p-cpf">CPF *</Label>
+                              <Input id="p-cpf" value={pCpf} onChange={(e) => setPCpf(e.target.value)} className="mt-1" inputMode="numeric" maxLength={14}
+                                aria-invalid={!!errors.pCpf} />
+                            </div>
+                            <div data-invalid={errors.pBirth || undefined}>
+                              <Label htmlFor="p-birth">Data de nascimento *</Label>
+                              <Input id="p-birth" type="date" value={pBirth} onChange={(e) => setPBirth(e.target.value)} className="mt-1"
+                                aria-invalid={!!errors.pBirth} />
+                            </div>
+                            <div data-invalid={errors.pGender || undefined}>
+                              <Label>Sexo *</Label>
+                              <Select value={pGender} onValueChange={setPGender}>
+                                <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Masculino">Masculino</SelectItem>
+                                  <SelectItem value="Feminino">Feminino</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="p-phone">Telefone/WhatsApp (opcional)</Label>
+                              <Input id="p-phone" value={pPhone} onChange={(e) => setPPhone(e.target.value)} className="mt-1" maxLength={20} />
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            A categoria e o benefício 60+ são definidos por estes dados do participante.
+                          </p>
                         </div>
 
                         {(genders.length > 0 || ageBrackets.length > 0) && (
@@ -921,7 +964,7 @@ const ProvaInscricao = () => {
                                 <div data-invalid={errors.gender || undefined}>
                                   <dt className="text-xs uppercase tracking-wide text-muted-foreground">Sexo</dt>
                                   <dd className={`font-medium ${errors.gender ? "text-destructive" : ""}`}>
-                                    {gender || "não informado no cadastro"}
+                                    {gender || "informe o sexo do participante"}
                                   </dd>
                                 </div>
                               )}
@@ -929,7 +972,7 @@ const ProvaInscricao = () => {
                                 <div data-invalid={errors.bracket || undefined}>
                                   <dt className="text-xs uppercase tracking-wide text-muted-foreground">Faixa etária</dt>
                                   <dd className={`font-medium ${errors.bracket ? "text-destructive" : ""}`}>
-                                    {bracket ? `${bracket.replace("-", " a ")} anos` : "não informada no cadastro"}
+                                    {bracket ? `${bracket.replace("-", " a ")} anos` : "informe a data de nascimento"}
                                     {categoryAge != null && bracket && (
                                       <span className="text-muted-foreground font-normal"> · {categoryAge} anos no ano da prova</span>
                                     )}
@@ -937,18 +980,12 @@ const ProvaInscricao = () => {
                                 </div>
                               )}
                             </div>
-                            {(!gender && genders.length > 0) || (!bracket && ageBrackets.length > 0) ? (
-                              <p className="text-sm text-destructive">
-                                Faltam dados no seu cadastro (sexo e/ou data de nascimento).{" "}
-                                <Link to="/minha-conta" className="underline text-brand">Complete seu cadastro</Link> para continuar.
-                              </p>
-                            ) : (
-                              <p className="text-xs text-muted-foreground">
-                                Definida automaticamente pelo seu cadastro. A idade considerada é o ano da prova menos o ano de nascimento.
-                              </p>
-                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Calculada pelos dados do participante (ano da prova menos o ano de nascimento).
+                            </p>
                           </div>
                         )}
+
 
 
                         <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
