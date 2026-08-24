@@ -377,38 +377,74 @@ const MinhaConta = () => {
 
           {/* Detailed sections */}
           <div className="order-2 mb-8 md:mb-10 bg-card border border-border/60 rounded-3xl overflow-hidden shadow-card">
-            <div className="flex border-b border-border/60 overflow-x-auto no-scrollbar">
+            <div className="flex border-b border-border/60 overflow-x-auto no-scrollbar" role="tablist">
               <button
                 type="button"
+                ref={tabSignupsRef}
+                role="tab"
+                aria-selected={activeTab === "signups"}
                 onClick={() => setActiveTab("signups")}
                 className={cn(
-                  "px-5 py-3.5 text-sm font-semibold whitespace-nowrap transition-colors border-b-2 -mb-px",
-                  activeTab === "signups" ? "text-brand border-brand" : "text-muted-foreground border-transparent hover:text-foreground"
+                  "px-5 py-3.5 text-sm font-semibold whitespace-nowrap cursor-pointer transition-all duration-200 border-b-2 -mb-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-brand/40 rounded-t-lg",
+                  activeTab === "signups"
+                    ? "text-brand border-brand bg-accent-brand/5"
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:border-border hover:bg-muted/40"
                 )}
               >
                 Minhas inscrições
               </button>
               <button
                 type="button"
+                ref={tabParticipantsRef}
+                role="tab"
+                aria-selected={activeTab === "participants"}
                 onClick={() => setActiveTab("participants")}
                 className={cn(
-                  "px-5 py-3.5 text-sm font-semibold whitespace-nowrap transition-colors border-b-2 -mb-px",
-                  activeTab === "participants" ? "text-brand border-brand" : "text-muted-foreground border-transparent hover:text-foreground"
+                  "px-5 py-3.5 text-sm font-semibold whitespace-nowrap cursor-pointer transition-all duration-200 border-b-2 -mb-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-brand/40 rounded-t-lg",
+                  activeTab === "participants"
+                    ? "text-brand border-brand bg-accent-brand/5"
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:border-border hover:bg-muted/40"
                 )}
               >
                 Meus participantes
               </button>
               <button
                 type="button"
+                ref={tabDataRef}
+                role="tab"
+                aria-selected={activeTab === "data"}
                 onClick={() => setActiveTab("data")}
                 className={cn(
-                  "px-5 py-3.5 text-sm font-semibold whitespace-nowrap transition-colors border-b-2 -mb-px",
-                  activeTab === "data" ? "text-brand border-brand" : "text-muted-foreground border-transparent hover:text-foreground"
+                  "px-5 py-3.5 text-sm font-semibold whitespace-nowrap cursor-pointer transition-all duration-200 border-b-2 -mb-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-brand/40 rounded-t-lg",
+                  activeTab === "data"
+                    ? "text-brand border-brand bg-accent-brand/5"
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:border-border hover:bg-muted/40"
                 )}
               >
                 Meu cadastro
               </button>
             </div>
+
+            <TabsCoachmark
+              steps={[
+                {
+                  el: tabsMounted ? tabSignupsRef.current : null,
+                  title: "Suas provas ficam aqui 🏃",
+                  text: "Acompanhe inscrições, pagamentos e confirmações.",
+                },
+                {
+                  el: tabsMounted ? tabParticipantsRef.current : null,
+                  title: "Inscreva sua turma mais rápido 👥",
+                  text: "Salve familiares, amigos ou alunos para reutilizar os dados nas próximas provas.",
+                },
+                {
+                  el: tabsMounted ? tabDataRef.current : null,
+                  title: "Seus dados, sempre atualizados ✓",
+                  text: "Consulte e atualize as informações da sua conta.",
+                },
+              ]}
+            />
+
 
             <div className="p-4 md:p-6 lg:p-8">
               {activeTab === "signups" && (
