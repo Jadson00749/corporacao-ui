@@ -92,33 +92,41 @@ const cleanDistanceLabel = (name: string) => {
 };
 
 
-const Stepper = ({ current }: { current: number }) => (
+const Stepper = ({ current, onGo }: { current: number; onGo?: (i: number) => void }) => (
   <div className="flex items-start justify-center gap-1 sm:gap-4 mb-6 sm:mb-8">
     {STEPS.map((label, i) => {
       const state = i < current ? "done" : i === current ? "active" : "todo";
+      const clickable = !!onGo && i < current;
       return (
         <div key={label} className="flex items-start">
-          <div className="flex flex-col items-center w-[72px] sm:w-28">
+          <button
+            type="button"
+            disabled={!clickable}
+            onClick={() => clickable && onGo?.(i)}
+            aria-label={clickable ? `Voltar para a etapa ${label}` : label}
+            className={`flex flex-col items-center w-[72px] sm:w-28 ${clickable ? "cursor-pointer group" : "cursor-default"}`}
+          >
             <div
               className={[
-                "w-9 h-9 rounded-full grid place-items-center text-sm font-bold border-2 transition-colors",
+                "w-9 h-9 rounded-full grid place-items-center text-sm font-bold border-2 transition-all",
                 state === "active"
                   ? "border-brand text-brand bg-brand/10"
                   : state === "done"
-                  ? "border-brand bg-brand text-brand-foreground"
+                  ? "border-brand bg-brand text-brand-foreground group-hover:scale-105 group-hover:ring-4 group-hover:ring-brand/25"
                   : "border-border text-muted-foreground bg-secondary/40",
               ].join(" ")}
             >
               {state === "done" ? <Check className="w-4 h-4" /> : i + 1}
             </div>
-            <span className={`mt-2 text-[11px] leading-tight text-center sm:text-sm ${state === "todo" ? "text-muted-foreground" : "font-semibold"}`}>{label}</span>
-          </div>
+            <span className={`mt-2 text-[11px] leading-tight text-center sm:text-sm ${state === "todo" ? "text-muted-foreground" : "font-semibold"} ${clickable ? "group-hover:text-brand" : ""}`}>{label}</span>
+          </button>
           {i < STEPS.length - 1 && <div className="h-[2px] w-8 sm:w-24 bg-border mt-[18px]" />}
         </div>
       );
     })}
   </div>
 );
+
 
 const ProvaInscricao = () => {
   const { id } = useParams();
