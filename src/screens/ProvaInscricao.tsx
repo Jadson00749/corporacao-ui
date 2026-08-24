@@ -389,17 +389,27 @@ const ProvaInscricao = () => {
       const found = coupons.find((c) => c.code.toUpperCase() === signup.coupon_code!.toUpperCase());
       if (found) setAppliedCoupon(found);
     }
+    const sg = signup as any;
+    if (sg.participant_full_name) {
+      setPName(sg.participant_full_name);
+      setPCpf(sg.participant_cpf || "");
+      setPBirth(sg.participant_birth_date || "");
+      setPGender(sg.participant_gender || "");
+      setPPhone(sg.participant_phone || "");
+      setIsSelf((sg.participant_full_name || "") === (profile?.full_name || ""));
+      prefilledRef.current = true;
+    }
     setSignupId(signup.id);
     setAcceptedTerms(true);
     setResumeDismissed(true);
 
-    const ready = !!profileComplete && !!savedDistance && (kitOptions.length === 0 || kits.length > 0);
+    const ready = !!(sg.participant_full_name || profileComplete) && !!savedDistance && (kitOptions.length === 0 || kits.length > 0);
     if (ready) {
       setDone(true);
       setStep(2);
     } else {
       setStep(savedDistance ? 1 : 0);
-      if (!profileComplete) toast.info("Complete os dados obrigatórios para seguir ao pagamento.");
+      if (!sg.participant_full_name) toast.info("Confirme os dados do participante para seguir ao pagamento.");
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
