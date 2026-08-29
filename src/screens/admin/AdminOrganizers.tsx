@@ -386,13 +386,14 @@ const ManageOrganizerDialog = ({
           {organizer.commission_percentage ?? 0}%
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <SummaryCard icon={Trophy} label="Provas" value={String(stats.events)} />
-          <SummaryCard icon={Users} label="Inscrições" value={String(stats.signups)} />
-          <SummaryCard icon={CheckCircle2} label="Aprovadas" value={String(stats.approved)} hint={`${stats.pending} pendentes`} />
-          <SummaryCard icon={Wallet} label="Valor aprovado est." value={brl(stats.approvedValue)} />
-          <SummaryCard icon={Percent} label="Comissão estimada" value={brl(stats.commission)} accent />
+        <div className="rounded-xl border border-border bg-card px-4 py-3 flex flex-wrap gap-x-8 gap-y-3">
+          <Metric label="Provas ativas" value={String(stats.activeEvents)} />
+          <Metric label="Aprovadas" value={String(stats.approved)} />
+          <Metric label="Pendentes" value={String(stats.pending)} />
+          <Metric label="Valor aprovado" value={brl(stats.approvedValue)} />
+          <Metric label="Comissão estimada" value={brl(stats.commission)} />
         </div>
+
 
         <div className="flex gap-1 border-b border-border">
           {(["resumo", "provas", "inscricoes"] as const).map((t) => (
