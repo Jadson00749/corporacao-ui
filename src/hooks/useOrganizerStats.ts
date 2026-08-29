@@ -21,11 +21,13 @@ export type EventRow = {
   date: string | null;
   status: string | null;
   organizer_id: string | null;
+  active?: boolean | null;
   distances?: any;
 };
 
 export type Stats = {
   events: number;
+  activeEvents: number;
   signups: number;
   approved: number;
   pending: number;
@@ -35,6 +37,7 @@ export type Stats = {
 
 const emptyStats = (): Stats => ({
   events: 0,
+  activeEvents: 0,
   signups: 0,
   approved: 0,
   pending: 0,
@@ -66,7 +69,7 @@ export const useOrganizerStats = (enabled = true) => {
     queryFn: async (): Promise<EventRow[]> => {
       const { data, error } = await db
         .from("events")
-        .select("id,name,date,status,organizer_id,distances")
+        .select("id,name,date,status,organizer_id,active,distances")
         .order("date", { ascending: false });
       if (error) throw error;
       return (data ?? []) as EventRow[];
@@ -109,7 +112,7 @@ export const useOrganizerStats = (enabled = true) => {
     const commissionOf = new Map(organizers.map((o) => [o.id, Number(o.commission_percentage ?? 0)]));
 
     const byEvent = new Map<string, Stats>();
-    events.forEach((e) => byEvent.set(e.id, { ...emptyStats(), events: 1 }));
+    events.forEach((e) => byEvent.set(e.id, { ...emptyStats(), events: 1, activeEvents: e.active === false ? 0 : 1 }));
 
     for (const s of signups) {
       const st = byEvent.get(s.event_id);
@@ -139,6 +142,7 @@ export const useOrganizerStats = (enabled = true) => {
       const st = byEvent.get(e.id)!;
       if (!agg) return;
       agg.events += 1;
+      agg.activeEvents += st.activeEvents;
       agg.signups += st.signups;
       agg.approved += st.approved;
       agg.pending += st.pending;
@@ -146,9 +150,22 @@ export const useOrganizerStats = (enabled = true) => {
       agg.commission += st.commission;
     });
 
+    const corporate = emptyStats();
+    events.forEach((e) => {
+      if (e.organizer_id) return;
+      const st = byEvent.get(e.id)!;
+      corporate.events += 1;
+      corporate.activeEvents += st.activeEvents;
+      corporate.signups += st.signups;
+      corporate.approved += st.approved;
+      corporate.pending += st.pending;
+      corporate.approvedValue += st.approvedValue;
+    });
+
     const totals = emptyStats();
     byOrganizer.forEach((s) => {
       totals.events += s.events;
+      totals.activeEvents += s.activeEvents;
       totals.signups += s.signups;
       totals.approved += s.approved;
       totals.pending += s.pending;
@@ -156,7 +173,7 @@ export const useOrganizerStats = (enabled = true) => {
       totals.commission += s.commission;
     });
 
-    return { byEvent, byOrganizer, totals };
+    return { byEvent, byOrganizer, totals, corporate };
   }, [organizers, events, signups]);
 
   return {
