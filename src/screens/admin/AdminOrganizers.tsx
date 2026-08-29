@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, Settings2, Trophy, Users, Wallet, Percent, CheckCircle2, Info } from "lucide-react";
+import { Plus, Search, Settings2, Trophy, Users, Percent, CheckCircle2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@/lib/router-compat";
 import { cn } from "@/lib/utils";
