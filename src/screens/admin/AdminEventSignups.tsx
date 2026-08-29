@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FileSpreadsheet } from "lucide-react";
 import { exportSignupsXlsx } from "@/lib/exportSignupsXlsx";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 
 type Row = {
@@ -54,26 +55,38 @@ const formatKitOption = (value: string) => {
 
 
 const AdminEventSignups = () => {
+  const { isAdmin, organizerId } = useAuth();
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [genderFilter, setGenderFilter] = useState<"all" | "F" | "M">("all");
 
   const { data: events = [] } = useQuery({
-    queryKey: ["admin_events_list"],
+    queryKey: ["admin_events_list", isAdmin ? "all" : organizerId],
     queryFn: async () => {
-      const { data } = await supabase.from("events").select("id,name,distances").order("date", { ascending: false });
+      let q = supabase.from("events").select("id,name,distances").order("date", { ascending: false });
+      if (!isAdmin && organizerId) q = q.eq("organizer_id" as any, organizerId);
+      const { data } = await q;
       return data ?? [];
     },
+    enabled: isAdmin || !!organizerId,
   });
 
+  const eventIds = useMemo(() => (events as any[]).map((e) => e.id), [events]);
+
   const { data: signups = [], isLoading, refetch } = useQuery({
-    queryKey: ["admin_event_signups"],
+    queryKey: ["admin_event_signups", isAdmin ? "all" : organizerId, eventIds.join(",")],
+    enabled: isAdmin || (!!organizerId && events.length >= 0),
     queryFn: async (): Promise<Row[]> => {
-      const { data, error } = await supabase
+      let sq = supabase
         .from("event_signups")
         .select("*, events(id,name,date,city)")
         .order("created_at", { ascending: false });
+      if (!isAdmin) {
+        if (!eventIds.length) return [];
+        sq = sq.in("event_id", eventIds);
+      }
+      const { data, error } = await sq;
       if (error) throw error;
       const rows = (data ?? []) as any[];
       // join profiles manually because there is no FK
