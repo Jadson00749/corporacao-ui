@@ -205,7 +205,14 @@ const AdminEvents = () => {
 
       <div className="mt-6 bg-card border border-border rounded-xl divide-y divide-border">
         {isLoading && <div className="p-6 text-muted-foreground">Carregando...</div>}
-        {!isLoading && rows.length === 0 && <div className="p-6 text-muted-foreground">Nenhuma prova ainda.</div>}
+        {!isLoading && rows.length === 0 && (
+          <div className="p-8 text-center">
+            <p className="text-muted-foreground">Você ainda não possui provas cadastradas.</p>
+            <Button variant="brand" className="mt-4" onClick={() => setEditing(emptyEvent())}>
+              <Plus className="w-4 h-4" /> Nova prova
+            </Button>
+          </div>
+        )}
         {rows.map((r: any) => (
           <div key={r.id} className="p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
