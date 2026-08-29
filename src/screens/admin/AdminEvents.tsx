@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { isKidsDistance } from "@/lib/eventPricing";
 import { EventBannerConfig } from "@/components/admin/EventBannerConfig";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOrganizerStats, brl } from "@/hooks/useOrganizerStats";
+import { useOrganizerStats, brl, isMainOrg } from "@/hooks/useOrganizerStats";
 import { useSearchParams } from "@/lib/router-compat";
 import { cn } from "@/lib/utils";
 
@@ -74,16 +74,28 @@ const AdminEvents = () => {
   const [ownership, setOwnership] = useState<"all" | "corp" | "external">("all");
   const [orgFilter, setOrgFilter] = useState<string>(searchParams.get("organizer") || "all");
 
+  // Provas da "Corporação": sem organizer_id ou vinculadas à organização principal
+  const isCorpEvent = (organizerId?: string | null) => {
+    if (!organizerId) return true;
+    return isMainOrg(stats.organizerMap.get(organizerId)?.name);
+  };
+  const partnerOrganizers = useMemo(
+    () => stats.organizers.filter((o) => !isMainOrg(o.name)),
+    [stats.organizers]
+  );
+
   const visibleRows = useMemo(() => {
     if (!isAdmin) return rows as any[];
     return (rows as any[]).filter((r) => {
-      if (ownership === "corp" && r.organizer_id) return false;
-      if (ownership === "external" && !r.organizer_id) return false;
-      if (orgFilter === "corp") return !r.organizer_id;
+      const corp = isCorpEvent(r.organizer_id);
+      if (ownership === "corp" && !corp) return false;
+      if (ownership === "external" && corp) return false;
+      if (orgFilter === "corp") return corp;
       if (orgFilter !== "all") return r.organizer_id === orgFilter;
       return true;
     });
-  }, [rows, isAdmin, ownership, orgFilter]);
+  }, [rows, isAdmin, ownership, orgFilter, stats.organizerMap]);
+
 
 
 
@@ -246,9 +258,11 @@ const AdminEvents = () => {
             value={orgFilter}
             onChange={(e) => setOrgFilter(e.target.value)}
           >
-            <option value="all">Todos os organizadores</option>
-            <option value="corp">Corporação</option>
-            {stats.organizers.map((o) => (
+            <option value="all">
+              {ownership === "external" ? "Todos os parceiros" : "Todos os organizadores"}
+            </option>
+            {ownership !== "external" && <option value="corp">Corporação</option>}
+            {(ownership === "external" ? partnerOrganizers : stats.organizers).map((o) => (
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
           </select>
@@ -267,6 +281,7 @@ const AdminEvents = () => {
         )}
         {visibleRows.map((r: any) => {
           const org = r.organizer_id ? stats.organizerMap.get(r.organizer_id) : null;
+          const corp = isCorpEvent(r.organizer_id);
           const st = stats.eventStats(r.id);
           return (
           <div key={r.id} className="p-4 flex flex-wrap items-center justify-between gap-4">
@@ -280,12 +295,20 @@ const AdminEvents = () => {
                     <span
                       className={cn(
                         "text-[11px] font-semibold px-2 py-0.5 rounded-full",
-                        r.organizer_id ? "bg-secondary text-muted-foreground" : "bg-brand/15 text-brand"
+                        corp ? "bg-brand/15 text-brand" : "bg-secondary text-muted-foreground"
                       )}
                     >
-                      {r.organizer_id ? "Organizador" : "Corporação"}
+                      {corp ? "Corporação" : "Organizador"}
                     </span>
-                    {r.organizer_id && (
+                    <span
+                      className={cn(
+                        "text-[11px] font-semibold px-2 py-0.5 rounded-full",
+                        r.active ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {r.active ? "Ativa" : "Inativa"}
+                    </span>
+                    {!corp && (
                       <span className="text-[11px] text-muted-foreground">
                         {org?.name || "Organizador"} • comissão {org?.commission_percentage ?? 0}%
                       </span>
@@ -314,7 +337,7 @@ const AdminEvents = () => {
             <div className="flex items-center gap-3 shrink-0">
               <label className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Switch checked={!!r.active} onCheckedChange={(v) => toggleActive(r, v)} />
-                <span className="hidden sm:inline">Ativo</span>
+                <span className="hidden sm:inline">{r.active ? "Ativa" : "Inativa"}</span>
               </label>
               <Button variant="outline" size="sm" onClick={() => openEdit(r)}><Pencil className="w-4 h-4" /></Button>
               <Button variant="outline" size="sm" onClick={() => remove(r.id)}><Trash2 className="w-4 h-4" /></Button>
