@@ -81,11 +81,11 @@ const AdminLayout = () => {
             <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center">
               <span className="font-display font-bold text-brand-foreground text-sm">C</span>
             </div>
-            <span className="font-display font-bold">Admin</span>
+            <span className="font-display font-bold">{isAdmin ? "Admin" : "Organizador"}</span>
           </Link>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {items.map((it) => (
+          {visibleItems.map((it) => (
             <NavLink
               key={it.to}
               to={it.to}
@@ -98,7 +98,7 @@ const AdminLayout = () => {
               }
             >
               <it.icon className="w-4 h-4" />
-              {it.label}
+              {labelOf(it)}
             </NavLink>
           ))}
         </nav>
@@ -114,7 +114,7 @@ const AdminLayout = () => {
 
       <main className="flex-1 overflow-x-auto">
         <div className="md:hidden border-b border-border p-3 flex gap-2 overflow-x-auto bg-card">
-          {items.map((it) => (
+          {visibleItems.map((it) => (
             <NavLink
               key={it.to}
               to={it.to}
@@ -126,7 +126,7 @@ const AdminLayout = () => {
                 )
               }
             >
-              {it.label}
+              {labelOf(it)}
             </NavLink>
           ))}
         </div>
