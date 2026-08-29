@@ -9,6 +9,7 @@ import { FileSpreadsheet } from "lucide-react";
 import { exportSignupsXlsx } from "@/lib/exportSignupsXlsx";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { isMainOrg } from "@/hooks/useOrganizerStats";
 
 
 type Row = {
@@ -60,11 +61,24 @@ const AdminEventSignups = () => {
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [genderFilter, setGenderFilter] = useState<"all" | "F" | "M">("all");
+  const [ownership, setOwnership] = useState<"all" | "corp" | "external">("all");
+  const [orgFilter, setOrgFilter] = useState<string>("all");
+
+  const { data: organizers = [] } = useQuery({
+    enabled: isAdmin,
+    queryKey: ["admin_signups_organizers"],
+    queryFn: async () => {
+      const { data } = await supabase.from("organizers" as any).select("id,name").order("name");
+      return (data ?? []) as any[];
+    },
+  });
+  const organizerMap = useMemo(() => new Map(organizers.map((o: any) => [o.id, o])), [organizers]);
+  const partnerOrganizers = useMemo(() => organizers.filter((o: any) => !isMainOrg(o.name)), [organizers]);
 
   const { data: events = [] } = useQuery({
     queryKey: ["admin_events_list", isAdmin ? "all" : organizerId],
     queryFn: async () => {
-      let q = supabase.from("events").select("id,name,distances").order("date", { ascending: false });
+      let q = supabase.from("events").select("id,name,distances,organizer_id").order("date", { ascending: false });
       if (!isAdmin && organizerId) q = q.eq("organizer_id" as any, organizerId);
       const { data } = await q;
       return data ?? [];
@@ -103,6 +117,14 @@ const AdminEventSignups = () => {
     },
   });
 
+  const eventMap = useMemo(() => new Map((events as any[]).map((e) => [e.id, e])), [events]);
+  const ownerOf = (eventId: string) => {
+    const ev: any = eventMap.get(eventId);
+    const org = ev?.organizer_id ? organizerMap.get(ev.organizer_id) : null;
+    const corp = !ev?.organizer_id || isMainOrg((org as any)?.name);
+    return { corp, name: corp ? (org as any)?.name || "Corporação Assessoria Esportiva" : (org as any)?.name || "Organizador", organizerId: ev?.organizer_id ?? null };
+  };
+
   // Base (sem o filtro de gênero) para contadores consistentes com a lista
   const baseFiltered = useMemo(() => {
     return signups.filter((r) => {
@@ -115,6 +137,13 @@ const AdminEventSignups = () => {
         return false;
       }
       if (eventFilter !== "all" && r.event_id !== eventFilter) return false;
+      if (isAdmin) {
+        const own = ownerOf(r.event_id);
+        if (ownership === "corp" && !own.corp) return false;
+        if (ownership === "external" && own.corp) return false;
+        if (orgFilter === "corp" && !own.corp) return false;
+        if (orgFilter !== "all" && orgFilter !== "corp" && own.organizerId !== orgFilter) return false;
+      }
       if (statusFilter !== "all" && statusFilter !== "cancelada" && status !== statusFilter) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -123,7 +152,7 @@ const AdminEventSignups = () => {
       }
       return true;
     });
-  }, [signups, search, eventFilter, statusFilter]);
+  }, [signups, search, eventFilter, statusFilter, isAdmin, ownership, orgFilter, eventMap, organizerMap]);
 
   const counts = useMemo(() => {
     return baseFiltered.reduce(
@@ -219,6 +248,35 @@ const AdminEventSignups = () => {
         </Select>
       </div>
 
+      {isAdmin && (
+        <div className="flex flex-wrap items-center gap-2">
+          {([["all", "Todas"], ["corp", "Corporação"], ["external", "Organizadores externos"]] as const).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => { setOwnership(k); setOrgFilter("all"); }}
+              className={[
+                "text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors",
+                ownership === k ? "border-brand bg-brand/15 text-brand" : "border-border text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
+              {label}
+            </button>
+          ))}
+          <select
+            className="ml-auto border border-input bg-background rounded-md h-9 px-3 text-sm"
+            value={orgFilter}
+            onChange={(e) => setOrgFilter(e.target.value)}
+          >
+            <option value="all">{ownership === "external" ? "Todos os parceiros" : "Todos os organizadores"}</option>
+            {ownership !== "external" && <option value="corp">Corporação</option>}
+            {(ownership === "external" ? partnerOrganizers : organizers).map((o: any) => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {([
           ["all", "Todos", counts.all],
@@ -274,6 +332,17 @@ const AdminEventSignups = () => {
                   <td className="p-3">
                     <div className="font-medium">{r.events?.name}</div>
                     <div className="text-xs text-muted-foreground">{r.events?.date}</div>
+                    {isAdmin && (() => {
+                      const own = ownerOf(r.event_id);
+                      return (
+                        <div className="mt-0.5 text-[11px] text-muted-foreground">
+                          {own.name} •{" "}
+                          <span className={own.corp ? "font-semibold text-brand" : "font-semibold text-foreground/70"}>
+                            {own.corp ? "Corporação" : "Organizador"}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="p-3">
                     <div className="font-medium">{(r as any).participant_full_name || r.profiles?.full_name || "-"}</div>
