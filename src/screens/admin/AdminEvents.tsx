@@ -74,16 +74,28 @@ const AdminEvents = () => {
   const [ownership, setOwnership] = useState<"all" | "corp" | "external">("all");
   const [orgFilter, setOrgFilter] = useState<string>(searchParams.get("organizer") || "all");
 
+  // Provas da "Corporação": sem organizer_id ou vinculadas à organização principal
+  const isCorpEvent = (organizerId?: string | null) => {
+    if (!organizerId) return true;
+    return isMainOrg(stats.organizerMap.get(organizerId)?.name);
+  };
+  const partnerOrganizers = useMemo(
+    () => stats.organizers.filter((o) => !isMainOrg(o.name)),
+    [stats.organizers]
+  );
+
   const visibleRows = useMemo(() => {
     if (!isAdmin) return rows as any[];
     return (rows as any[]).filter((r) => {
-      if (ownership === "corp" && r.organizer_id) return false;
-      if (ownership === "external" && !r.organizer_id) return false;
-      if (orgFilter === "corp") return !r.organizer_id;
+      const corp = isCorpEvent(r.organizer_id);
+      if (ownership === "corp" && !corp) return false;
+      if (ownership === "external" && corp) return false;
+      if (orgFilter === "corp") return corp;
       if (orgFilter !== "all") return r.organizer_id === orgFilter;
       return true;
     });
-  }, [rows, isAdmin, ownership, orgFilter]);
+  }, [rows, isAdmin, ownership, orgFilter, stats.organizerMap]);
+
 
 
 
