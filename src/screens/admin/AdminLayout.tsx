@@ -7,14 +7,15 @@ import { LogOut, Settings, ListChecks, Calendar, Trophy, ShoppingBag, Image, Cam
 import { cn } from "@/lib/utils";
 
 const items = [
-  { to: "/admin", label: "Visão geral", icon: LayoutDashboard, end: true },
+  { to: "/admin", label: "Visão geral", icon: LayoutDashboard, end: true, organizer: true },
   { to: "/admin/settings", label: "Configurações", icon: Settings },
+  { to: "/admin/organizers", label: "Organizadores", icon: Users },
   { to: "/admin/highlights", label: "Destaques da Home", icon: Megaphone },
   { to: "/admin/plans", label: "Planos", icon: ListChecks },
   { to: "/admin/trainings", label: "Treinos", icon: Calendar },
   
-  { to: "/admin/event-signups", label: "Inscrições provas", icon: Trophy },
-  { to: "/admin/events", label: "Provas", icon: Trophy },
+  { to: "/admin/event-signups", label: "Inscrições provas", icon: Trophy, organizer: true },
+  { to: "/admin/events", label: "Provas", icon: Trophy, organizer: true, organizerLabel: "Minhas provas" },
   { to: "/admin/products", label: "Produtos", icon: ShoppingBag },
   { to: "/admin/gallery", label: "Galeria", icon: Image },
   { to: "/admin/photo-events", label: "Fotos dos eventos", icon: Camera },
@@ -24,7 +25,7 @@ const items = [
 ];
 
 const AdminLayout = () => {
-  const { user, isAdmin, loading, signOut } = useAuth();
+  const { user, isAdmin, isOrganizer, organizerId, roleLoading, loading, signOut } = useAuth();
   const navigate = useNavigate();
   useForceTheme("dark");
 
@@ -32,11 +33,11 @@ const AdminLayout = () => {
     if (!loading && !user) navigate("/auth", { replace: true });
   }, [user, loading, navigate]);
 
-  if (loading) {
+  if (loading || (user && roleLoading)) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando...</div>;
   }
 
-  if (user && !isAdmin) {
+  if (user && !isAdmin && !isOrganizer) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="max-w-md text-center bg-card border border-border rounded-2xl p-8">
@@ -51,6 +52,26 @@ const AdminLayout = () => {
       </div>
     );
   }
+
+  if (user && isOrganizer && !organizerId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-md text-center bg-card border border-border rounded-2xl p-8">
+          <h1 className="font-display text-2xl font-bold">Organização não encontrada</h1>
+          <p className="text-muted-foreground mt-2">
+            Sua conta ({user.email}) tem perfil de organizador, mas não está vinculada a uma organização ativa.
+          </p>
+          <Button onClick={() => signOut().then(() => navigate("/auth"))} variant="outline" className="mt-6">
+            Sair
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const visibleItems = isAdmin ? items : items.filter((it) => it.organizer);
+  const labelOf = (it: any) => (!isAdmin && it.organizerLabel ? it.organizerLabel : it.label);
+
 
   return (
     <div className="min-h-screen bg-background flex">
