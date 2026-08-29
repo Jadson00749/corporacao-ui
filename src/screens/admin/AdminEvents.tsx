@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { isKidsDistance } from "@/lib/eventPricing";
 import { EventBannerConfig } from "@/components/admin/EventBannerConfig";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOrganizerStats, brl } from "@/hooks/useOrganizerStats";
+import { useOrganizerStats, brl, isMainOrg } from "@/hooks/useOrganizerStats";
 import { useSearchParams } from "@/lib/router-compat";
 import { cn } from "@/lib/utils";
 
