@@ -258,9 +258,11 @@ const AdminEvents = () => {
             value={orgFilter}
             onChange={(e) => setOrgFilter(e.target.value)}
           >
-            <option value="all">Todos os organizadores</option>
-            <option value="corp">Corporação</option>
-            {stats.organizers.map((o) => (
+            <option value="all">
+              {ownership === "external" ? "Todos os parceiros" : "Todos os organizadores"}
+            </option>
+            {ownership !== "external" && <option value="corp">Corporação</option>}
+            {(ownership === "external" ? partnerOrganizers : stats.organizers).map((o) => (
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
           </select>
