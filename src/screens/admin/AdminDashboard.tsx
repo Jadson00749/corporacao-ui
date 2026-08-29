@@ -56,7 +56,7 @@ const MiniCard = ({ title, count, to }: { title: string; count: number; to: stri
 );
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, isAdmin, organizerId } = useAuth();
   const [period, setPeriod] = useState<PeriodKey>("30");
 
   const { data: plans = [] } = usePlans();
@@ -68,15 +68,19 @@ const AdminDashboard = () => {
   const { data: faqs = [] } = useFaqs();
 
   const { data: pricing = [] } = useQuery({
-    queryKey: ["admin_events_pricing"],
+    queryKey: ["admin_events_pricing", isAdmin ? "all" : organizerId],
     queryFn: async (): Promise<EventPricingRow[]> => {
-      const { data, error } = await supabase.from("events").select("id,name,distances");
+      let q = supabase.from("events").select("id,name,distances");
+      if (!isAdmin && organizerId) q = q.eq("organizer_id" as any, organizerId);
+      const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as any;
     },
+    enabled: isAdmin || !!organizerId,
   });
 
   const { data: members = [], isLoading: loadingMembers } = useQuery({
+    enabled: isAdmin,
     queryKey: ["admin_members_metrics"],
     queryFn: async () => {
       const { data, error } = await supabase.from("profiles").select("user_id,created_at");
@@ -86,12 +90,19 @@ const AdminDashboard = () => {
   });
 
   const { data: signups = [], isLoading: loadingSignups } = useQuery({
-    queryKey: ["admin_signups_metrics"],
+    queryKey: ["admin_signups_metrics", isAdmin ? "all" : organizerId, pricing.map((e) => e.id).join(",")],
+    enabled: isAdmin || !!organizerId,
     queryFn: async (): Promise<ExportSignup[]> => {
-      const { data, error } = await supabase
+      const ids = pricing.map((e) => e.id);
+      let sq = supabase
         .from("event_signups")
         .select("*, events(id,name,date,city)")
         .order("created_at", { ascending: false });
+      if (!isAdmin) {
+        if (!ids.length) return [];
+        sq = sq.in("event_id", ids);
+      }
+      const { data, error } = await sq;
       if (error) throw error;
       const rows = (data ?? []) as any[];
       const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
@@ -109,7 +120,7 @@ const AdminDashboard = () => {
     },
   });
 
-  const loading = loadingMembers || loadingSignups;
+  const loading = (isAdmin && loadingMembers) || loadingSignups;
 
   const since = useMemo(() => {
     if (period === "all") return null;
@@ -133,7 +144,9 @@ const AdminDashboard = () => {
     let canceled = 0;
     let revenue = 0;
     let pendingRevenue = 0;
-    const byEvent = new Map<string, { name: string; count: number; revenue: number }>();
+    const byEvent = new Map<string, { name: string; count: number; pending: number; revenue: number }>();
+    const touch = (id: string, name: string) =>
+      byEvent.get(id) ?? { name: name || "Prova", count: 0, pending: 0, revenue: 0 };
 
     for (const s of rows) {
       const status = (s.status || "").toLowerCase();
@@ -145,14 +158,16 @@ const AdminDashboard = () => {
       if (status === "confirmada") {
         confirmed += 1;
         revenue += value;
-        const key = s.event_id;
-        const cur = byEvent.get(key) ?? { name: s.events?.name || "Prova", count: 0, revenue: 0 };
+        const cur = touch(s.event_id, s.events?.name || "");
         cur.count += 1;
         cur.revenue += value;
-        byEvent.set(key, cur);
+        byEvent.set(s.event_id, cur);
       } else {
         pending += 1;
         pendingRevenue += value;
+        const cur = touch(s.event_id, s.events?.name || "");
+        cur.pending += 1;
+        byEvent.set(s.event_id, cur);
       }
     }
 
@@ -235,23 +250,34 @@ const AdminDashboard = () => {
               value={String(metrics.confirmed)}
               hint={`${metrics.total} no total • ${metrics.canceled} canceladas`}
             />
-            <Kpi
-              icon={Users}
-              label="Novos cadastros"
-              value={String(metrics.newMembers)}
-              hint={`${metrics.totalMembers} atletas na base`}
-            />
-            <Kpi
-              icon={Percent}
-              label="Conversão de inscrições"
-              value={`${metrics.conversion.toFixed(0)}%`}
-              hint={`Aderência da base: ${metrics.adherence.toFixed(1)}%`}
-            />
+            {isAdmin ? (
+              <>
+                <Kpi
+                  icon={Users}
+                  label="Novos cadastros"
+                  value={String(metrics.newMembers)}
+                  hint={`${metrics.totalMembers} atletas na base`}
+                />
+                <Kpi
+                  icon={Percent}
+                  label="Conversão de inscrições"
+                  value={`${metrics.conversion.toFixed(0)}%`}
+                  hint={`Aderência da base: ${metrics.adherence.toFixed(1)}%`}
+                />
+              </>
+            ) : (
+              <Kpi
+                icon={Users}
+                label="Total de inscrições"
+                value={String(metrics.total)}
+                hint={`${metrics.confirmed} aprovadas • ${metrics.pending} pendentes`}
+              />
+            )}
           </div>
 
           <div className="mt-8 bg-card border border-border rounded-2xl p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-lg font-bold">Receita por prova</h2>
+              <h2 className="font-display text-lg font-bold">{isAdmin ? "Receita por prova" : "Desempenho por prova"}</h2>
               <Button asChild variant="ghost" size="sm">
                 <Link to="/admin/event-signups">
                   Ver inscrições <ArrowRight className="w-4 h-4" />
@@ -260,7 +286,7 @@ const AdminDashboard = () => {
             </div>
             {metrics.topEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground mt-4">
-                Nenhuma inscrição confirmada no período selecionado.
+                Nenhuma inscrição no período selecionado.
               </p>
             ) : (
               <div className="mt-4 space-y-3">
@@ -269,7 +295,7 @@ const AdminDashboard = () => {
                     <div className="flex items-center justify-between gap-3 text-sm">
                       <span className="font-medium truncate">{e.name}</span>
                       <span className="tabular-nums text-muted-foreground shrink-0">
-                        {e.count} • {brl(e.revenue)}
+                        {e.count + e.pending} insc. • {e.count} aprov. • {e.pending} pend. • {brl(e.revenue)}
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-secondary mt-1.5 overflow-hidden">
@@ -286,6 +312,8 @@ const AdminDashboard = () => {
         </>
       )}
 
+      {isAdmin && (
+        <>
       <h2 className="font-display text-lg font-bold mt-10">Conteúdo do site</h2>
       <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
         <MiniCard title="Planos" count={plans.length} to="/admin/plans" />
@@ -296,6 +324,8 @@ const AdminDashboard = () => {
         <MiniCard title="Depoimentos" count={testimonials.length} to="/admin/testimonials" />
         <MiniCard title="FAQs" count={faqs.length} to="/admin/faqs" />
       </div>
+        </>
+      )}
     </div>
   );
 };

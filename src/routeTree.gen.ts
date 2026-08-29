@@ -28,6 +28,7 @@ import { Route as AdminEventsRouteImport } from './routes/admin.events'
 import { Route as AdminFaqsRouteImport } from './routes/admin.faqs'
 import { Route as AdminGalleryRouteImport } from './routes/admin.gallery'
 import { Route as AdminHighlightsRouteImport } from './routes/admin.highlights'
+import { Route as AdminOrganizersRouteImport } from './routes/admin.organizers'
 import { Route as AdminPartnersRouteImport } from './routes/admin.partners'
 import { Route as AdminPhotoEventsRouteImport } from './routes/admin.photo-events'
 import { Route as AdminPlansRouteImport } from './routes/admin.plans'
@@ -135,6 +136,11 @@ const AdminHighlightsRoute = AdminHighlightsRouteImport.update({
   path: '/highlights',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminOrganizersRoute = AdminOrganizersRouteImport.update({
+  id: '/organizers',
+  path: '/organizers',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminPartnersRoute = AdminPartnersRouteImport.update({
   id: '/partners',
   path: '/partners',
@@ -210,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/gallery': typeof AdminGalleryRoute
   '/admin/highlights': typeof AdminHighlightsRoute
+  '/admin/organizers': typeof AdminOrganizersRoute
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/photo-events': typeof AdminPhotoEventsRoute
   '/admin/plans': typeof AdminPlansRoute
@@ -241,6 +248,7 @@ export interface FileRoutesByTo {
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/gallery': typeof AdminGalleryRoute
   '/admin/highlights': typeof AdminHighlightsRoute
+  '/admin/organizers': typeof AdminOrganizersRoute
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/photo-events': typeof AdminPhotoEventsRoute
   '/admin/plans': typeof AdminPlansRoute
@@ -274,6 +282,7 @@ export interface FileRoutesById {
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/gallery': typeof AdminGalleryRoute
   '/admin/highlights': typeof AdminHighlightsRoute
+  '/admin/organizers': typeof AdminOrganizersRoute
   '/admin/partners': typeof AdminPartnersRoute
   '/admin/photo-events': typeof AdminPhotoEventsRoute
   '/admin/plans': typeof AdminPlansRoute
@@ -308,6 +317,7 @@ export interface FileRouteTypes {
     | '/admin/faqs'
     | '/admin/gallery'
     | '/admin/highlights'
+    | '/admin/organizers'
     | '/admin/partners'
     | '/admin/photo-events'
     | '/admin/plans'
@@ -339,6 +349,7 @@ export interface FileRouteTypes {
     | '/admin/faqs'
     | '/admin/gallery'
     | '/admin/highlights'
+    | '/admin/organizers'
     | '/admin/partners'
     | '/admin/photo-events'
     | '/admin/plans'
@@ -371,6 +382,7 @@ export interface FileRouteTypes {
     | '/admin/faqs'
     | '/admin/gallery'
     | '/admin/highlights'
+    | '/admin/organizers'
     | '/admin/partners'
     | '/admin/photo-events'
     | '/admin/plans'
@@ -539,6 +551,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminHighlightsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/organizers': {
+      id: '/admin/organizers'
+      path: '/organizers'
+      fullPath: '/admin/organizers'
+      preLoaderRoute: typeof AdminOrganizersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/partners': {
       id: '/admin/partners'
       path: '/partners'
@@ -625,6 +644,7 @@ interface AdminRouteChildren {
   AdminFaqsRoute: typeof AdminFaqsRoute
   AdminGalleryRoute: typeof AdminGalleryRoute
   AdminHighlightsRoute: typeof AdminHighlightsRoute
+  AdminOrganizersRoute: typeof AdminOrganizersRoute
   AdminPartnersRoute: typeof AdminPartnersRoute
   AdminPhotoEventsRoute: typeof AdminPhotoEventsRoute
   AdminPlansRoute: typeof AdminPlansRoute
@@ -641,6 +661,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminFaqsRoute: AdminFaqsRoute,
   AdminGalleryRoute: AdminGalleryRoute,
   AdminHighlightsRoute: AdminHighlightsRoute,
+  AdminOrganizersRoute: AdminOrganizersRoute,
   AdminPartnersRoute: AdminPartnersRoute,
   AdminPhotoEventsRoute: AdminPhotoEventsRoute,
   AdminPlansRoute: AdminPlansRoute,
