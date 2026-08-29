@@ -11,7 +11,7 @@ import { Plus, Search, Settings2, Trophy, Users, Percent, CheckCircle2, Info } f
 import { toast } from "sonner";
 import { Link } from "@/lib/router-compat";
 import { cn } from "@/lib/utils";
-import { useOrganizerStats, brl, type Stats } from "@/hooks/useOrganizerStats";
+import { useOrganizerStats, brl, isMainOrg, type Stats } from "@/hooks/useOrganizerStats";
 import { athleteName } from "@/lib/exportSignupsXlsx";
 
 type Organizer = {
@@ -42,8 +42,6 @@ const Metric = ({ label, value }: { label: string; value: string }) => (
     <div className="text-sm font-semibold tabular-nums">{value}</div>
   </div>
 );
-
-const isMainOrg = (name: string) => /corpora[çc][ãa]o/i.test(name || "");
 
 const AdminOrganizers = () => {
   const qc = useQueryClient();
