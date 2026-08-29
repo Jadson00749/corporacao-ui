@@ -320,7 +320,9 @@ const AdminEvents = () => {
               <Button variant="outline" size="sm" onClick={() => remove(r.id)}><Trash2 className="w-4 h-4" /></Button>
             </div>
           </div>
-        ))}
+          );
+        })}
+
       </div>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
