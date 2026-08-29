@@ -433,7 +433,18 @@ const ManageOrganizerDialog = ({
             </div>
 
             <div className="flex items-center gap-3">
-              <Switch checked={active} onCheckedChange={setActive} />
+              <Switch
+                checked={active}
+                onCheckedChange={(v) => {
+                  if (active && !v) {
+                    const ok = window.confirm(
+                      "Ao inativar este organizador, todas as provas ativas dele também serão inativadas."
+                    );
+                    if (!ok) return;
+                  }
+                  setActive(v);
+                }}
+              />
               <span className="text-sm">{active ? "Ativo" : "Inativo"}</span>
             </div>
           </div>
