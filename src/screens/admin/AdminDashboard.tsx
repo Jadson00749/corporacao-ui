@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlans, useTrainings, useEvents, useProducts, useGallery, useTestimonials, useFaqs } from "@/hooks/useContent";
+import { isMainOrg } from "@/hooks/useOrganizerStats";
 import { signupValue, type ExportSignup, type EventPricingRow } from "@/lib/exportSignupsXlsx";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -20,17 +21,21 @@ const PERIODS = [
 ] as const;
 type PeriodKey = (typeof PERIODS)[number]["key"];
 
+type AdminPricingRow = EventPricingRow & { organizer_id?: string | null };
+
 const Kpi = ({
   icon: Icon,
   label,
   value,
   hint,
+  hint2,
   accent,
 }: {
   icon: any;
   label: string;
   value: string;
   hint?: string;
+  hint2?: string;
   accent?: boolean;
 }) => (
   <div
@@ -45,6 +50,7 @@ const Kpi = ({
     </div>
     <div className="font-display text-3xl font-bold mt-2 tabular-nums">{value}</div>
     {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
+    {hint2 && <div className="text-xs text-muted-foreground/80 mt-1">{hint2}</div>}
   </div>
 );
 
@@ -69,8 +75,8 @@ const AdminDashboard = () => {
 
   const { data: pricing = [] } = useQuery({
     queryKey: ["admin_events_pricing", isAdmin ? "all" : organizerId],
-    queryFn: async (): Promise<EventPricingRow[]> => {
-      let q = supabase.from("events").select("id,name,distances");
+    queryFn: async (): Promise<AdminPricingRow[]> => {
+      let q = supabase.from("events").select("id,name,distances,organizer_id");
       if (!isAdmin && organizerId) q = q.eq("organizer_id" as any, organizerId);
       const { data, error } = await q;
       if (error) throw error;
@@ -86,6 +92,18 @@ const AdminDashboard = () => {
       const { data, error } = await supabase.from("profiles").select("user_id,created_at");
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  const { data: organizers = [] } = useQuery({
+    enabled: isAdmin,
+    queryKey: ["admin_dashboard_organizers"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("organizers")
+        .select("id,name,commission_percentage");
+      if (error) throw error;
+      return ((data ?? []) as unknown) as { id: string; name: string; commission_percentage: number | null }[];
     },
   });
 
@@ -122,6 +140,11 @@ const AdminDashboard = () => {
 
   const loading = (isAdmin && loadingMembers) || loadingSignups;
 
+  const organizerMap = useMemo(
+    () => new Map(organizers.map((o) => [o.id, o])),
+    [organizers]
+  );
+
   const since = useMemo(() => {
     if (period === "all") return null;
     const d = new Date();
@@ -144,13 +167,41 @@ const AdminDashboard = () => {
     let canceled = 0;
     let revenue = 0;
     let pendingRevenue = 0;
-    const byEvent = new Map<string, { name: string; count: number; pending: number; revenue: number }>();
+    let revenueCorporate = 0;
+    let revenueOrganizers = 0;
+    let pendingRevenueCorporate = 0;
+    let pendingRevenueOrganizers = 0;
+    let estimatedCommission = 0;
+
+    const byEvent = new Map<
+      string,
+      {
+        name: string;
+        count: number;
+        pending: number;
+        revenue: number;
+        organizerId?: string | null;
+        organizerName?: string;
+        isCorp?: boolean;
+      }
+    >();
     const touch = (id: string, name: string) =>
       byEvent.get(id) ?? { name: name || "Prova", count: 0, pending: 0, revenue: 0 };
+
+    const eventOrgInfo = (eventId: string) => {
+      const event = priceMap.get(eventId);
+      const orgId = (event as AdminPricingRow)?.organizer_id;
+      if (!orgId) return { isCorp: true, name: "Corporação Assessoria Esportiva" };
+      const org = organizerMap.get(orgId);
+      if (org && isMainOrg(org.name)) return { isCorp: true, name: "Corporação Assessoria Esportiva" };
+      return { isCorp: false, name: org?.name || "Organizador" };
+    };
 
     for (const s of rows) {
       const status = (s.status || "").toLowerCase();
       const value = signupValue(s, priceMap.get(s.event_id)) ?? 0;
+      const org = eventOrgInfo(s.event_id);
+
       if (status === "cancelada") {
         canceled += 1;
         continue;
@@ -158,15 +209,34 @@ const AdminDashboard = () => {
       if (status === "confirmada") {
         confirmed += 1;
         revenue += value;
+        if (org.isCorp) revenueCorporate += value;
+        else revenueOrganizers += value;
+
+        if (!org.isCorp) {
+          const orgId = (priceMap.get(s.event_id) as AdminPricingRow)?.organizer_id;
+          const orgData = orgId ? organizerMap.get(orgId) : null;
+          const pct = Number(orgData?.commission_percentage ?? 0);
+          if (pct > 0) estimatedCommission += (value * pct) / 100;
+        }
+
         const cur = touch(s.event_id, s.events?.name || "");
         cur.count += 1;
         cur.revenue += value;
+        cur.organizerId = (priceMap.get(s.event_id) as AdminPricingRow)?.organizer_id;
+        cur.organizerName = org.name;
+        cur.isCorp = org.isCorp;
         byEvent.set(s.event_id, cur);
       } else {
         pending += 1;
         pendingRevenue += value;
+        if (org.isCorp) pendingRevenueCorporate += value;
+        else pendingRevenueOrganizers += value;
+
         const cur = touch(s.event_id, s.events?.name || "");
         cur.pending += 1;
+        cur.organizerId = (priceMap.get(s.event_id) as AdminPricingRow)?.organizer_id;
+        cur.organizerName = org.name;
+        cur.isCorp = org.isCorp;
         byEvent.set(s.event_id, cur);
       }
     }
@@ -183,6 +253,11 @@ const AdminDashboard = () => {
       canceled,
       revenue,
       pendingRevenue,
+      revenueCorporate,
+      revenueOrganizers,
+      pendingRevenueCorporate,
+      pendingRevenueOrganizers,
+      estimatedCommission,
       total,
       conversion: total ? (confirmed / total) * 100 : 0,
       ticket: confirmed ? revenue / confirmed : 0,
@@ -191,7 +266,7 @@ const AdminDashboard = () => {
       adherence: members.length ? (buyers / members.length) * 100 : 0,
       topEvents: Array.from(byEvent.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 6),
     };
-  }, [signups, members, pricing, since]);
+  }, [signups, members, pricing, since, organizerMap]);
 
   const maxRevenue = Math.max(1, ...metrics.topEvents.map((e) => e.revenue));
 
@@ -230,6 +305,7 @@ const AdminDashboard = () => {
               label="Receita confirmada"
               value={brl(metrics.revenue)}
               hint={`${metrics.confirmed} inscrições pagas`}
+              hint2={`Corporação: ${brl(metrics.revenueCorporate)} • Organizadores: ${brl(metrics.revenueOrganizers)}`}
               accent
             />
             <Kpi
@@ -237,6 +313,7 @@ const AdminDashboard = () => {
               label="Receita em aberto"
               value={brl(metrics.pendingRevenue)}
               hint={`${metrics.pending} inscrições pendentes`}
+              hint2={`Corporação: ${brl(metrics.pendingRevenueCorporate)} • Organizadores: ${brl(metrics.pendingRevenueOrganizers)}`}
             />
             <Kpi
               icon={TrendingUp}
@@ -264,6 +341,12 @@ const AdminDashboard = () => {
                   value={`${metrics.conversion.toFixed(0)}%`}
                   hint={`Aderência da base: ${metrics.adherence.toFixed(1)}%`}
                 />
+                <Kpi
+                  icon={Wallet}
+                  label="Comissão estimada dos organizadores"
+                  value={brl(metrics.estimatedCommission)}
+                  hint="Sobre inscrições confirmadas de parceiros"
+                />
               </>
             ) : (
               <Kpi
@@ -289,18 +372,41 @@ const AdminDashboard = () => {
                 Nenhuma inscrição no período selecionado.
               </p>
             ) : (
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-4">
                 {metrics.topEvents.map((e) => (
                   <div key={e.name}>
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <span className="font-medium truncate">{e.name}</span>
-                      <span className="tabular-nums text-muted-foreground shrink-0">
-                        {e.count + e.pending} insc. • {e.count} aprov. • {e.pending} pend. • {brl(e.revenue)}
-                      </span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium truncate">{e.name}</span>
+                          <span
+                            className={cn(
+                              "shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                              e.isCorp
+                                ? "bg-brand/15 text-brand"
+                                : "bg-blue-500/10 text-blue-500"
+                            )}
+                          >
+                            {e.isCorp ? "Corporação" : "Organizador"}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                          {e.organizerName}
+                        </div>
+                      </div>
+                      <span className="tabular-nums text-sm shrink-0">{brl(e.revenue)}</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{e.count + e.pending} insc.</span>
+                      <span>{e.count} aprov.</span>
+                      <span>{e.pending} pend.</span>
                     </div>
                     <div className="h-2 rounded-full bg-secondary mt-1.5 overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-brand"
+                        className={cn(
+                          "h-full rounded-full",
+                          e.isCorp ? "bg-brand" : "bg-blue-500"
+                        )}
                         style={{ width: `${(e.revenue / maxRevenue) * 100}%` }}
                       />
                     </div>
