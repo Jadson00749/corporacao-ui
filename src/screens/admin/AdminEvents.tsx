@@ -221,30 +221,96 @@ const AdminEvents = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold">Provas</h1>
-          <p className="text-muted-foreground mt-1">{rows.length} {rows.length === 1 ? "prova" : "provas"}</p>
+          <p className="text-muted-foreground mt-1">{visibleRows.length} {visibleRows.length === 1 ? "prova" : "provas"}</p>
         </div>
         <Button variant="brand" onClick={() => setEditing(emptyEvent())}><Plus className="w-4 h-4" /> Nova prova</Button>
       </div>
 
+      {isAdmin && (
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          {([["all", "Todas"], ["corp", "Corporação"], ["external", "Organizadores externos"]] as const).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => { setOwnership(k); setOrgFilter("all"); }}
+              className={cn(
+                "text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors",
+                ownership === k ? "border-brand bg-brand/15 text-brand" : "border-border text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+          <select
+            className="ml-auto border border-input bg-background rounded-md h-9 px-3 text-sm"
+            value={orgFilter}
+            onChange={(e) => setOrgFilter(e.target.value)}
+          >
+            <option value="all">Todos os organizadores</option>
+            <option value="corp">Corporação</option>
+            {stats.organizers.map((o) => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="mt-6 bg-card border border-border rounded-xl divide-y divide-border">
         {isLoading && <div className="p-6 text-muted-foreground">Carregando...</div>}
-        {!isLoading && rows.length === 0 && (
+        {!isLoading && visibleRows.length === 0 && (
           <div className="p-8 text-center">
-            <p className="text-muted-foreground">Você ainda não possui provas cadastradas.</p>
+            <p className="text-muted-foreground">Nenhuma prova encontrada.</p>
             <Button variant="brand" className="mt-4" onClick={() => setEditing(emptyEvent())}>
               <Plus className="w-4 h-4" /> Nova prova
             </Button>
           </div>
         )}
-        {rows.map((r: any) => (
-          <div key={r.id} className="p-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
+        {visibleRows.map((r: any) => {
+          const org = r.organizer_id ? stats.organizerMap.get(r.organizer_id) : null;
+          const st = stats.eventStats(r.id);
+          return (
+          <div key={r.id} className="p-4 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               {(r.banner_image || r.image) && <img src={r.banner_image || r.image} alt="" className="w-20 h-12 rounded object-cover" />}
               <div className="min-w-0">
                 <div className="font-medium truncate">{r.name}</div>
                 <div className="text-xs text-muted-foreground">{r.date} · {r.city} · {r.distance}</div>
+                {isAdmin && (
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                    <span
+                      className={cn(
+                        "text-[11px] font-semibold px-2 py-0.5 rounded-full",
+                        r.organizer_id ? "bg-secondary text-muted-foreground" : "bg-brand/15 text-brand"
+                      )}
+                    >
+                      {r.organizer_id ? "Organizador" : "Corporação"}
+                    </span>
+                    {r.organizer_id && (
+                      <span className="text-[11px] text-muted-foreground">
+                        {org?.name || "Organizador"} • comissão {org?.commission_percentage ?? 0}%
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
+            {isAdmin && (
+              <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs">
+                <div>
+                  <div className="text-[11px] text-muted-foreground">Inscrições</div>
+                  <div className="font-semibold tabular-nums">{st.approved}/{st.signups}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-muted-foreground">Valor aprovado est.</div>
+                  <div className="font-semibold tabular-nums">{brl(st.approvedValue)}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-muted-foreground">Comissão est.</div>
+                  <div className="font-semibold tabular-nums">{r.organizer_id ? brl(st.commission) : "—"}</div>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center gap-3 shrink-0">
               <label className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Switch checked={!!r.active} onCheckedChange={(v) => toggleActive(r, v)} />
