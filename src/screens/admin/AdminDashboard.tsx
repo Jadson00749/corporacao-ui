@@ -99,11 +99,11 @@ const AdminDashboard = () => {
     enabled: isAdmin,
     queryKey: ["admin_dashboard_organizers"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("organizers")
         .select("id,name,commission_percentage");
       if (error) throw error;
-      return (data ?? []) as { id: string; name: string; commission_percentage: number | null }[];
+      return ((data ?? []) as unknown) as { id: string; name: string; commission_percentage: number | null }[];
     },
   });
 
