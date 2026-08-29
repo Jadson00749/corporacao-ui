@@ -295,10 +295,10 @@ const AdminEvents = () => {
                     <span
                       className={cn(
                         "text-[11px] font-semibold px-2 py-0.5 rounded-full",
-                        corp ? "bg-brand/15 text-brand" : "bg-secondary text-muted-foreground"
+                        corp ? "bg-brand/15 text-brand" : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
                       )}
                     >
-                      {corp ? "Corporação" : "Organizador"}
+                      {corp ? "Corporação" : "Organizador externo"}
                     </span>
                     <span
                       className={cn(
