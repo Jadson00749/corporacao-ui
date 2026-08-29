@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,10 @@ import { toast } from "sonner";
 import { isKidsDistance } from "@/lib/eventPricing";
 import { EventBannerConfig } from "@/components/admin/EventBannerConfig";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrganizerStats, brl } from "@/hooks/useOrganizerStats";
+import { useSearchParams } from "@/lib/router-compat";
+import { cn } from "@/lib/utils";
+
 
 
 type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null; price_lote3?: number; lote3_starts_at?: string | null; price_60_plus?: number };
