@@ -11,6 +11,7 @@ import { Pencil, Trash2, Plus, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { isKidsDistance } from "@/lib/eventPricing";
 import { EventBannerConfig } from "@/components/admin/EventBannerConfig";
+import { useAuth } from "@/contexts/AuthContext";
 
 
 type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null; price_lote3?: number; lote3_starts_at?: string | null; price_60_plus?: number };
@@ -47,16 +48,20 @@ const emptyEvent = () => ({
 
 const AdminEvents = () => {
   const qc = useQueryClient();
+  const { isAdmin, isOrganizer, organizerId } = useAuth();
   const [editing, setEditing] = useState<any | null>(null);
   const [customSize, setCustomSize] = useState<Record<number, string>>({});
 
   const { data: rows = [], refetch, isLoading } = useQuery({
-    queryKey: ["admin_events"],
+    queryKey: ["admin_events", isAdmin ? "all" : organizerId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("events").select("*").order("date", { ascending: false });
+      let q = supabase.from("events").select("*").order("date", { ascending: false });
+      if (!isAdmin && organizerId) q = q.eq("organizer_id" as any, organizerId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
+    enabled: isAdmin || !!organizerId,
   });
 
   const openEdit = async (r: any) => {
@@ -91,6 +96,7 @@ const AdminEvents = () => {
     payload.pix_recipient = payload.pix_recipient ?? "";
     payload.payment_instructions = payload.payment_instructions ?? "";
     if (!payload.registration_deadline) payload.registration_deadline = null;
+    if (isOrganizer && organizerId) payload.organizer_id = organizerId;
     const isNew = !payload.id;
     if (isNew) delete payload.id;
     const { error } = isNew
