@@ -48,6 +48,10 @@ const emptyStats = (): Stats => ({
 export const brl = (n: number) =>
   (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
 
+/** Regra única para diferenciar a organização principal dos parceiros externos. */
+export const isMainOrg = (name?: string | null) => /corpora[çc][ãa]o/i.test(name || "");
+
+
 /** Agrega provas, inscrições e comissões por organizador (visão do ADMIN). */
 export const useOrganizerStats = (enabled = true) => {
   const organizersQ = useQuery({
