@@ -56,7 +56,7 @@ const MiniCard = ({ title, count, to }: { title: string; count: number; to: stri
 );
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, isAdmin, organizerId } = useAuth();
   const [period, setPeriod] = useState<PeriodKey>("30");
 
   const { data: plans = [] } = usePlans();
@@ -68,15 +68,19 @@ const AdminDashboard = () => {
   const { data: faqs = [] } = useFaqs();
 
   const { data: pricing = [] } = useQuery({
-    queryKey: ["admin_events_pricing"],
+    queryKey: ["admin_events_pricing", isAdmin ? "all" : organizerId],
     queryFn: async (): Promise<EventPricingRow[]> => {
-      const { data, error } = await supabase.from("events").select("id,name,distances");
+      let q = supabase.from("events").select("id,name,distances");
+      if (!isAdmin && organizerId) q = q.eq("organizer_id" as any, organizerId);
+      const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as any;
     },
+    enabled: isAdmin || !!organizerId,
   });
 
   const { data: members = [], isLoading: loadingMembers } = useQuery({
+    enabled: isAdmin,
     queryKey: ["admin_members_metrics"],
     queryFn: async () => {
       const { data, error } = await supabase.from("profiles").select("user_id,created_at");
@@ -86,12 +90,19 @@ const AdminDashboard = () => {
   });
 
   const { data: signups = [], isLoading: loadingSignups } = useQuery({
-    queryKey: ["admin_signups_metrics"],
+    queryKey: ["admin_signups_metrics", isAdmin ? "all" : organizerId, pricing.map((e) => e.id).join(",")],
+    enabled: isAdmin || !!organizerId,
     queryFn: async (): Promise<ExportSignup[]> => {
-      const { data, error } = await supabase
+      const ids = pricing.map((e) => e.id);
+      let sq = supabase
         .from("event_signups")
         .select("*, events(id,name,date,city)")
         .order("created_at", { ascending: false });
+      if (!isAdmin) {
+        if (!ids.length) return [];
+        sq = sq.in("event_id", ids);
+      }
+      const { data, error } = await sq;
       if (error) throw error;
       const rows = (data ?? []) as any[];
       const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
@@ -133,7 +144,9 @@ const AdminDashboard = () => {
     let canceled = 0;
     let revenue = 0;
     let pendingRevenue = 0;
-    const byEvent = new Map<string, { name: string; count: number; revenue: number }>();
+    const byEvent = new Map<string, { name: string; count: number; pending: number; revenue: number }>();
+    const touch = (id: string, name: string) =>
+      byEvent.get(id) ?? { name: name || "Prova", count: 0, pending: 0, revenue: 0 };
 
     for (const s of rows) {
       const status = (s.status || "").toLowerCase();
@@ -145,14 +158,16 @@ const AdminDashboard = () => {
       if (status === "confirmada") {
         confirmed += 1;
         revenue += value;
-        const key = s.event_id;
-        const cur = byEvent.get(key) ?? { name: s.events?.name || "Prova", count: 0, revenue: 0 };
+        const cur = touch(s.event_id, s.events?.name || "");
         cur.count += 1;
         cur.revenue += value;
-        byEvent.set(key, cur);
+        byEvent.set(s.event_id, cur);
       } else {
         pending += 1;
         pendingRevenue += value;
+        const cur = touch(s.event_id, s.events?.name || "");
+        cur.pending += 1;
+        byEvent.set(s.event_id, cur);
       }
     }
 
