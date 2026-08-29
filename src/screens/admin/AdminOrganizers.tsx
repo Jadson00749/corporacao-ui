@@ -27,12 +27,12 @@ type Profile = { user_id: string; full_name: string | null; email: string | null
 const db = supabase as any;
 
 const SummaryCard = ({ icon: Icon, label, value, hint, accent }: { icon: any; label: string; value: string; hint?: string; accent?: boolean }) => (
-  <div className={cn("rounded-2xl border p-4", accent ? "border-brand/40 bg-brand/10" : "border-border bg-card")}>
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <Icon className={cn("w-4 h-4", accent && "text-brand")} /> {label}
+  <div className={cn("rounded-xl border p-3", accent ? "border-brand/40 bg-brand/10" : "border-border bg-card")}>
+    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <Icon className={cn("w-3.5 h-3.5", accent && "text-brand")} /> {label}
     </div>
-    <div className="font-display text-2xl font-bold mt-1.5 tabular-nums">{value}</div>
-    {hint && <div className="text-[11px] text-muted-foreground mt-1">{hint}</div>}
+    <div className="font-display text-xl font-bold mt-1 tabular-nums">{value}</div>
+    {hint && <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>}
   </div>
 );
 
@@ -43,14 +43,33 @@ const Metric = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
+const isMainOrg = (name: string) => /corpora[çc][ãa]o/i.test(name || "");
+
 const AdminOrganizers = () => {
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [managing, setManaging] = useState<Organizer | null>(null);
 
   const s = useOrganizerStats();
-  const organizers = s.organizers as Organizer[];
-  const activeCount = organizers.filter((o) => (o.status ?? "active") === "active").length;
+  const all = s.organizers as Organizer[];
+  const mainOrg = all.find((o) => isMainOrg(o.name)) ?? null;
+  const partners = all.filter((o) => !isMainOrg(o.name));
+
+  const partnerTotals = partners.reduce(
+    (acc, o) => {
+      const st = s.statsFor(o.id);
+      acc.activeEvents += st.activeEvents;
+      acc.approved += st.approved;
+      acc.commission += st.commission;
+      return acc;
+    },
+    { activeEvents: 0, approved: 0, commission: 0 }
+  );
+  const activePartners = partners.filter((o) => (o.status ?? "active") === "active").length;
+
+  const mainStats = mainOrg ? s.statsFor(mainOrg.id) : null;
+  const mainActive = (mainStats?.activeEvents ?? 0) + s.corporate.activeEvents;
+  const mainTotal = (mainStats?.events ?? 0) + s.corporate.events;
 
   return (
     <div>
@@ -64,76 +83,79 @@ const AdminOrganizers = () => {
         </Button>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-        <SummaryCard icon={Users} label="Organizadores" value={String(organizers.length)} />
-        <SummaryCard icon={CheckCircle2} label="Ativos" value={String(activeCount)} />
-        <SummaryCard icon={Trophy} label="Provas externas" value={String(s.totals.events)} />
-        <SummaryCard icon={Users} label="Inscrições aprovadas" value={String(s.totals.approved)} hint={`${s.totals.pending} pendentes`} />
-        <SummaryCard icon={Wallet} label="Valor aprovado est." value={brl(s.totals.approvedValue)} />
-        <SummaryCard icon={Percent} label="Comissão estimada" value={brl(s.totals.commission)} accent />
+      <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <SummaryCard icon={Users} label="Organizadores parceiros ativos" value={String(activePartners)} />
+        <SummaryCard icon={Trophy} label="Provas ativas de parceiros" value={String(partnerTotals.activeEvents)} />
+        <SummaryCard icon={CheckCircle2} label="Inscrições aprovadas" value={String(partnerTotals.approved)} />
+        <SummaryCard icon={Percent} label="Comissão estimada" value={brl(partnerTotals.commission)} accent />
       </div>
 
       <p className="text-[11px] text-muted-foreground mt-2 flex items-center gap-1">
-        <Info className="w-3 h-3" /> Baseada em inscrições aprovadas manualmente.
+        <Info className="w-3 h-3" /> Comissão estimada da Corporação sobre inscrições aprovadas de parceiros.
       </p>
 
       {s.isLoading ? (
         <div className="mt-8 space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
         </div>
-      ) : organizers.length === 0 ? (
-        <p className="text-sm text-muted-foreground mt-8">Nenhum organizador cadastrado ainda.</p>
       ) : (
-        <div className="mt-6 space-y-3">
-          {organizers.map((o) => {
-            const owner = s.ownerMap.get(o.user_id);
-            const active = (o.status ?? "active") === "active";
-            const st = s.statsFor(o.id);
-            return (
-              <div key={o.id} className="bg-card border border-border rounded-xl p-4">
-                <div className="flex flex-wrap items-start gap-3">
-                  <div className="min-w-[200px] flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{o.name}</span>
+        <>
+          <h2 className="font-display text-lg font-bold mt-8">Organização principal</h2>
+          <div className="mt-2 bg-card border border-border rounded-xl p-4 flex flex-wrap items-center gap-x-8 gap-y-3">
+            <div className="min-w-[200px] flex-1 font-semibold">
+              {mainOrg?.name || "Corporação Assessoria Esportiva"}
+            </div>
+            <Metric label="Provas ativas" value={String(mainActive)} />
+            <Metric label="Provas cadastradas" value={String(mainTotal)} />
+            {mainOrg && (
+              <Button variant="outline" size="sm" onClick={() => setManaging(mainOrg)}>
+                <Settings2 className="w-4 h-4" /> Gerenciar
+              </Button>
+            )}
+          </div>
+
+          <h2 className="font-display text-lg font-bold mt-8">Organizadores parceiros</h2>
+          {partners.length === 0 ? (
+            <p className="text-sm text-muted-foreground mt-2">Nenhum organizador parceiro cadastrado ainda.</p>
+          ) : (
+            <div className="mt-2 space-y-2">
+              {partners.map((o) => {
+                const active = (o.status ?? "active") === "active";
+                const st = s.statsFor(o.id);
+                return (
+                  <div key={o.id} className="bg-card border border-border rounded-xl p-3.5 flex flex-wrap items-center gap-x-6 gap-y-3">
+                    <div className="min-w-[180px] flex-1 flex items-center gap-2">
+                      <span className="font-semibold truncate">{o.name}</span>
                       <span
                         className={cn(
-                          "text-[11px] font-semibold px-2 py-0.5 rounded-full",
+                          "text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0",
                           active ? "bg-brand/15 text-brand" : "bg-secondary text-muted-foreground"
                         )}
                       >
                         {active ? "Ativo" : "Inativo"}
                       </span>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {owner?.full_name || "Responsável não identificado"}
-                      {owner?.email ? ` • ${owner.email}` : ""}
+                    <Metric label="Comissão" value={`${o.commission_percentage ?? 0}%`} />
+                    <Metric label="Provas ativas" value={String(st.activeEvents)} />
+                    <Metric label="Inscrições aprovadas" value={String(st.approved)} />
+                    <Metric label="Valor aprovado" value={brl(st.approvedValue)} />
+                    <Metric label="Comissão estimada" value={brl(st.commission)} />
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setManaging(o)}>
+                        <Settings2 className="w-4 h-4" /> Gerenciar
+                      </Button>
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to={`/admin/events?organizer=${o.id}`}>Ver provas</Link>
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-x-6 gap-y-3">
-                    <Metric label="Comissão" value={`${o.commission_percentage ?? 0}%`} />
-                    <Metric label="Provas" value={String(st.events)} />
-                    <Metric label="Aprovadas" value={String(st.approved)} />
-                    <Metric label="Pendentes" value={String(st.pending)} />
-                    <Metric label="Valor aprovado est." value={brl(st.approvedValue)} />
-                    <Metric label="Comissão estimada" value={brl(st.commission)} />
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-border">
-                  <Button variant="outline" size="sm" onClick={() => setManaging(o)}>
-                    <Settings2 className="w-4 h-4" /> Gerenciar
-                  </Button>
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/admin/events?organizer=${o.id}`}>Ver provas</Link>
-                  </Button>
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to="/admin/event-signups">Ver inscrições</Link>
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
+
 
       {creating && (
         <NewOrganizerDialog
