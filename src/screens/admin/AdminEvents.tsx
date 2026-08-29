@@ -281,6 +281,7 @@ const AdminEvents = () => {
         )}
         {visibleRows.map((r: any) => {
           const org = r.organizer_id ? stats.organizerMap.get(r.organizer_id) : null;
+          const corp = isCorpEvent(r.organizer_id);
           const st = stats.eventStats(r.id);
           return (
           <div key={r.id} className="p-4 flex flex-wrap items-center justify-between gap-4">
@@ -294,16 +295,27 @@ const AdminEvents = () => {
                     <span
                       className={cn(
                         "text-[11px] font-semibold px-2 py-0.5 rounded-full",
-                        r.organizer_id ? "bg-secondary text-muted-foreground" : "bg-brand/15 text-brand"
+                        corp ? "bg-brand/15 text-brand" : "bg-secondary text-muted-foreground"
                       )}
                     >
-                      {r.organizer_id ? "Organizador" : "Corporação"}
+                      {corp ? "Corporação" : "Organizador"}
                     </span>
-                    {r.organizer_id && (
+                    <span
+                      className={cn(
+                        "text-[11px] font-semibold px-2 py-0.5 rounded-full",
+                        r.active ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {r.active ? "Ativa" : "Inativa"}
+                    </span>
+                    {!corp && (
                       <span className="text-[11px] text-muted-foreground">
                         {org?.name || "Organizador"} • comissão {org?.commission_percentage ?? 0}%
                       </span>
                     )}
+                  </div>
+                )}
+
                   </div>
                 )}
               </div>
