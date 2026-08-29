@@ -337,7 +337,7 @@ const AdminEvents = () => {
             <div className="flex items-center gap-3 shrink-0">
               <label className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Switch checked={!!r.active} onCheckedChange={(v) => toggleActive(r, v)} />
-                <span className="hidden sm:inline">Ativo</span>
+                <span className="hidden sm:inline">{r.active ? "Ativa" : "Inativa"}</span>
               </label>
               <Button variant="outline" size="sm" onClick={() => openEdit(r)}><Pencil className="w-4 h-4" /></Button>
               <Button variant="outline" size="sm" onClick={() => remove(r.id)}><Trash2 className="w-4 h-4" /></Button>
