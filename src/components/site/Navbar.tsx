@@ -23,7 +23,7 @@ const navItems = [
 export const Navbar = () => {
   const siteSettings = useSettings();
   const whatsappLink = useWhatsappLink();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isOrganizer } = useAuth();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
@@ -107,10 +107,10 @@ export const Navbar = () => {
 
         <div className="hidden lg:flex items-center gap-2.5 xl:gap-3">
           <ThemeToggle onDark={!scrolled && !open} />
-          {isAdmin && (
+          {(isAdmin || isOrganizer) && (
             <Button asChild variant="ghost" size="sm" className={cn("rounded-full", !scrolled && !open && "text-white hover:text-white hover:bg-white/10")}>
               <Link to="/admin">
-                <Shield className="w-4 h-4" /> Admin
+                <Shield className="w-4 h-4" /> {isAdmin ? "Admin" : "Painel"}
               </Link>
             </Button>
           )}
@@ -181,10 +181,10 @@ export const Navbar = () => {
                 <User className="w-4 h-4" /> {user ? "Minha conta" : "Entrar / Criar conta"}
               </Link>
             </Button>
-            {isAdmin && (
+            {(isAdmin || isOrganizer) && (
               <Button asChild variant="outline" size="lg" className="mt-2">
                 <Link to="/admin">
-                  <Shield className="w-4 h-4" /> Painel admin
+                  <Shield className="w-4 h-4" /> {isAdmin ? "Painel admin" : "Painel do organizador"}
                 </Link>
               </Button>
             )}
