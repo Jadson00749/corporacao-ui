@@ -120,7 +120,7 @@ const AdminDashboard = () => {
     },
   });
 
-  const loading = loadingMembers || loadingSignups;
+  const loading = (isAdmin && loadingMembers) || loadingSignups;
 
   const since = useMemo(() => {
     if (period === "all") return null;
@@ -250,23 +250,34 @@ const AdminDashboard = () => {
               value={String(metrics.confirmed)}
               hint={`${metrics.total} no total • ${metrics.canceled} canceladas`}
             />
-            <Kpi
-              icon={Users}
-              label="Novos cadastros"
-              value={String(metrics.newMembers)}
-              hint={`${metrics.totalMembers} atletas na base`}
-            />
-            <Kpi
-              icon={Percent}
-              label="Conversão de inscrições"
-              value={`${metrics.conversion.toFixed(0)}%`}
-              hint={`Aderência da base: ${metrics.adherence.toFixed(1)}%`}
-            />
+            {isAdmin ? (
+              <>
+                <Kpi
+                  icon={Users}
+                  label="Novos cadastros"
+                  value={String(metrics.newMembers)}
+                  hint={`${metrics.totalMembers} atletas na base`}
+                />
+                <Kpi
+                  icon={Percent}
+                  label="Conversão de inscrições"
+                  value={`${metrics.conversion.toFixed(0)}%`}
+                  hint={`Aderência da base: ${metrics.adherence.toFixed(1)}%`}
+                />
+              </>
+            ) : (
+              <Kpi
+                icon={Users}
+                label="Total de inscrições"
+                value={String(metrics.total)}
+                hint={`${metrics.confirmed} aprovadas • ${metrics.pending} pendentes`}
+              />
+            )}
           </div>
 
           <div className="mt-8 bg-card border border-border rounded-2xl p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-lg font-bold">Receita por prova</h2>
+              <h2 className="font-display text-lg font-bold">{isAdmin ? "Receita por prova" : "Desempenho por prova"}</h2>
               <Button asChild variant="ghost" size="sm">
                 <Link to="/admin/event-signups">
                   Ver inscrições <ArrowRight className="w-4 h-4" />
@@ -275,7 +286,7 @@ const AdminDashboard = () => {
             </div>
             {metrics.topEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground mt-4">
-                Nenhuma inscrição confirmada no período selecionado.
+                Nenhuma inscrição no período selecionado.
               </p>
             ) : (
               <div className="mt-4 space-y-3">
@@ -284,7 +295,7 @@ const AdminDashboard = () => {
                     <div className="flex items-center justify-between gap-3 text-sm">
                       <span className="font-medium truncate">{e.name}</span>
                       <span className="tabular-nums text-muted-foreground shrink-0">
-                        {e.count} • {brl(e.revenue)}
+                        {e.count + e.pending} insc. • {e.count} aprov. • {e.pending} pend. • {brl(e.revenue)}
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-secondary mt-1.5 overflow-hidden">
@@ -301,6 +312,8 @@ const AdminDashboard = () => {
         </>
       )}
 
+      {isAdmin && (
+        <>
       <h2 className="font-display text-lg font-bold mt-10">Conteúdo do site</h2>
       <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
         <MiniCard title="Planos" count={plans.length} to="/admin/plans" />
@@ -311,6 +324,8 @@ const AdminDashboard = () => {
         <MiniCard title="Depoimentos" count={testimonials.length} to="/admin/testimonials" />
         <MiniCard title="FAQs" count={faqs.length} to="/admin/faqs" />
       </div>
+        </>
+      )}
     </div>
   );
 };
