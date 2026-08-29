@@ -68,6 +68,25 @@ const AdminEvents = () => {
     enabled: isAdmin || !!organizerId,
   });
 
+  // Visão analítica de propriedade das provas (somente ADMIN)
+  const stats = useOrganizerStats(isAdmin);
+  const [searchParams] = useSearchParams();
+  const [ownership, setOwnership] = useState<"all" | "corp" | "external">("all");
+  const [orgFilter, setOrgFilter] = useState<string>(searchParams.get("organizer") || "all");
+
+  const visibleRows = useMemo(() => {
+    if (!isAdmin) return rows as any[];
+    return (rows as any[]).filter((r) => {
+      if (ownership === "corp" && r.organizer_id) return false;
+      if (ownership === "external" && !r.organizer_id) return false;
+      if (orgFilter === "corp") return !r.organizer_id;
+      if (orgFilter !== "all") return r.organizer_id === orgFilter;
+      return true;
+    });
+  }, [rows, isAdmin, ownership, orgFilter]);
+
+
+
   const openEdit = async (r: any) => {
     setEditing({
       ...r,
