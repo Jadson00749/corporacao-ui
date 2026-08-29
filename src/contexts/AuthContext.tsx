@@ -83,14 +83,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (admin) {
       setRole("admin");
       setOrganizerId(null);
-    } else if (roles.includes("organizer")) {
+      setRoleLoading(false);
+      return;
+    }
+
+    // Organizer: confirmado pelo papel OU por um vínculo ativo em organizers
+    const { data: org } = await supabase
+      .from("organizers" as any)
+      .select("id,status")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const activeOrg = org && ((org as any).status ?? "active") === "active" ? (org as any) : null;
+
+    if (roles.includes("organizer") || activeOrg) {
       setRole("organizer");
-      const { data: org } = await supabase
-        .from("organizers" as any)
-        .select("id,status")
-        .eq("user_id", userId)
-        .maybeSingle();
-      setOrganizerId((org as any)?.id ?? null);
+      setOrganizerId(activeOrg?.id ?? null);
     } else {
       setRole("user");
       setOrganizerId(null);
