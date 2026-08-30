@@ -11,6 +11,7 @@ import tsConfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   root: resolve(__dirname, "static"),
   publicDir: resolve(__dirname, "public"),
+  envDir: __dirname,
   plugins: [react(), tailwindcss(), tsConfigPaths({ root: __dirname })],
   resolve: {
     alias: { "@": resolve(__dirname, "src") },
