@@ -5,6 +5,7 @@ import { useForceTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { LogOut, Settings, ListChecks, Calendar, Trophy, ShoppingBag, Image, Camera, MessageSquare, HelpCircle, LayoutDashboard, ExternalLink, Handshake, Users, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { OrganizerOnboardingTour } from "@/components/admin/OrganizerOnboardingTour";
 
 const items = [
   { to: "/admin", label: "Visão geral", icon: LayoutDashboard, end: true, organizer: true },
