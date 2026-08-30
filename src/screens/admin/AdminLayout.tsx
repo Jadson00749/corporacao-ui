@@ -76,6 +76,9 @@ const AdminLayout = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {isOrganizer && !isAdmin && user && (
+        <OrganizerOnboardingTour storageKey={`organizer_tour_v1_${user.id}`} />
+      )}
       <aside className="w-64 border-r border-border bg-card hidden md:flex flex-col">
         <div className="p-6 border-b border-border">
           <Link to="/" className="flex items-center gap-2">
