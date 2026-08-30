@@ -5,6 +5,7 @@ import { useForceTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { LogOut, Settings, ListChecks, Calendar, Trophy, ShoppingBag, Image, Camera, MessageSquare, HelpCircle, LayoutDashboard, ExternalLink, Handshake, Users, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { OrganizerOnboardingTour } from "@/components/admin/OrganizerOnboardingTour";
 
 const items = [
   { to: "/admin", label: "Visão geral", icon: LayoutDashboard, end: true, organizer: true },
@@ -75,6 +76,9 @@ const AdminLayout = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {isOrganizer && !isAdmin && user && (
+        <OrganizerOnboardingTour storageKey={`organizer_tour_v1_${user.id}`} />
+      )}
       <aside className="w-64 border-r border-border bg-card hidden md:flex flex-col">
         <div className="p-6 border-b border-border">
           <Link to="/" className="flex items-center gap-2">
