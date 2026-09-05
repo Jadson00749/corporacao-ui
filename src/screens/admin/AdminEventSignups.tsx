@@ -118,6 +118,10 @@ const AdminEventSignups = () => {
   });
 
   const eventMap = useMemo(() => new Map((events as any[]).map((e) => [e.id, e])), [events]);
+  const scopedSignups = useMemo(
+    () => (isAdmin ? signups : signups.filter((signup) => eventIds.includes(signup.event_id))),
+    [signups, isAdmin, eventIds]
+  );
   const ownerOf = (eventId: string) => {
     const ev: any = eventMap.get(eventId);
     const org = ev?.organizer_id ? organizerMap.get(ev.organizer_id) : null;
@@ -127,7 +131,7 @@ const AdminEventSignups = () => {
 
   // Base (sem o filtro de gênero) para contadores consistentes com a lista
   const baseFiltered = useMemo(() => {
-    return signups.filter((r) => {
+    return scopedSignups.filter((r) => {
       const status = (r.status || "").toLowerCase();
       // Canceladas ficam no histórico do banco, mas fora da lista operacional
       // (só aparecem se o admin filtrar explicitamente por "Cancelada").
@@ -152,7 +156,7 @@ const AdminEventSignups = () => {
       }
       return true;
     });
-  }, [signups, search, eventFilter, statusFilter, isAdmin, ownership, orgFilter, eventMap, organizerMap]);
+  }, [scopedSignups, search, eventFilter, statusFilter, isAdmin, ownership, orgFilter, eventMap, organizerMap]);
 
   const counts = useMemo(() => {
     return baseFiltered.reduce(
@@ -187,8 +191,24 @@ const AdminEventSignups = () => {
 
 
   const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from("event_signups").update({ status }).eq("id", id);
+    let query = supabase
+      .from("event_signups")
+      .update({ status })
+      .eq("id", id)
+      .select("id");
+    if (!isAdmin) {
+      if (!eventIds.length) {
+        toast.error("Inscrição não pertence às suas provas.");
+        return;
+      }
+      query = query.in("event_id", eventIds);
+    }
+    const { data, error } = await query.maybeSingle();
     if (error) { toast.error(error.message); return; }
+    if (!data) {
+      toast.error("Inscrição não pertence às suas provas.");
+      return;
+    }
     toast.success("Status atualizado");
     refetch();
 
