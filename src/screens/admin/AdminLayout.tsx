@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { NavLink, Outlet, useNavigate, Link } from "@/lib/router-compat";
+import { NavLink, Outlet, useLocation, useNavigate, Link } from "@/lib/router-compat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useForceTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
@@ -25,14 +25,27 @@ const items = [
   { to: "/admin/faqs", label: "FAQs", icon: HelpCircle },
 ];
 
+const organizerRoutes = new Set([
+  "/admin",
+  "/admin/",
+  "/admin/events",
+  "/admin/events/",
+  "/admin/event-signups",
+  "/admin/event-signups/",
+]);
+
 const AdminLayout = () => {
   const { user, isAdmin, isOrganizer, organizerId, roleLoading, loading, signOut } = useAuth();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
   useForceTheme("dark");
 
+  const organizerRouteBlocked = isOrganizer && !isAdmin && !organizerRoutes.has(pathname);
+
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
-  }, [user, loading, navigate]);
+    if (!loading && !roleLoading && user && organizerRouteBlocked) navigate("/admin", { replace: true });
+  }, [user, loading, roleLoading, navigate, organizerRouteBlocked]);
 
   if (loading || (user && roleLoading)) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando...</div>;
@@ -68,6 +81,10 @@ const AdminLayout = () => {
         </div>
       </div>
     );
+  }
+
+  if (organizerRouteBlocked) {
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Redirecionando...</div>;
   }
 
   const visibleItems = isAdmin ? items : items.filter((it) => it.organizer);
