@@ -52,7 +52,7 @@ const emptyEvent = () => ({
 
 const AdminEvents = () => {
   const qc = useQueryClient();
-  const { isAdmin, isOrganizer, organizerId } = useAuth();
+  const { isAdmin, organizerId } = useAuth();
   const [editing, setEditing] = useState<any | null>(null);
   const [customSize, setCustomSize] = useState<Record<number, string>>({});
 
@@ -96,10 +96,14 @@ const AdminEvents = () => {
     });
   }, [rows, isAdmin, ownership, orgFilter, stats.organizerMap]);
 
+  const canManageEvent = (row: { organizer_id?: string | null } | null | undefined) =>
+    isAdmin || (!!organizerId && row?.organizer_id === organizerId);
 
-
+  const unauthorizedOrMissing = () =>
+    toast.error("Registro não encontrado ou operação não autorizada.");
 
   const openEdit = async (r: any) => {
+    if (!canManageEvent(r)) return unauthorizedOrMissing();
     setEditing({
       ...r,
       banner_aspect_ratio: r.banner_aspect_ratio ?? "9:16",
@@ -131,13 +135,38 @@ const AdminEvents = () => {
     payload.pix_recipient = payload.pix_recipient ?? "";
     payload.payment_instructions = payload.payment_instructions ?? "";
     if (!payload.registration_deadline) payload.registration_deadline = null;
-    if (isOrganizer && organizerId) payload.organizer_id = organizerId;
     const isNew = !payload.id;
-    if (isNew) delete payload.id;
-    const { error } = isNew
-      ? await supabase.from("events").insert(payload).select("id").maybeSingle()
-      : await supabase.from("events").update(payload).eq("id", payload.id).select("id").maybeSingle();
-    if (error) return toast.error(error.message);
+
+    if (!isAdmin) {
+      if (!organizerId) return unauthorizedOrMissing();
+      if (!isNew && !canManageEvent(editing)) return unauthorizedOrMissing();
+    }
+
+    if (isNew) {
+      delete payload.id;
+      if (!isAdmin) payload.organizer_id = organizerId;
+    } else if (!isAdmin) {
+      delete payload.organizer_id;
+    }
+
+    if (isNew) {
+      const { data, error } = await supabase.from("events").insert(payload).select("id").maybeSingle();
+      if (error) return toast.error(error.message);
+      if (!isAdmin && !data) return unauthorizedOrMissing();
+    } else if (isAdmin) {
+      const { error } = await supabase.from("events").update(payload).eq("id", payload.id).select("id").maybeSingle();
+      if (error) return toast.error(error.message);
+    } else {
+      const { data, error } = await supabase
+        .from("events")
+        .update(payload)
+        .eq("id", payload.id)
+        .eq("organizer_id" as any, organizerId)
+        .select("id")
+        .maybeSingle();
+      if (error) return toast.error(error.message);
+      if (!data) return unauthorizedOrMissing();
+    }
 
     toast.success(isNew ? "Criado!" : "Atualizado!");
     setEditing(null);
@@ -147,14 +176,46 @@ const AdminEvents = () => {
 
   const remove = async (id: string) => {
     if (!confirm("Excluir prova?")) return;
-    const { error } = await supabase.from("events").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    const row = (rows as any[]).find((r) => r.id === id);
+    if (!canManageEvent(row)) return unauthorizedOrMissing();
+
+    if (isAdmin) {
+      const { error } = await supabase.from("events").delete().eq("id", id);
+      if (error) return toast.error(error.message);
+    } else {
+      const { data, error } = await supabase
+        .from("events")
+        .delete()
+        .eq("id", id)
+        .eq("organizer_id" as any, organizerId)
+        .select("id")
+        .maybeSingle();
+      if (error) return toast.error(error.message);
+      if (!data) return unauthorizedOrMissing();
+    }
+
     toast.success("Excluída");
     refetch();
   };
 
   const toggleActive = async (row: any, v: boolean) => {
-    await supabase.from("events").update({ active: v }).eq("id", row.id);
+    if (!canManageEvent(row)) return unauthorizedOrMissing();
+
+    if (isAdmin) {
+      await supabase.from("events").update({ active: v }).eq("id", row.id);
+      refetch();
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("events")
+      .update({ active: v })
+      .eq("id", row.id)
+      .eq("organizer_id" as any, organizerId)
+      .select("id")
+      .maybeSingle();
+    if (error) return toast.error(error.message);
+    if (!data) return unauthorizedOrMissing();
     refetch();
   };
 
