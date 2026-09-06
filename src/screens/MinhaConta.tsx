@@ -17,6 +17,8 @@ import { ProfileFields } from "@/components/account/ProfileFields";
 import { profileSchema, ProfileValues } from "@/lib/profileSchema";
 import { isProfileComplete } from "@/lib/profileComplete";
 import { onlyDigits } from "@/lib/cpf";
+import { signupValue } from "@/lib/exportSignupsXlsx";
+import { buildSignupWhatsMessage } from "@/lib/signupWhatsMessage";
 import { toast } from "sonner";
 import {
   Calendar,
@@ -34,12 +36,14 @@ import {
   Package,
 
 } from "lucide-react";
-import { useWhatsappLink } from "@/contexts/SettingsContext";
+import { useSettings } from "@/contexts/SettingsContext";
+import { useEventPayment, whatsappLinkFor } from "@/lib/eventPayment";
 import { WelcomeDialog } from "@/components/site/WelcomeDialog";
 import { OnboardingTour } from "@/components/site/OnboardingTour";
 import { IncompleteProfileBanner } from "@/components/site/IncompleteProfileBanner";
 import type { EventSignup } from "@/hooks/useProfile";
 import { ParticipantsPanel } from "@/components/account/ParticipantsPanel";
+import { CompleteParticipantCard } from "@/components/account/CompleteParticipantCard";
 import { TabsCoachmark } from "@/components/site/TabsCoachmark";
 
 
@@ -58,7 +62,6 @@ const MinhaConta = () => {
   const { data: trainings = [], isLoading: trainingsLoading } = useTrainings();
   const { data: events = [], isLoading: eventsLoading } = useEvents();
   const qc = useQueryClient();
-  const buildWhats = useWhatsappLink();
   const signupsRef = useRef<HTMLDivElement>(null);
   const cadastroRef = useRef<HTMLDivElement>(null);
   const tabSignupsRef = useRef<HTMLButtonElement>(null);
@@ -101,6 +104,18 @@ const MinhaConta = () => {
       .filter((e) => dateFromYMD(e.date) >= new Date(now.getFullYear(), now.getMonth(), now.getDate()))
       .sort((a, b) => dateFromYMD(a.date).getTime() - dateFromYMD(b.date).getTime())[0];
   }, [events]);
+
+  /** Preços por evento, para calcular o valor exibido na mensagem do comprovante. */
+  const eventPricingById = useMemo(
+    () =>
+      new Map(
+        events.map((e) => [
+          e.id,
+          { id: e.id, name: e.name, distances: e.distances, kitOptions: e.kitOptions },
+        ])
+      ),
+    [events]
+  );
 
   const cancelSignup = async (id: string) => {
     const { error } = await supabase.from("event_signups").update({ status: "cancelada" }).eq("id", id);
@@ -181,6 +196,14 @@ const MinhaConta = () => {
           </div>
 
           <IncompleteProfileBanner className="mb-6 rounded-2xl border" />
+
+          <CompleteParticipantCard
+            signups={signups}
+            onSaved={() => {
+              qc.invalidateQueries({ queryKey: ["my_signups", user.id] });
+              refetchSignups();
+            }}
+          />
 
           <div className="flex flex-col">
 
@@ -443,7 +466,13 @@ const MinhaConta = () => {
                         <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma inscrição neste filtro.</p>
                       ) : (
                         filteredSignups.map((s) => (
-                          <SignupCard key={s.id} signup={s} buildWhats={buildWhats} highlight={s.id === highlightId} />
+                          <SignupCard
+                            key={s.id}
+                            signup={s}
+                            highlight={s.id === highlightId}
+                            responsibleName={profile?.full_name || ""}
+                            pricing={eventPricingById.get(s.event_id)}
+                          />
                         ))
                       )}
                       <Button asChild variant="outline" className="w-full min-h-11 mt-1">
@@ -485,18 +514,29 @@ const parseKits = (value?: string | null): string[] => {
   return [value];
 };
 
+type SignupPricing = { id: string; name: string; distances?: any; kitOptions?: any };
+
 const SignupCard = ({
   signup: s,
-  buildWhats,
   highlight = false,
+  responsibleName = "",
+  pricing,
 }: {
   signup: EventSignup;
-  buildWhats: (msg: string) => string;
   highlight?: boolean;
+  responsibleName?: string;
+  pricing?: SignupPricing;
 }) => {
   const isConfirmed = s.status === "confirmada";
   const isCancelled = s.status === "cancelada";
   const isPending = !isConfirmed && !isCancelled;
+
+  // Cada inscrição manda o comprovante para o organizador da sua prova.
+  const settings = useSettings();
+  const { data: eventPayment } = useEventPayment(isPending ? s.event_id : null);
+  const proofWhatsapp = eventPayment
+    ? eventPayment.payment_whatsapp || (eventPayment.is_partner ? "" : settings.contact.whatsapp)
+    : settings.contact.whatsapp;
 
   const parts = (s.category || "").split("·").map((p) => p.trim()).filter(Boolean);
   const modality = parts[0] || s.events?.distance || "";
@@ -505,6 +545,32 @@ const SignupCard = ({
   const kitDelivery = (s.events?.kit_delivery || "").trim();
   const kitInfo = (s.events?.kit_info || "").trim();
   const athlete = s.participant_full_name || s.events?.name || "Prova";
+
+  // Valor da inscrição a partir do preço da modalidade no evento + extras do kit.
+  const kitExtra = Array.isArray(pricing?.kitOptions)
+    ? (pricing!.kitOptions as any[]).reduce(
+        (sum, k) => (kits.includes(k?.name) ? sum + (Number(k?.extra_price) || 0) : sum),
+        0
+      )
+    : 0;
+  const signupTotal = pricing ? (signupValue(s as any, pricing) ?? 0) + kitExtra : 0;
+
+  const whatsMessage = buildSignupWhatsMessage({
+    responsible: responsibleName,
+    eventName: s.events?.name || "",
+    blocks: [
+      {
+        participant: s.participant_full_name || "",
+        modality,
+        category,
+        kits,
+        shirtSize: s.shirt_size || "",
+        value: signupTotal > 0 ? signupTotal : null,
+      },
+    ],
+  });
+
+  const proofLink = whatsappLinkFor(proofWhatsapp, whatsMessage);
 
   return (
     <article
@@ -552,18 +618,18 @@ const SignupCard = ({
               <Link to={`/provas/${s.events.id}/inscricao?retomar=${s.id}`}>Pagar agora</Link>
             </Button>
           )}
-          <Button asChild variant="outline" className="min-h-11 flex-1 sm:flex-none">
-            <a
-              href={buildWhats(
-                `Olá! Fiz minha inscrição na prova ${s.events?.name || ""} (atleta ${s.participant_full_name || ""}) e gostaria de enviar o comprovante do PIX.`
-              )}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Enviar comprovante no WhatsApp"
-            >
-              <MessageCircle className="w-4 h-4" /> Enviar comprovante
-            </a>
-          </Button>
+          {proofLink && (
+            <Button asChild variant="outline" className="min-h-11 flex-1 sm:flex-none">
+              <a
+                href={proofLink}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Enviar comprovante no WhatsApp"
+              >
+                <MessageCircle className="w-4 h-4" /> Enviar comprovante
+              </a>
+            </Button>
+          )}
         </div>
       )}
 

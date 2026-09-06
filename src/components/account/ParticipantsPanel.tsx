@@ -37,7 +37,7 @@ import {
 const formatBirth = (d?: string | null) =>
   d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "";
 
-type FormState = {
+export type FormState = {
   full_name: string;
   birth_date: string;
   gender: string;

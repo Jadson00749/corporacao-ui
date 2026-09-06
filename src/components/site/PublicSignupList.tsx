@@ -1,15 +1,19 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Users } from "lucide-react";
+import { KIDS_BRACKETS, isKidsDistance, isWalkDistance, sportAgeAtEvent } from "@/lib/eventPricing";
 
 export type PublicSignup = {
+  /** Nome do participante real da inscrição (a RPC já resolve o fallback do titular). */
   full_name: string;
   city: string;
   team_name: string;
   category: string;
   status: string;
-  gender: string;
-  age: number | null;
+  /** Nascimento do participante; nulo nas inscrições antigas, antes do campo existir. */
+  participant_birth_date?: string | null;
+  gender?: string | null;
+  age?: number | null;
 };
 
 type GenderFilter = "all" | "F" | "M";
@@ -21,14 +25,16 @@ export const normalizeGender = (g: string): "F" | "M" | "O" => {
   return "O";
 };
 
-/** Usa o gênero do perfil; se vier vazio, tenta identificar pelo texto da categoria. */
-export const signupGender = (s: { gender?: string; category?: string }): "F" | "M" | "O" => {
-  const fromProfile = normalizeGender(s.gender || "");
-  if (fromProfile !== "O") return fromProfile;
+/**
+ * O texto da categoria foi gravado a partir do participante no momento da inscrição,
+ * então ele tem prioridade. O campo solto entra apenas como reserva, porque pode
+ * carregar o gênero do titular da conta em vez do de quem vai correr.
+ */
+export const signupGender = (s: { gender?: string | null; category?: string }): "F" | "M" | "O" => {
   const cat = (s.category || "").toLowerCase();
   if (/femin/.test(cat)) return "F";
   if (/mascul/.test(cat)) return "M";
-  return "O";
+  return normalizeGender(s.gender || "");
 };
 
 // Extrai a distância (ex: "10K") da categoria "10K · Masculino"
@@ -37,7 +43,9 @@ const extractDistance = (category: string): string => {
   return category.split("·")[0].trim().toUpperCase() || "Distância não informada";
 };
 
-const DEFAULT_AGE_BRACKETS: Array<{ label: string; min: number; max: number }> = [
+type AgeBracket = { label: string; min: number; max: number };
+
+const DEFAULT_AGE_BRACKETS: AgeBracket[] = [
   { label: "14 A 24 ANOS", min: 14, max: 24 },
   { label: "25 A 34 ANOS", min: 25, max: 34 },
   { label: "35 A 44 ANOS", min: 35, max: 44 },
@@ -46,11 +54,31 @@ const DEFAULT_AGE_BRACKETS: Array<{ label: string; min: number; max: number }> =
   { label: "65+ ANOS", min: 65, max: 200 },
 ];
 
+/**
+ * single: caminhada, lista única sem recorte.
+ * kids: as três faixas infantis.
+ * brackets: faixas configuradas na prova.
+ */
+type Mode = "single" | "kids" | "brackets";
+
+const modeOf = (distance: string): Mode =>
+  isWalkDistance(distance) ? "single" : isKidsDistance(distance) ? "kids" : "brackets";
+
+/** Faixa "45-49" gravada no texto da categoria. */
+const bracketFromCategory = (category: string) =>
+  (category || "").match(/(\d{1,3})\s*[-–a]\s*(\d{1,3})/);
+
+type Bucket = { label: string; list: PublicSignup[] };
+type Group = { gender: string | null; buckets: Bucket[] };
+type DistGroups = { mode: Mode; groups: Group[] };
+
 type Props = {
   signups: PublicSignup[];
   distances: string[];
   genders?: string[] | null;
   ageBrackets?: unknown;
+  /** Data da prova: base para a idade das faixas Kids. */
+  eventDate?: string | null;
   loading?: boolean;
 };
 
@@ -100,7 +128,7 @@ const AthleteRows = ({ list }: { list: PublicSignup[] }) => (
   </>
 );
 
-export const PublicSignupList = ({ signups, distances, genders, ageBrackets, loading }: Props) => {
+export const PublicSignupList = ({ signups, distances, genders, ageBrackets, eventDate, loading }: Props) => {
   const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
   const [distTab, setDistTab] = useState<string | null>(null);
 
@@ -121,15 +149,23 @@ export const PublicSignupList = ({ signups, distances, genders, ageBrackets, loa
       : DEFAULT_AGE_BRACKETS.map((b) => ({ ...b }));
   }, [ageBrackets]);
 
-  const { grid, orphans } = useMemo(() => {
-    const g: Record<string, Record<string, Record<string, PublicSignup[]>>> = {};
-    const ensure = (d: string, gen: string, b: string) => {
-      g[d] = g[d] || {};
-      g[d][gen] = g[d][gen] || {};
-      g[d][gen][b] = g[d][gen][b] || [];
-      return g[d][gen][b];
-    };
-    for (const d of distances) for (const gen of genderList) for (const b of bracketList) ensure(d, gen.label, b.label);
+  const { byDistance, orphans } = useMemo(() => {
+    const bracketsFor = (mode: Mode) => (mode === "kids" ? KIDS_BRACKETS : bracketList);
+
+    const result: Record<string, DistGroups> = {};
+    for (const d of distances) {
+      const mode = modeOf(d);
+      result[d] = {
+        mode,
+        groups:
+          mode === "single"
+            ? [{ gender: null, buckets: [{ label: d, list: [] }] }]
+            : genderList.map((g) => ({
+                gender: g.label,
+                buckets: bracketsFor(mode).map((b) => ({ label: b.label, list: [] as PublicSignup[] })),
+              })),
+      };
+    }
 
     const matchDistance = (cat: string) => {
       const raw = extractDistance(cat);
@@ -139,48 +175,77 @@ export const PublicSignupList = ({ signups, distances, genders, ageBrackets, loa
         null
       );
     };
-    const bracketOf = (s: PublicSignup) => {
-      const m = (s.category || "").match(/(\d{1,3})\s*[-–a]\s*(\d{1,3})/);
-      if (m) {
-        const found = bracketList.find((b) => b.min === Number(m[1]) && b.max === Number(m[2]));
-        if (found) return found.label;
+
+    /**
+     * Nascimento do participante primeiro; a faixa já gravada cobre as inscrições antigas.
+     * Em Kids essa faixa não serve de reserva: ela vem das faixas adultas da prova e
+     * jogaria um inscrito de 45 anos dentro de "11 anos ou mais", que é um bloco aberto.
+     */
+    const ageOf = (s: PublicSignup, mode: Mode) => {
+      const fromBirth = sportAgeAtEvent(s.participant_birth_date, eventDate);
+      if (fromBirth != null) return fromBirth;
+      if (mode === "kids") return null;
+      const m = bracketFromCategory(s.category);
+      if (m) return Number(m[1]);
+      return s.age ?? null;
+    };
+
+    const bucketIndex = (s: PublicSignup, mode: Mode, brackets: AgeBracket[]) => {
+      if (mode === "brackets") {
+        const m = bracketFromCategory(s.category);
+        if (m) {
+          const exact = brackets.findIndex((b) => b.min === Number(m[1]) && b.max === Number(m[2]));
+          if (exact >= 0) return exact;
+        }
       }
-      if (s.age != null) {
-        const found = bracketList.find((b) => s.age! >= b.min && s.age! <= b.max);
-        if (found) return found.label;
-      }
-      return null;
+      const age = ageOf(s, mode);
+      return age == null ? -1 : brackets.findIndex((b) => age >= b.min && age <= b.max);
     };
 
     const orph: PublicSignup[] = [];
     for (const s of signups) {
       const d = matchDistance(s.category);
-      const gen = genderList.find((x) => x.code === signupGender(s))?.label;
-      const b = bracketOf(s);
-      if (!d || !gen || !b) {
+      const entry = d ? result[d] : null;
+      if (!entry) {
         orph.push(s);
         continue;
       }
-      ensure(d, gen, b).push(s);
+
+      if (entry.mode === "single") {
+        entry.groups[0].buckets[0].list.push(s);
+        continue;
+      }
+
+      const genderLabel = genderList.find((x) => x.code === signupGender(s))?.label;
+      const group = entry.groups.find((g) => g.gender === genderLabel);
+      const idx = group ? bucketIndex(s, entry.mode, bracketsFor(entry.mode)) : -1;
+      if (!group || idx < 0) {
+        orph.push(s);
+        continue;
+      }
+      group.buckets[idx].list.push(s);
     }
-    return { grid: g, orphans: orph };
-  }, [signups, distances, genderList, bracketList]);
+    return { byDistance: result, orphans: orph };
+  }, [signups, distances, genderList, bracketList, eventDate]);
 
   if (loading) return <div className="py-10 text-center text-muted-foreground">Carregando...</div>;
 
   const activeDist = distTab && distances.includes(distTab) ? distTab : distances[0] ?? null;
 
-  const distTotal = (d: string) =>
-    genderList.reduce(
-      (acc, g) => acc + bracketList.reduce((a, b) => a + (grid[d]?.[g.label]?.[b.label]?.length ?? 0), 0),
-      0
-    );
-  const genderTotal = (d: string, code: "F" | "M") =>
-    genderList
-      .filter((g) => g.code === code)
-      .reduce((acc, g) => acc + bracketList.reduce((a, b) => a + (grid[d]?.[g.label]?.[b.label]?.length ?? 0), 0), 0);
+  const countGroups = (groups: Group[]) =>
+    groups.reduce((acc, g) => acc + g.buckets.reduce((a, b) => a + b.list.length, 0), 0);
 
-  const visibleGenders = genderList.filter((g) => genderFilter === "all" || g.code === genderFilter);
+  const distTotal = (d: string) => countGroups(byDistance[d]?.groups ?? []);
+  const codeOfLabel = (label: string | null) => genderList.find((x) => x.label === label)?.code;
+  const genderTotal = (d: string, code: "F" | "M") =>
+    countGroups((byDistance[d]?.groups ?? []).filter((g) => codeOfLabel(g.gender) === code));
+
+  const activeEntry = activeDist ? byDistance[activeDist] : null;
+  const singleMode = activeEntry?.mode === "single";
+  const visibleGroups = (activeEntry?.groups ?? []).filter(
+    (g) => singleMode || genderFilter === "all" || codeOfLabel(g.gender) === genderFilter
+  );
+
   const visible = (s: PublicSignup) => genderFilter === "all" || signupGender(s) === genderFilter;
   const orphansVisible = orphans.filter(visible);
 
@@ -222,67 +287,66 @@ export const PublicSignupList = ({ signups, distances, genders, ageBrackets, loa
             </div>
           </div>
 
-          {activeDist && (
+          {activeDist && activeEntry && (
             <>
-              {/* Filtro de gênero */}
-              <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    ["all", "Todos", distTotal(activeDist)],
-                    ["F", "Feminino", genderTotal(activeDist, "F")],
-                    ["M", "Masculino", genderTotal(activeDist, "M")],
-                  ] as const
-                ).map(([value, label, count]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setGenderFilter(value as GenderFilter)}
-                    className={cn(
-                      "rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide transition-all",
-                      genderFilter === value
-                        ? "border-brand bg-brand/15 text-brand"
-                        : "border-border text-muted-foreground hover:border-brand/50 hover:text-foreground"
-                    )}
-                  >
-                    {label} <span className="opacity-70">({count})</span>
-                  </button>
-                ))}
-              </div>
+              {/* Caminhada não tem recorte por sexo, então o filtro sai de cena */}
+              {!singleMode && (
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      ["all", "Todos", distTotal(activeDist)],
+                      ["F", "Feminino", genderTotal(activeDist, "F")],
+                      ["M", "Masculino", genderTotal(activeDist, "M")],
+                    ] as const
+                  ).map(([value, label, count]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setGenderFilter(value as GenderFilter)}
+                      className={cn(
+                        "rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide transition-all",
+                        genderFilter === value
+                          ? "border-brand bg-brand/15 text-brand"
+                          : "border-border text-muted-foreground hover:border-brand/50 hover:text-foreground"
+                      )}
+                    >
+                      {label} <span className="opacity-70">({count})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <p className="text-xs text-muted-foreground">Somente inscrições confirmadas aparecem nesta lista.</p>
 
-              {/* Faixas etárias — sempre visíveis, mesmo vazias */}
+              {/* Faixas — sempre visíveis, mesmo vazias */}
               <div className="space-y-5">
-                {visibleGenders.map((g) => (
-                  <div key={g.label} className="space-y-3">
-                    {visibleGenders.length > 1 && (
+                {visibleGroups.map((g) => (
+                  <div key={g.gender ?? "todos"} className="space-y-3">
+                    {g.gender && visibleGroups.length > 1 && (
                       <h3 className="font-display text-sm font-bold uppercase tracking-wide text-foreground">
-                        {g.label}
+                        {g.gender}
                       </h3>
                     )}
-                    {bracketList.map((b) => {
-                      const list = grid[activeDist]?.[g.label]?.[b.label] ?? [];
-                      return (
-                        <section key={b.label} className="space-y-2">
-                          <header className="flex items-center justify-between gap-3 border-b border-border/70 pb-1.5">
-                            <h4 className="font-display text-xs font-bold uppercase tracking-wider text-foreground/90">
-                              {b.label}
-                            </h4>
-                            <span
-                              className={cn(
-                                "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold",
-                                list.length
-                                  ? "bg-brand/15 text-brand"
-                                  : "bg-secondary/60 text-muted-foreground"
-                              )}
-                            >
-                              {list.length} {list.length === 1 ? "inscrito" : "inscritos"}
-                            </span>
-                          </header>
-                          {list.length > 0 && <AthleteRows list={list} />}
-                        </section>
-                      );
-                    })}
+                    {g.buckets.map((b) => (
+                      <section key={b.label} className="space-y-2">
+                        <header className="flex items-center justify-between gap-3 border-b border-border/70 pb-1.5">
+                          <h4 className="font-display text-xs font-bold uppercase tracking-wider text-foreground/90">
+                            {b.label}
+                          </h4>
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold",
+                              b.list.length
+                                ? "bg-brand/15 text-brand"
+                                : "bg-secondary/60 text-muted-foreground"
+                            )}
+                          >
+                            {b.list.length} {b.list.length === 1 ? "inscrito" : "inscritos"}
+                          </span>
+                        </header>
+                        {b.list.length > 0 && <AthleteRows list={b.list} />}
+                      </section>
+                    ))}
                   </div>
                 ))}
               </div>

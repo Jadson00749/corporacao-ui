@@ -13,6 +13,7 @@ import { isKidsDistance } from "@/lib/eventPricing";
 import { EventBannerConfig } from "@/components/admin/EventBannerConfig";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganizerStats, brl, isMainOrg } from "@/hooks/useOrganizerStats";
+import { useOrganizerPayment } from "@/lib/eventPayment";
 import { useSearchParams } from "@/lib/router-compat";
 import { cn } from "@/lib/utils";
 
@@ -98,6 +99,14 @@ const AdminEvents = () => {
 
   const canManageEvent = (row: { organizer_id?: string | null } | null | undefined) =>
     isAdmin || (!!organizerId && row?.organizer_id === organizerId);
+
+  // Quem recebe o pagamento da prova em edição. Prova nova de organizador ainda
+  // não tem organizer_id no rascunho, então cai no vínculo do usuário logado.
+  const editingOrgId: string | null = editing
+    ? editing.organizer_id ?? (isAdmin ? null : organizerId)
+    : null;
+  const { data: editingOrg } = useOrganizerPayment(editingOrgId);
+  const editingIsPartner = !!editingOrgId && !!editingOrg && !isMainOrg(editingOrg.name);
 
   const unauthorizedOrMissing = () =>
     toast.error("Registro não encontrado ou operação não autorizada.");
@@ -463,9 +472,40 @@ const AdminEvents = () => {
               {/* PIX */}
               {editing.internal_signup && (
                 <Section title="Pagamento via PIX">
+                  {editingIsPartner ? (
+                    <div className="rounded-lg border border-brand/30 bg-brand/5 p-3 space-y-1.5">
+                      <p className="text-xs font-semibold">
+                        Os pagamentos desta prova vão para {editingOrg?.name || "o organizador"}.
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        A chave PIX, o beneficiário e o WhatsApp que recebe os comprovantes vêm do
+                        cadastro do organizador, não desta tela.
+                        {isAdmin && " Para alterar, abra Organizadores › Gerenciar › Pagamento."}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      Prova da Corporação: o pagamento usa a chave abaixo e o comprovante vai para o
+                      WhatsApp das configurações do site.
+                    </p>
+                  )}
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <Field label="Chave PIX"><Input value={editing.pix_key || ""} onChange={(e) => setEditing({ ...editing, pix_key: e.target.value })} placeholder="CNPJ, e-mail ou telefone" /></Field>
-                    <Field label="Nome do recebedor"><Input value={editing.pix_recipient || ""} onChange={(e) => setEditing({ ...editing, pix_recipient: e.target.value })} /></Field>
+                    <Field label="Chave PIX">
+                      <Input
+                        value={editingIsPartner ? editingOrg?.pix_key || "" : editing.pix_key || ""}
+                        onChange={(e) => setEditing({ ...editing, pix_key: e.target.value })}
+                        placeholder={editingIsPartner ? "Definida no cadastro do organizador" : "CNPJ, e-mail ou telefone"}
+                        disabled={editingIsPartner}
+                      />
+                    </Field>
+                    <Field label="Nome do recebedor">
+                      <Input
+                        value={editingIsPartner ? editingOrg?.pix_recipient || "" : editing.pix_recipient || ""}
+                        onChange={(e) => setEditing({ ...editing, pix_recipient: e.target.value })}
+                        placeholder={editingIsPartner ? "Definido no cadastro do organizador" : ""}
+                        disabled={editingIsPartner}
+                      />
+                    </Field>
                   </div>
                   <Field label="Instruções de pagamento"><Textarea rows={3} value={editing.payment_instructions || ""} onChange={(e) => setEditing({ ...editing, payment_instructions: e.target.value })} placeholder="Ex: envie o comprovante para nosso WhatsApp." /></Field>
                 </Section>

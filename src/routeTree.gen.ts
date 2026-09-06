@@ -24,6 +24,7 @@ import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as TreinosRouteImport } from './routes/treinos'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminEventSignupsRouteImport } from './routes/admin.event-signups'
+import { Route as AdminEventStructureRouteImport } from './routes/admin.event-structure'
 import { Route as AdminEventsRouteImport } from './routes/admin.events'
 import { Route as AdminFaqsRouteImport } from './routes/admin.faqs'
 import { Route as AdminGalleryRouteImport } from './routes/admin.gallery'
@@ -33,6 +34,8 @@ import { Route as AdminPartnersRouteImport } from './routes/admin.partners'
 import { Route as AdminPhotoEventsRouteImport } from './routes/admin.photo-events'
 import { Route as AdminPlansRouteImport } from './routes/admin.plans'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
+import { Route as AdminRentalItemsRouteImport } from './routes/admin.rental-items'
+import { Route as AdminRentalOrdersRouteImport } from './routes/admin.rental-orders'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminTestimonialsRouteImport } from './routes/admin.testimonials'
 import { Route as AdminTrainingsRouteImport } from './routes/admin.trainings'
@@ -116,6 +119,11 @@ const AdminEventSignupsRoute = AdminEventSignupsRouteImport.update({
   path: '/event-signups',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminEventStructureRoute = AdminEventStructureRouteImport.update({
+  id: '/event-structure',
+  path: '/event-structure',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminEventsRoute = AdminEventsRouteImport.update({
   id: '/events',
   path: '/events',
@@ -159,6 +167,16 @@ const AdminPlansRoute = AdminPlansRouteImport.update({
 const AdminProductsRoute = AdminProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRentalItemsRoute = AdminRentalItemsRouteImport.update({
+  id: '/rental-items',
+  path: '/rental-items',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRentalOrdersRoute = AdminRentalOrdersRouteImport.update({
+  id: '/rental-orders',
+  path: '/rental-orders',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
@@ -212,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/sobre': typeof SobreRoute
   '/treinos': typeof TreinosRoute
   '/admin/event-signups': typeof AdminEventSignupsRoute
+  '/admin/event-structure': typeof AdminEventStructureRoute
   '/admin/events': typeof AdminEventsRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/gallery': typeof AdminGalleryRoute
@@ -221,6 +240,8 @@ export interface FileRoutesByFullPath {
   '/admin/photo-events': typeof AdminPhotoEventsRoute
   '/admin/plans': typeof AdminPlansRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/rental-items': typeof AdminRentalItemsRoute
+  '/admin/rental-orders': typeof AdminRentalOrdersRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/testimonials': typeof AdminTestimonialsRoute
   '/admin/trainings': typeof AdminTrainingsRoute
@@ -244,6 +265,7 @@ export interface FileRoutesByTo {
   '/sobre': typeof SobreRoute
   '/treinos': typeof TreinosRoute
   '/admin/event-signups': typeof AdminEventSignupsRoute
+  '/admin/event-structure': typeof AdminEventStructureRoute
   '/admin/events': typeof AdminEventsRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/gallery': typeof AdminGalleryRoute
@@ -253,6 +275,8 @@ export interface FileRoutesByTo {
   '/admin/photo-events': typeof AdminPhotoEventsRoute
   '/admin/plans': typeof AdminPlansRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/rental-items': typeof AdminRentalItemsRoute
+  '/admin/rental-orders': typeof AdminRentalOrdersRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/testimonials': typeof AdminTestimonialsRoute
   '/admin/trainings': typeof AdminTrainingsRoute
@@ -278,6 +302,7 @@ export interface FileRoutesById {
   '/sobre': typeof SobreRoute
   '/treinos': typeof TreinosRoute
   '/admin/event-signups': typeof AdminEventSignupsRoute
+  '/admin/event-structure': typeof AdminEventStructureRoute
   '/admin/events': typeof AdminEventsRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/gallery': typeof AdminGalleryRoute
@@ -287,6 +312,8 @@ export interface FileRoutesById {
   '/admin/photo-events': typeof AdminPhotoEventsRoute
   '/admin/plans': typeof AdminPlansRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/rental-items': typeof AdminRentalItemsRoute
+  '/admin/rental-orders': typeof AdminRentalOrdersRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/testimonials': typeof AdminTestimonialsRoute
   '/admin/trainings': typeof AdminTrainingsRoute
@@ -313,6 +340,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/treinos'
     | '/admin/event-signups'
+    | '/admin/event-structure'
     | '/admin/events'
     | '/admin/faqs'
     | '/admin/gallery'
@@ -322,6 +350,8 @@ export interface FileRouteTypes {
     | '/admin/photo-events'
     | '/admin/plans'
     | '/admin/products'
+    | '/admin/rental-items'
+    | '/admin/rental-orders'
     | '/admin/settings'
     | '/admin/testimonials'
     | '/admin/trainings'
@@ -345,6 +375,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/treinos'
     | '/admin/event-signups'
+    | '/admin/event-structure'
     | '/admin/events'
     | '/admin/faqs'
     | '/admin/gallery'
@@ -354,6 +385,8 @@ export interface FileRouteTypes {
     | '/admin/photo-events'
     | '/admin/plans'
     | '/admin/products'
+    | '/admin/rental-items'
+    | '/admin/rental-orders'
     | '/admin/settings'
     | '/admin/testimonials'
     | '/admin/trainings'
@@ -378,6 +411,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/treinos'
     | '/admin/event-signups'
+    | '/admin/event-structure'
     | '/admin/events'
     | '/admin/faqs'
     | '/admin/gallery'
@@ -387,6 +421,8 @@ export interface FileRouteTypes {
     | '/admin/photo-events'
     | '/admin/plans'
     | '/admin/products'
+    | '/admin/rental-items'
+    | '/admin/rental-orders'
     | '/admin/settings'
     | '/admin/testimonials'
     | '/admin/trainings'
@@ -523,6 +559,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminEventSignupsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/event-structure': {
+      id: '/admin/event-structure'
+      path: '/event-structure'
+      fullPath: '/admin/event-structure'
+      preLoaderRoute: typeof AdminEventStructureRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/events': {
       id: '/admin/events'
       path: '/events'
@@ -586,6 +629,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProductsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/rental-items': {
+      id: '/admin/rental-items'
+      path: '/rental-items'
+      fullPath: '/admin/rental-items'
+      preLoaderRoute: typeof AdminRentalItemsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/rental-orders': {
+      id: '/admin/rental-orders'
+      path: '/rental-orders'
+      fullPath: '/admin/rental-orders'
+      preLoaderRoute: typeof AdminRentalOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -640,6 +697,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminEventSignupsRoute: typeof AdminEventSignupsRoute
+  AdminEventStructureRoute: typeof AdminEventStructureRoute
   AdminEventsRoute: typeof AdminEventsRoute
   AdminFaqsRoute: typeof AdminFaqsRoute
   AdminGalleryRoute: typeof AdminGalleryRoute
@@ -649,6 +707,8 @@ interface AdminRouteChildren {
   AdminPhotoEventsRoute: typeof AdminPhotoEventsRoute
   AdminPlansRoute: typeof AdminPlansRoute
   AdminProductsRoute: typeof AdminProductsRoute
+  AdminRentalItemsRoute: typeof AdminRentalItemsRoute
+  AdminRentalOrdersRoute: typeof AdminRentalOrdersRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminTestimonialsRoute: typeof AdminTestimonialsRoute
   AdminTrainingsRoute: typeof AdminTrainingsRoute
@@ -657,6 +717,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminEventSignupsRoute: AdminEventSignupsRoute,
+  AdminEventStructureRoute: AdminEventStructureRoute,
   AdminEventsRoute: AdminEventsRoute,
   AdminFaqsRoute: AdminFaqsRoute,
   AdminGalleryRoute: AdminGalleryRoute,
@@ -666,6 +727,8 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminPhotoEventsRoute: AdminPhotoEventsRoute,
   AdminPlansRoute: AdminPlansRoute,
   AdminProductsRoute: AdminProductsRoute,
+  AdminRentalItemsRoute: AdminRentalItemsRoute,
+  AdminRentalOrdersRoute: AdminRentalOrdersRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminTestimonialsRoute: AdminTestimonialsRoute,
   AdminTrainingsRoute: AdminTrainingsRoute,

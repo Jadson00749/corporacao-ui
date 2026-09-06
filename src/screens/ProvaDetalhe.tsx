@@ -467,6 +467,7 @@ const ProvaDetalhe = () => {
               distances={prices.map((d: any) => String(d.distance))}
               genders={Array.isArray(event.genders) ? (event.genders as string[]) : null}
               ageBrackets={event.age_brackets}
+              eventDate={event.date}
             />
           )}
 

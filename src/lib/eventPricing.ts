@@ -134,6 +134,19 @@ export const isSeniorAtEvent = (birth?: string | null, eventDate?: string | null
   return age !== null && age >= SENIOR_MIN_AGE;
 };
 
+/**
+ * Idade esportiva: ano da prova menos ano de nascimento.
+ * É a regra usada para gravar a categoria na inscrição, então a lista pública
+ * precisa usar a mesma para não divergir do que já está no banco.
+ */
+export const sportAgeAtEvent = (birth?: string | null, eventDate?: string | null): number | null => {
+  if (!birth || !eventDate) return null;
+  const by = Number(String(birth).slice(0, 4));
+  const ey = Number(String(eventDate).slice(0, 4));
+  if (!Number.isFinite(by) || !Number.isFinite(ey)) return null;
+  return ey - by;
+};
+
 /** Valor fixo 60+ definido pelo admin, se houver. */
 export const seniorPrice = (d?: SeniorPricing | null): number | null => {
   const v = d?.price_60_plus;
@@ -172,6 +185,26 @@ const KIDS_RE = /(kids|infantil|kid|mirim)/i;
 
 export const isKidsDistance = (name?: string | null) =>
   !!name && KIDS_RE.test(name);
+
+/** Caminhada é participativa: lista única, sem divisão por idade ou sexo. */
+const WALK_RE = /caminhada/i;
+
+export const isWalkDistance = (name?: string | null) =>
+  !!name && WALK_RE.test(name);
+
+/**
+ * Corridinha Kids tem exatamente três faixas, independentes das faixas
+ * configuradas na prova. Fonte única: a lista pública e o fluxo de
+ * complemento de dados em Minha Conta leem daqui.
+ */
+export const KIDS_BRACKETS: Array<{ label: string; min: number; max: number }> = [
+  { label: "Até 5 anos", min: 0, max: 5 },
+  { label: "6 a 10 anos", min: 6, max: 10 },
+  { label: "11 anos ou mais", min: 11, max: 200 },
+];
+
+export const kidsBracketFor = (age: number | null) =>
+  age == null ? null : KIDS_BRACKETS.find((b) => age >= b.min && age <= b.max) ?? null;
 
 export const isSeniorApplicableDistance = (name?: string | null) =>
   !!name && !isSeniorOnlyDistance(name) && !isKidsDistance(name);

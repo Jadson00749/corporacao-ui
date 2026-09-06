@@ -11,6 +11,7 @@ type AuthState = {
   isOrganizer: boolean;
   role: AppRole;
   organizerId: string | null;
+  organizerName: string | null;
   roleLoading: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthState>({
   isOrganizer: false,
   role: "user",
   organizerId: null,
+  organizerName: null,
   roleLoading: true,
   loading: true,
   signOut: async () => {},
@@ -34,6 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [role, setRole] = useState<AppRole>("user");
   const [organizerId, setOrganizerId] = useState<string | null>(null);
+  const [organizerName, setOrganizerName] = useState<string | null>(null);
   const [roleLoading, setRoleLoading] = useState(true);
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAdmin(false);
         setRole("user");
         setOrganizerId(null);
+        setOrganizerName(null);
         setRoleLoading(false);
       }
     });
@@ -83,6 +87,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (admin) {
       setRole("admin");
       setOrganizerId(null);
+      setOrganizerName(null);
       setRoleLoading(false);
       return;
     }
@@ -90,7 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Organizer: confirmado pelo papel OU por um vínculo ativo em organizers
     const { data: org } = await supabase
       .from("organizers" as any)
-      .select("id,status")
+      .select("id,status,name")
       .eq("user_id", userId)
       .maybeSingle();
     const activeOrg = org && ((org as any).status ?? "active") === "active" ? (org as any) : null;
@@ -98,9 +103,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (roles.includes("organizer") || activeOrg) {
       setRole("organizer");
       setOrganizerId(activeOrg?.id ?? null);
+      setOrganizerName(activeOrg?.name ?? null);
     } else {
       setRole("user");
       setOrganizerId(null);
+      setOrganizerName(null);
     }
     setRoleLoading(false);
   };
@@ -111,6 +118,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAdmin(false);
     setRole("user");
     setOrganizerId(null);
+    setOrganizerName(null);
   };
 
   return (
@@ -122,6 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isOrganizer: role === "organizer",
         role,
         organizerId,
+        organizerName,
         roleLoading,
         loading,
         signOut,

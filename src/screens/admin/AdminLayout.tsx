@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate, Link } from "@/lib/router-co
 import { useAuth } from "@/contexts/AuthContext";
 import { useForceTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings, ListChecks, Calendar, Trophy, ShoppingBag, Image, Camera, MessageSquare, HelpCircle, LayoutDashboard, ExternalLink, Handshake, Users, Megaphone } from "lucide-react";
+import { LogOut, Settings, ListChecks, Calendar, Trophy, ShoppingBag, Image, Camera, MessageSquare, HelpCircle, LayoutDashboard, ExternalLink, Handshake, Users, Megaphone, Tent } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OrganizerOnboardingTour } from "@/components/admin/OrganizerOnboardingTour";
 
@@ -11,6 +11,9 @@ const items = [
   { to: "/admin", label: "Visão geral", icon: LayoutDashboard, end: true, organizer: true },
   { to: "/admin/settings", label: "Configurações", icon: Settings },
   { to: "/admin/organizers", label: "Organizadores", icon: Users },
+  // Seleção de estruturas é experiência do organizador; o admin gerencia o catálogo
+  // em Organizadores › Estruturas.
+  { to: "/admin/event-structure", label: "Locação de Estruturas", icon: Tent, organizer: true, organizerOnly: true },
   { to: "/admin/highlights", label: "Destaques da Home", icon: Megaphone },
   { to: "/admin/plans", label: "Planos", icon: ListChecks },
   { to: "/admin/trainings", label: "Treinos", icon: Calendar },
@@ -32,6 +35,8 @@ const organizerRoutes = new Set([
   "/admin/events/",
   "/admin/event-signups",
   "/admin/event-signups/",
+  "/admin/event-structure",
+  "/admin/event-structure/",
 ]);
 
 const AdminLayout = () => {
@@ -87,7 +92,9 @@ const AdminLayout = () => {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Redirecionando...</div>;
   }
 
-  const visibleItems = isAdmin ? items : items.filter((it) => it.organizer);
+  const visibleItems = isAdmin
+    ? items.filter((it) => !it.organizerOnly)
+    : items.filter((it) => it.organizer);
   const labelOf = (it: any) => (!isAdmin && it.organizerLabel ? it.organizerLabel : it.label);
 
 

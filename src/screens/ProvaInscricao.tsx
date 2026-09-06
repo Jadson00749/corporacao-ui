@@ -21,7 +21,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Calendar, MapPin, CheckCircle2, Tag, Copy, MessageCircle, Check, ChevronLeft, Shirt, Ruler, User, Users } from "lucide-react";
-import { useWhatsappLink } from "@/contexts/SettingsContext";
+import { useSettings } from "@/contexts/SettingsContext";
 import {
   activeLote,
   currentPrice,
@@ -31,7 +31,11 @@ import {
   ageAtEvent,
   isSeniorOnlyDistance,
   isKidsDistance,
+  sportAgeAtEvent,
 } from "@/lib/eventPricing";
+
+import { buildSignupWhatsMessage, type SignupBlock } from "@/lib/signupWhatsMessage";
+import { useEventPayment, whatsappLinkFor } from "@/lib/eventPayment";
 
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 
@@ -54,14 +58,6 @@ const calcAge = (birth?: string | null) => {
 };
 
 /** Idade esportiva: ano da prova - ano de nascimento (ignora mês/dia). */
-const sportAge = (birth?: string | null, eventDate?: string | null) => {
-  if (!birth || !eventDate) return null;
-  const by = Number(String(birth).slice(0, 4));
-  const ey = Number(String(eventDate).slice(0, 4));
-  if (!Number.isFinite(by) || !Number.isFinite(ey)) return null;
-  return ey - by;
-};
-
 /** Converte profiles.gender ("feminino"/"F"/...) para o rótulo usado no evento. */
 const genderLabelFrom = (raw?: string | null, options: string[] = []) => {
   const s = (raw || "").trim().toLowerCase();
@@ -139,7 +135,7 @@ const ProvaInscricao = () => {
   const qc = useQueryClient();
   const { user, loading } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const buildWhats = useWhatsappLink();
+  const settings = useSettings();
 
   const [step, setStep] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -173,7 +169,12 @@ const ProvaInscricao = () => {
   const [saveToParticipants, setSaveToParticipants] = useState(false);
   const { data: savedParticipants = [] } = useParticipants();
   const { create: createParticipant } = useParticipantMutations();
-  const [doneParticipants, setDoneParticipants] = useState<{ name: string; birth: string; self: boolean }[]>([]);
+  /** Participantes já inscritos nesta sessão, com o que a mensagem do WhatsApp precisa. */
+  type DoneParticipant = {
+    name: string; birth: string; self: boolean;
+    modality: string; category: string; kits: string[]; shirtSize: string; value: number;
+  };
+  const [doneParticipants, setDoneParticipants] = useState<DoneParticipant[]>([]);
   const [showExtras, setShowExtras] = useState(false);
   const prefilledRef = useRef(false);
 
@@ -246,13 +247,24 @@ const ProvaInscricao = () => {
     },
   });
 
-  const payment = event
-    ? {
-        pix_key: (event as any).pix_key,
-        pix_recipient: (event as any).pix_recipient,
-        payment_instructions: (event as any).payment_instructions,
-      }
-    : null;
+  // Pagamento resolvido pelo organizador da prova. Os campos da própria prova
+  // continuam como reserva, o que mantém a tela funcionando caso a função de
+  // resolução ainda não esteja no banco.
+  const { data: eventPayment } = useEventPayment(event?.id);
+  const payment = {
+    pix_key: eventPayment?.pix_key || (event as any)?.pix_key || "",
+    pix_recipient: eventPayment?.pix_recipient || (event as any)?.pix_recipient || "",
+    payment_instructions:
+      eventPayment?.payment_instructions || (event as any)?.payment_instructions || "",
+  };
+
+  /**
+   * WhatsApp que recebe o comprovante. Prova de parceiro nunca cai para o
+   * número da Corporação: sem número do organizador, o botão é desabilitado.
+   */
+  const proofWhatsapp = eventPayment
+    ? eventPayment.payment_whatsapp || (eventPayment.is_partner ? "" : settings.contact.whatsapp)
+    : settings.contact.whatsapp;
 
 
   // Inscrições já existentes desta pessoa nesta prova (rascunhos retomáveis)
@@ -355,7 +367,7 @@ const ProvaInscricao = () => {
 
   // Idade esportiva do PARTICIPANTE (ano da prova - ano de nascimento)
   const categoryAge = useMemo(
-    () => sportAge(pBirth, (event as any)?.date),
+    () => sportAgeAtEvent(pBirth, (event as any)?.date),
     [pBirth, event]
   );
   const autoBracket = useMemo(() => {
@@ -421,22 +433,43 @@ const ProvaInscricao = () => {
 
   const categoryReady = !!distance && !!gender && (!ageBrackets.length || !!bracket || isKidsDistance(distance)) && !ageMismatch;
 
+  /** Categoria completa para a mensagem: sexo + faixa (ou "Infantil" nas modalidades kids). */
+  const categoryForMessage = useMemo(() => {
+    const ageLabel = isKidsDistance(distance) ? "Infantil" : bracket ? `${bracket.replace("-", "–")} anos` : "";
+    return [gender, ageLabel].filter(Boolean).join(" · ");
+  }, [distance, gender, bracket]);
 
   const whatsMessage = useMemo(() => {
-    const lines = [
-      `Olá! Sou ${profile?.full_name || "atleta"} e fiz uma inscrição na ${event?.name || "prova"}.`,
-      "",
-      pName && `Participante: ${pName}`,
-      distance && `Modalidade: ${distance}`,
-      (gender || bracket) && `Categoria: ${[gender, bracket && `${bracket} anos`].filter(Boolean).join(" · ")}`,
-      selectedKits.length && `Kit: ${selectedKits.join(", ")}`,
-      shirtSize && `Tamanho da camiseta: ${shirtSize}`,
-      total > 0 && `Valor: ${brl(total)}`,
-      "",
-      "Gostaria de enviar o comprovante PIX.",
-    ].filter((l) => l !== false && l !== 0 && l !== undefined && l !== null && l !== "" || l === "");
-    return (lines as string[]).join("\n");
-  }, [profile?.full_name, pName, event?.name, distance, gender, bracket, selectedKits, shirtSize, total]);
+    const blocks: SignupBlock[] = doneParticipants.map((p) => ({
+      participant: p.name,
+      modality: p.modality,
+      category: p.category,
+      kits: p.kits,
+      shirtSize: p.shirtSize,
+      value: p.value,
+    }));
+
+    // Retomar um rascunho pendente cai direto na tela de pagamento, sem passar
+    // pelo submit — nesse caso a mensagem usa os dados restaurados na tela.
+    if (!blocks.length) {
+      blocks.push({
+        participant: pName,
+        modality: cleanDistanceLabel(distance),
+        category: categoryForMessage,
+        kits: selectedKits,
+        shirtSize,
+        value: total,
+      });
+    }
+
+    return buildSignupWhatsMessage({
+      responsible: profile?.full_name || "",
+      eventName: event?.name || "",
+      blocks,
+    });
+  }, [doneParticipants, profile?.full_name, event?.name, pName, distance, categoryForMessage, selectedKits, shirtSize, total]);
+
+  const proofLink = whatsappLinkFor(proofWhatsapp, whatsMessage);
 
 
   // Retomar rascunho pendente sem criar nova inscrição
@@ -676,7 +709,27 @@ const ProvaInscricao = () => {
 
     setSignupId(persisted.id);
     setSubmitError(null);
-    setDoneParticipants((prev) => [...prev, { name: pName.trim(), birth: pBirth, self: isSelf }]);
+    // Cada participante guarda o que foi escolhido para ele; retomar um rascunho
+    // atualiza a entrada existente em vez de duplicá-la (evitaria total errado).
+    setDoneParticipants((prev) => {
+      const entry: DoneParticipant = {
+        name: pName.trim(),
+        birth: pBirth,
+        self: isSelf,
+        modality: cleanDistanceLabel(distance),
+        category: categoryForMessage,
+        kits: [...selectedKits],
+        shirtSize,
+        value: total,
+      };
+      const at = prev.findIndex(
+        (p) => p.name.trim().toLowerCase() === entry.name.toLowerCase() && p.birth === entry.birth
+      );
+      if (at === -1) return [...prev, entry];
+      const next = [...prev];
+      next[at] = entry;
+      return next;
+    });
 
     // Opcional: salvar essa pessoa em "Meus participantes" (não altera a inscrição).
     if (!isSelf && selectedParticipantId === null && saveToParticipants) {
@@ -866,12 +919,12 @@ const ProvaInscricao = () => {
                       2. Realize o pagamento
                     </p>
                     <PixPayment
-                      pixKey={payment?.pix_key || (event as any)?.pix_key}
-                      recipient={payment?.pix_recipient || (event as any)?.pix_recipient}
+                      pixKey={payment.pix_key}
+                      recipient={payment.pix_recipient}
                       city={event.city}
                       amount={total}
                       txid={`INSC${String(signupId || event.id).replace(/\D/g, "").slice(0, 10)}`}
-                      instructions={payment?.payment_instructions || (event as any)?.payment_instructions}
+                      instructions={payment.payment_instructions}
                     />
                   </div>
 
@@ -879,11 +932,25 @@ const ProvaInscricao = () => {
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       3. Envie o comprovante
                     </p>
-                    <Button asChild variant="brand" size="lg" className="w-full">
-                      <a href={buildWhats(whatsMessage)} target="_blank" rel="noreferrer">
-                        <MessageCircle className="w-4 h-4" /> Enviar comprovante no WhatsApp
-                      </a>
-                    </Button>
+                    {proofLink ? (
+                      <>
+                        <Button asChild variant="brand" size="lg" className="w-full">
+                          <a href={proofLink} target="_blank" rel="noreferrer">
+                            <MessageCircle className="w-4 h-4" /> Enviar comprovante no WhatsApp
+                          </a>
+                        </Button>
+                        {eventPayment?.is_partner && eventPayment.organizer_name && (
+                          <p className="text-center text-xs text-muted-foreground">
+                            O comprovante vai para {eventPayment.organizer_name}, organizador desta prova.
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-foreground/80">
+                        O organizador desta prova ainda não configurou um WhatsApp para receber
+                        comprovantes. Guarde o comprovante e fale com a organização.
+                      </p>
+                    )}
                   </div>
 
                   <Button onClick={startAnotherParticipant} variant="outline" size="lg" className="w-full">

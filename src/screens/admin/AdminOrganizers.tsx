@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Plus, Search, Settings2, Trophy, Users, Percent, CheckCircle2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@/lib/router-compat";
+import { OrganizersTabs } from "@/components/admin/OrganizersTabs";
 import { cn } from "@/lib/utils";
 import { useOrganizerStats, brl, isMainOrg, type Stats } from "@/hooks/useOrganizerStats";
 import { athleteName } from "@/lib/exportSignupsXlsx";
+import { useOrganizerPayment } from "@/lib/eventPayment";
 
 type Organizer = {
   id: string;
@@ -71,6 +73,8 @@ const AdminOrganizers = () => {
 
   return (
     <div>
+      <OrganizersTabs />
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-bold">Organizadores</h1>
@@ -347,7 +351,25 @@ const ManageOrganizerDialog = ({
   const [commission, setCommission] = useState(String(organizer.commission_percentage ?? 0));
   const [active, setActive] = useState((organizer.status ?? "active") === "active");
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"resumo" | "provas" | "inscricoes">("resumo");
+  const [tab, setTab] = useState<"resumo" | "pagamento" | "provas" | "inscricoes">("resumo");
+
+  // Dados financeiros ficam em consulta própria: se a migration ainda não foi
+  // aplicada, a aba fica vazia sem derrubar o resto do dialog.
+  const { data: pay } = useOrganizerPayment(organizer.id);
+  const [pixKey, setPixKey] = useState("");
+  const [pixRecipient, setPixRecipient] = useState("");
+  const [paymentWhatsapp, setPaymentWhatsapp] = useState("");
+  const [payLoaded, setPayLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!pay || payLoaded) return;
+    setPixKey(pay.pix_key ?? "");
+    setPixRecipient(pay.pix_recipient ?? "");
+    setPaymentWhatsapp(pay.payment_whatsapp ?? "");
+    setPayLoaded(true);
+  }, [pay, payLoaded]);
+
+  const isMain = isMainOrg(organizer.name);
 
   const visibleSignups = useMemo(
     () => signups.filter((s) => (s.status || "").toLowerCase() !== "cancelada").slice(0, 60),
@@ -363,6 +385,9 @@ const ManageOrganizerDialog = ({
         name: name.trim(),
         commission_percentage: Number(commission) || 0,
         status: active ? "active" : "inactive",
+        pix_key: pixKey.trim(),
+        pix_recipient: pixRecipient.trim(),
+        payment_whatsapp: paymentWhatsapp.replace(/\D/g, ""),
       })
       .eq("id", organizer.id);
     setSaving(false);
@@ -394,7 +419,7 @@ const ManageOrganizerDialog = ({
 
 
         <div className="flex gap-1 border-b border-border">
-          {(["resumo", "provas", "inscricoes"] as const).map((t) => (
+          {(["resumo", "pagamento", "provas", "inscricoes"] as const).map((t) => (
             <button
               key={t}
               type="button"
@@ -404,7 +429,13 @@ const ManageOrganizerDialog = ({
                 tab === t ? "border-brand text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
-              {t === "resumo" ? "Resumo" : t === "provas" ? "Provas" : "Inscrições"}
+              {t === "resumo"
+                ? "Resumo"
+                : t === "pagamento"
+                ? "Pagamento"
+                : t === "provas"
+                ? "Provas"
+                : "Inscrições"}
             </button>
           ))}
         </div>
@@ -446,6 +477,52 @@ const ManageOrganizerDialog = ({
                 }}
               />
               <span className="text-sm">{active ? "Ativo" : "Inativo"}</span>
+            </div>
+          </div>
+        )}
+
+        {tab === "pagamento" && (
+          <div className="space-y-4">
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <Info className="w-3 h-3" />
+              {isMain
+                ? "Organização principal: as provas sem organizador parceiro seguem usando o PIX cadastrado em cada prova e o WhatsApp das configurações do site."
+                : "As provas deste organizador usam estes dados no pagamento e no envio do comprovante."}
+            </p>
+
+            <div>
+              <Label>Chave PIX</Label>
+              <Input
+                className="mt-1"
+                value={pixKey}
+                onChange={(e) => setPixKey(e.target.value)}
+                placeholder="CNPJ, e-mail, telefone ou chave aleatória"
+              />
+            </div>
+
+            <div>
+              <Label>Beneficiário do PIX</Label>
+              <Input
+                className="mt-1"
+                value={pixRecipient}
+                onChange={(e) => setPixRecipient(e.target.value)}
+                placeholder="Nome que aparece no comprovante"
+              />
+            </div>
+
+            <div>
+              <Label>WhatsApp para comprovantes</Label>
+              <Input
+                className="mt-1"
+                value={paymentWhatsapp}
+                onChange={(e) => setPaymentWhatsapp(e.target.value)}
+                placeholder="5516999999999"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Com DDI e DDD, somente números. Pode ser um WhatsApp comercial, diferente do
+                telefone pessoal do responsável.
+                {!isMain && " Sem este número, o botão de comprovante não é exibido nas provas deste organizador."}
+              </p>
             </div>
           </div>
         )}
