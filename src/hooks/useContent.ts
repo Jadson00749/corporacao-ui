@@ -10,9 +10,18 @@ import type { GalleryItem } from "@/data/gallery";
 import type { Testimonial } from "@/data/testimonials";
 import type { PhotoEvent, PhotoEventStatus } from "@/data/photoEvents";
 import { siteSettings as fallbackSettings } from "@/data/settings";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 const orFallback = (v: string | null | undefined, fb: string) =>
   v && v.trim().length > 0 ? v : fb;
+
+/**
+ * Preserva a URL configurada (banco/settings) e apenas resolve caminhos relativos
+ * do proxy Lovable (`/__l5e/...`) para URL absoluta — sem substituir a imagem.
+ */
+const orImage = (v: string | null | undefined, fb = "") =>
+  resolveMediaUrl(v) || resolveMediaUrl(fb) || "";
+
 
 export type SiteSettings = {
   brand: { name: string; short: string; slogan: string; description: string };
@@ -95,7 +104,7 @@ export const useSiteSettings = () =>
           subtitle: orFallback(r.hero_subtitle, fb.hero.subtitle),
           primaryCta: orFallback(r.hero_primary_cta, fb.hero.primaryCta),
           secondaryCta: orFallback(r.hero_secondary_cta, fb.hero.secondaryCta),
-          image: orFallback((r as any).hero_image, fb.hero.image),
+          image: orImage((r as any).hero_image, fb.hero.image),
           stats: [
             { value: orFallback((r as any).hero_stat_1_value, fb.hero.stats[0].value), label: orFallback((r as any).hero_stat_1_label, fb.hero.stats[0].label) },
             { value: orFallback((r as any).hero_stat_2_value, fb.hero.stats[1].value), label: orFallback((r as any).hero_stat_2_label, fb.hero.stats[1].label) },
@@ -113,39 +122,39 @@ export const useSiteSettings = () =>
           instructions: (r as any).product_payment_instructions ?? "",
         },
         homeBenefitImages: [
-          (r as any).home_benefit_image_1 ?? "",
-          (r as any).home_benefit_image_2 ?? "",
-          (r as any).home_benefit_image_3 ?? "",
-          (r as any).home_benefit_image_4 ?? "",
-          (r as any).home_benefit_image_5 ?? "",
-          (r as any).home_benefit_image_6 ?? "",
+          orImage((r as any).home_benefit_image_1),
+          orImage((r as any).home_benefit_image_2),
+          orImage((r as any).home_benefit_image_3),
+          orImage((r as any).home_benefit_image_4),
+          orImage((r as any).home_benefit_image_5),
+          orImage((r as any).home_benefit_image_6),
         ],
         images: {
-          homeIntro: (r as any).home_intro_image ?? "",
+          homeIntro: orImage((r as any).home_intro_image, fb.images.homeIntro),
           homeTeamAvatars: [
-            (r as any).home_team_avatar_1 ?? "",
-            (r as any).home_team_avatar_2 ?? "",
-            (r as any).home_team_avatar_3 ?? "",
-            (r as any).home_team_avatar_4 ?? "",
+            orImage((r as any).home_team_avatar_1),
+            orImage((r as any).home_team_avatar_2),
+            orImage((r as any).home_team_avatar_3),
+            orImage((r as any).home_team_avatar_4),
           ],
-          sobreCoach1: (r as any).sobre_coach_1_image ?? "",
-          sobreCoach2: (r as any).sobre_coach_2_image ?? "",
-          sobreMain: (r as any).sobre_main_image ?? "",
+          sobreCoach1: orImage((r as any).sobre_coach_1_image),
+          sobreCoach2: orImage((r as any).sobre_coach_2_image),
+          sobreMain: orImage((r as any).sobre_main_image),
           sobreGallery: [
-            (r as any).sobre_gallery_1 ?? "",
-            (r as any).sobre_gallery_2 ?? "",
-            (r as any).sobre_gallery_3 ?? "",
+            orImage((r as any).sobre_gallery_1),
+            orImage((r as any).sobre_gallery_2),
+            orImage((r as any).sobre_gallery_3),
           ],
-          sobreRaces: (r as any).sobre_races_image ?? "",
-          contato: (r as any).contato_image ?? "",
-          welcome: (r as any).welcome_image ?? "",
+          sobreRaces: orImage((r as any).sobre_races_image),
+          contato: orImage((r as any).contato_image),
+          welcome: orImage((r as any).welcome_image),
           pathways: [
-            (r as any).pathway_1_image ?? "",
-            (r as any).pathway_2_image ?? "",
-            (r as any).pathway_3_image ?? "",
+            orImage((r as any).pathway_1_image),
+            orImage((r as any).pathway_2_image),
+            orImage((r as any).pathway_3_image),
           ],
-          trainingPeaksHero: (r as any).trainingpeaks_hero_image ?? "",
-          trainingPeaksApp: (r as any).trainingpeaks_app_image ?? "",
+          trainingPeaksHero: orImage((r as any).trainingpeaks_hero_image),
+          trainingPeaksApp: orImage((r as any).trainingpeaks_app_image),
         },
         trainings: {
           bannerAspect: orFallback((r as any).training_banner_aspect, fb.trainings.bannerAspect),
@@ -201,7 +210,7 @@ export const useTrainings = () =>
         description: r.description,
         level: r.level as Training["level"],
         capacity: (r as any).capacity ?? null,
-        image: (r as any).image ?? undefined,
+        image: resolveMediaUrl((r as any).image) || undefined,
       }));
     },
   });
@@ -225,9 +234,9 @@ export const useEvents = () =>
         description: r.description,
         registrationUrl: r.registration_url,
         status: r.status as EventStatus,
-        image: r.image ?? undefined,
-        bannerImage: r.banner_image ?? undefined,
-        bannerMobileImage: r.banner_mobile_image ?? undefined,
+        image: resolveMediaUrl(r.image) || undefined,
+        bannerImage: resolveMediaUrl(r.banner_image) || undefined,
+        bannerMobileImage: resolveMediaUrl(r.banner_mobile_image) || undefined,
         bannerAspectRatio: r.banner_aspect_ratio ?? "9:16",
         internalSignup: r.internal_signup ?? false,
         regulationUrl: r.regulation_url ?? "",
@@ -258,8 +267,8 @@ export const useProducts = () =>
       return (data ?? []).map((r) => ({
         id: r.id,
         name: r.name,
-        image: r.image,
-        images: ((r as any).images ?? []) as string[],
+        image: resolveMediaUrl(r.image) || r.image,
+        images: (((r as any).images ?? []) as string[]).map((u) => resolveMediaUrl(u) || u),
         price: r.price ?? undefined,
         description: r.description,
         ctaMessage: r.cta_message,
@@ -278,7 +287,7 @@ export const useGallery = () =>
       if (error) throw error;
       return (data ?? []).map((r) => ({
         id: r.id,
-        src: r.src,
+        src: resolveMediaUrl(r.src) || r.src,
         title: r.title,
         category: r.category as GalleryItem["category"],
       }));
@@ -299,7 +308,7 @@ export const useTestimonials = () =>
         name: r.name,
         role: r.role,
         text: r.text,
-        avatar: r.avatar ?? null,
+        avatar: resolveMediaUrl(r.avatar) || r.avatar || null,
       }));
     },
   });
@@ -335,7 +344,7 @@ export const usePhotoEvents = () =>
         title: r.title,
         date: r.date,
         location: r.location,
-        coverImage: r.cover_image ?? "",
+        coverImage: resolveMediaUrl(r.cover_image) || r.cover_image || "",
         description: r.description,
         photoLink: r.photo_link,
         status: (r.status as PhotoEventStatus) ?? "Em breve",

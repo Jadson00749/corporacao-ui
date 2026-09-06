@@ -32,12 +32,15 @@ import {
   useTestimonials,
 } from "@/hooks/useContent";
 import heroAsset from "@/assets/hero-corporacao-portico.jpg.asset.json";
-const heroImg = heroAsset.url;
 import quemSomosBg from "@/assets/quem-somos-duo.jpg.asset.json";
 import avatarLucas from "@/assets/coach-lucas.jpg";
 import avatarHelo from "@/assets/coach-helo.jpg";
 import avatarDuo from "@/assets/coaches-duo.jpg";
 import avatarFund from "@/assets/fundadores.jpg";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
+
+const heroImg = resolveMediaUrl(heroAsset.url);
+const quemSomosImg = resolveMediaUrl(quemSomosBg.url);
 
 const benefits = [
   { icon: Target, title: "Planilha individual", desc: "Feita pra você, no seu app." },
@@ -144,7 +147,7 @@ const Index = () => {
           {(settingsLoaded || !siteSettings.hero.image) && (
             <img
               key={siteSettings.hero.image || "fallback-hero"}
-              src={siteSettings.hero.image || heroImg}
+              src={resolveMediaUrl(siteSettings.hero.image) || heroImg}
               alt="Equipe da Corporação Assessoria Esportiva correndo em grupo"
               fetchPriority="high"
               decoding="sync"
@@ -461,7 +464,7 @@ const Index = () => {
             />
             <div className="relative aspect-[4/5] rounded-[1.75rem] overflow-hidden border border-border/40">
               <img
-                src={siteSettings.images?.homeIntro || quemSomosBg.url}
+                src={resolveMediaUrl(siteSettings.images?.homeIntro) || quemSomosImg}
                 alt="Equipe Corporação na largada"
                 loading="lazy"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-[6000ms] hover:scale-[1.04]"

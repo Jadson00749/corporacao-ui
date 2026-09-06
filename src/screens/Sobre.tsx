@@ -12,11 +12,12 @@ import com1 from "@/assets/comunidade-1.jpg.asset.json";
 import com2 from "@/assets/comunidade-2.jpg.asset.json";
 import com3 from "@/assets/comunidade-3.jpg.asset.json";
 import com4 from "@/assets/comunidade-4.jpg.asset.json";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
-const gallery1 = com3.url;
-const gallery3 = com4.url;
-const gallery5 = com2.url;
-const racesTeam = com1.url;
+const gallery1 = resolveMediaUrl(com3.url);
+const gallery3 = resolveMediaUrl(com4.url);
+const gallery5 = resolveMediaUrl(com2.url);
+const racesTeam = resolveMediaUrl(com1.url);
 
 const highlights = [
   "Treinos presenciais",

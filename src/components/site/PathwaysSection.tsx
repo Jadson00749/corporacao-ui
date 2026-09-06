@@ -6,10 +6,11 @@ import { useSettings } from "@/contexts/SettingsContext";
 import pathRunningAsset from "@/assets/path-corrida.jpg.asset.json";
 import pathStrengthAsset from "@/assets/path-forca.jpg.asset.json";
 import pathCompleteAsset from "@/assets/path-completo.jpg.asset.json";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
-const pathRunning = pathRunningAsset.url;
-const pathStrength = pathStrengthAsset.url;
-const pathComplete = pathCompleteAsset.url;
+const pathRunning = resolveMediaUrl(pathRunningAsset.url);
+const pathStrength = resolveMediaUrl(pathStrengthAsset.url);
+const pathComplete = resolveMediaUrl(pathCompleteAsset.url);
 
 type Pathway = {
   number: string;
@@ -25,7 +26,7 @@ const buildPathways = (overrides: string[] = []): Pathway[] => [
     number: "01",
     title: "Quero correr",
     description: "Para quem quer começar ou evoluir na corrida com método e acompanhamento.",
-    image: overrides[0] || pathRunning,
+    image: resolveMediaUrl(overrides[0]) || pathRunning,
     href: "/planos?tab=corrida",
     cta: "Ver planos",
   },
@@ -33,7 +34,7 @@ const buildPathways = (overrides: string[] = []): Pathway[] => [
     number: "02",
     title: "Fortalecimento",
     description: "Musculação focada em performance, prevenção e força específica para corredores.",
-    image: overrides[1] || pathStrength,
+    image: resolveMediaUrl(overrides[1]) || pathStrength,
     href: "/planos?tab=fortalecimento",
     cta: "Ver detalhes",
   },
@@ -41,7 +42,7 @@ const buildPathways = (overrides: string[] = []): Pathway[] => [
     number: "03",
     title: "Pacote completo",
     description: "Corrida e musculação combinados para uma evolução completa e sustentável.",
-    image: overrides[2] || pathComplete,
+    image: resolveMediaUrl(overrides[2]) || pathComplete,
     href: "/planos?tab=completo",
     cta: "Ver planos",
   },

@@ -5,6 +5,7 @@ import { useSettings, useWhatsappLink } from "@/contexts/SettingsContext";
 import c1Asset from "@/assets/c1.jpg.asset.json";
 import c2Asset from "@/assets/c2.jpg.asset.json";
 import c3Asset from "@/assets/c3.jpg.asset.json";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 
 type Benefit = {
@@ -17,17 +18,17 @@ type Benefit = {
 // Ordem dos cards = ordem das imagens em site_settings.home_benefit_image_1..6
 const benefits: Benefit[] = [
   {
-    fallbackImage: c1Asset.url,
+    fallbackImage: resolveMediaUrl(c1Asset.url),
     title: "Provas da região no radar",
     desc: "Calendário mapeado e orientação pra escolher a próxima.",
   },
   {
-    fallbackImage: c2Asset.url,
+    fallbackImage: resolveMediaUrl(c2Asset.url),
     title: "Clube de benefícios",
     desc: "Descontos exclusivos em tênis e produtos com parceiros.",
   },
   {
-    fallbackImage: c3Asset.url,
+    fallbackImage: resolveMediaUrl(c3Asset.url),
     title: "Treinão mensal",
     desc: "Uma vez por mês a equipe se encontra pra correr junto.",
     objectPosition: "center 30%",
@@ -57,7 +58,7 @@ export const BenefitsSection = () => {
         <div className="mt-10 sm:hidden -mx-4 px-4 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex gap-4 pb-2">
             {benefits.map((b, i) => {
-              const src = homeBenefitImages?.[i + 3] || b.fallbackImage;
+              const src = resolveMediaUrl(homeBenefitImages?.[i + 3]) || b.fallbackImage;
               return (
                 <article key={b.title} className="snap-start shrink-0 w-[72%] flex flex-col">
                   <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-card">
@@ -94,7 +95,7 @@ export const BenefitsSection = () => {
         {/* Desktop/tablet: grid */}
         <div className="mt-14 hidden sm:grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {benefits.map((b, i) => {
-            const src = homeBenefitImages?.[i + 3] || b.fallbackImage;
+            const src = resolveMediaUrl(homeBenefitImages?.[i + 3]) || b.fallbackImage;
             return (
               <article key={b.title} className="group flex flex-col">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-card">
