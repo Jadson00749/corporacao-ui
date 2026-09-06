@@ -33,12 +33,13 @@ const Provas = () => {
         eyebrow="Calendário"
         title="Os próximos desafios da equipe."
         subtitle="Datas, distâncias e inscrições oficiais. Marque na agenda e vamos juntos."
+        className="pb-10 md:pb-28"
       />
 
       <EventBannerCarousel events={events} />
-      <section className="section-padding">
+      <section className="pt-8 pb-12 md:py-24">
         <div className="container-page">
-          <div className="flex items-end justify-between flex-wrap gap-6 mb-12">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-6 mb-6 md:mb-12">
             <div>
               <p className="text-[10px] font-semibold tracking-[0.32em] uppercase text-brand mb-2">
                 Filtrar
@@ -47,13 +48,14 @@ const Provas = () => {
                 Todas as provas
               </h2>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-2 overflow-x-auto no-scrollbar md:flex-wrap md:overflow-visible">
               {filters.map((f) => (
                 <button
                   key={f.key}
+                  type="button"
                   onClick={() => setFilter(f.key)}
                   className={cn(
-                    "px-4 py-2 rounded-full text-xs font-semibold tracking-wide uppercase transition-all duration-300 border",
+                    "shrink-0 whitespace-nowrap min-h-10 px-4 py-2.5 rounded-full text-xs font-semibold tracking-wide uppercase transition-all duration-300 border",
                     filter === f.key
                       ? "bg-brand text-brand-foreground border-brand"
                       : "bg-transparent text-foreground/60 border-border hover:border-brand/50 hover:text-foreground"
@@ -74,8 +76,10 @@ const Provas = () => {
           ) : filtered.length === 0 ? (
             <p className="text-center text-muted-foreground">Nenhuma prova nessa categoria.</p>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filtered.map((e) => <EventCard key={e.id} event={e} />)}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+              {filtered.map((e) => (
+                <EventCard key={e.id} event={e} />
+              ))}
             </div>
           )}
         </div>

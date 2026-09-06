@@ -28,31 +28,50 @@ export const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
 
+  const isHome = location.pathname === "/" || location.pathname === "";
+  /** Gradiente escuro só no topo da Home (sobre o hero). */
+  const overDarkHero = isHome && !scrolled && !open;
+  /** Fundo legível: scrolled, menu aberto, ou página sem hero escuro. */
+  const solidHeader = scrolled || open || !isHome;
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     onScroll();
-    window.addEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => setOpen(false), [location.pathname]);
 
-  // Trava o scroll do body quando o menu mobile está aberto
+  // Trava o scroll do body com o menu mobile; restaura ao fechar e no unmount.
   useEffect(() => {
-    if (open) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = prev; };
-    }
+    if (!open) return;
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    body.style.overflow = "hidden";
+    return () => {
+      body.style.overflow = prevOverflow || "";
+    };
   }, [open]);
 
   return (
     <header
       className={cn(
-        "fixed top-0 inset-x-0 z-50 transition-all duration-500",
-        scrolled || open
-          ? "bg-background/70 backdrop-blur-xl backdrop-saturate-150 border-b border-border/40 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)]"
-          : "bg-gradient-to-b from-black/40 via-black/10 to-transparent backdrop-blur-[2px]"
+        "fixed top-0 inset-x-0 z-50 transition-[background-color,border-color,box-shadow,opacity] duration-300 ease-out",
+        solidHeader
+          ? cn(
+              "border-b border-border/40 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)]",
+              // Mobile: fundo estável, sem blur pesado (evita artefato no scroll)
+              "bg-background/95",
+              // Desktop: preserva glass atual
+              "md:bg-background/70 md:backdrop-blur-xl md:backdrop-saturate-150"
+            )
+          : cn(
+              // Só Home no topo: gradiente sobre o hero
+              "bg-gradient-to-b from-black/40 via-black/10 to-transparent border-b border-transparent",
+              // Sem blur no mobile; blur leve só no desktop
+              "md:backdrop-blur-[2px]"
+            )
       )}
     >
       <div className="container-page flex h-[52px] md:h-[88px] items-center justify-between gap-3">
@@ -63,7 +82,7 @@ export const Navbar = () => {
           />
           <span className={cn(
             "font-display font-semibold md:font-bold text-[15px] md:text-lg tracking-tight leading-tight transition-colors",
-            scrolled || open ? "text-foreground" : "text-white"
+            overDarkHero ? "text-white" : "text-foreground"
           )}>
             {siteSettings.brand.name}
           </span>
@@ -79,13 +98,13 @@ export const Navbar = () => {
               className={({ isActive }) =>
                 cn(
                   "group relative px-3.5 py-2.5 text-[13px] font-medium tracking-[0.01em] transition-colors duration-300",
-                  scrolled || open
+                  overDarkHero
                     ? isActive
-                      ? "text-brand"
-                      : "text-foreground/65 hover:text-foreground"
-                    : isActive
                       ? "text-brand-glow"
                       : "text-white/75 hover:text-white"
+                    : isActive
+                      ? "text-brand"
+                      : "text-foreground/65 hover:text-foreground"
                 )
               }
             >
@@ -106,15 +125,15 @@ export const Navbar = () => {
         </nav>
 
         <div className="hidden lg:flex items-center gap-2.5 xl:gap-3">
-          <ThemeToggle onDark={!scrolled && !open} />
+          <ThemeToggle onDark={overDarkHero} />
           {(isAdmin || isOrganizer) && (
-            <Button asChild variant="ghost" size="sm" className={cn("rounded-full", !scrolled && !open && "text-white hover:text-white hover:bg-white/10")}>
+            <Button asChild variant="ghost" size="sm" className={cn("rounded-full", overDarkHero && "text-white hover:text-white hover:bg-white/10")}>
               <Link to="/admin">
                 <Shield className="w-4 h-4" /> {isAdmin ? "Admin" : "Painel"}
               </Link>
             </Button>
           )}
-          <Button asChild variant="ghost" size="sm" className={cn("rounded-full", !scrolled && !open && "text-white hover:text-white hover:bg-white/10")}>
+          <Button asChild variant="ghost" size="sm" className={cn("rounded-full", overDarkHero && "text-white hover:text-white hover:bg-white/10")}>
             <Link to={user ? "/minha-conta" : "/auth"}>
               <User className="w-4 h-4" /> {user ? "Minha conta" : "Entrar"}
             </Link>
@@ -133,11 +152,11 @@ export const Navbar = () => {
 
 
         <div className="lg:hidden flex items-center gap-1">
-          <div className="hidden md:flex"><ThemeToggle onDark={!scrolled && !open} /></div>
+          <div className="hidden md:flex"><ThemeToggle onDark={overDarkHero} /></div>
           <button
             className={cn(
               "min-h-10 min-w-10 md:min-h-11 md:min-w-11 inline-flex items-center justify-center rounded-md transition-colors",
-              scrolled || open ? "text-foreground" : "text-white"
+              overDarkHero ? "text-white" : "text-foreground"
             )}
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Fechar menu" : "Abrir menu"}

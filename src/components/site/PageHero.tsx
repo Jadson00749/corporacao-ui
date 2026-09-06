@@ -6,14 +6,16 @@ type Props = {
   image?: string;
   light?: boolean;
   eyebrow?: string;
+  className?: string;
 };
 
-export const PageHero = ({ title, subtitle, image, light = true, eyebrow }: Props) => (
+export const PageHero = ({ title, subtitle, image, light = true, eyebrow, className }: Props) => (
   <section
     className={cn(
       "relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden",
       light ? "text-white" : "text-foreground",
-      !image && "bg-[#080808]"
+      !image && "bg-[#080808]",
+      className
     )}
   >
     {image && (
