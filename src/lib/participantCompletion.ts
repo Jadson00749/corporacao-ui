@@ -1,7 +1,7 @@
 // Inscrições feitas antes do cadastro de participantes ficaram sem os dados de
 // quem realmente corre. Na Corridinha Kids isso é bloqueante: sem a data de
 // nascimento não há como calcular a idade na data da prova e a criança acaba
-// fora das faixas, aparecendo em "Outras categorias" na lista pública.
+// em "Aguardando classificação" na lista pública.
 
 import { isKidsDistance, kidsBracketFor } from "@/lib/eventPricing";
 import type { EventSignup } from "@/hooks/useProfile";

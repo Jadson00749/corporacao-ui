@@ -358,11 +358,17 @@ export const PublicSignupList = ({ signups, distances, genders, ageBrackets, eve
       {orphansVisible.length > 0 && (
         <div className="space-y-2">
           <header className="flex items-center justify-between gap-3 border-b border-border pb-1.5">
-            <h4 className="font-display text-xs font-bold uppercase tracking-wider">Outras categorias</h4>
+            <h4 className="font-display text-xs font-bold uppercase tracking-wider">
+              Aguardando classificação
+            </h4>
             <span className="rounded-full bg-secondary/60 px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
               {orphansVisible.length}
             </span>
           </header>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Algumas inscrições estão em processo de atualização cadastral e serão classificadas
+            automaticamente após a confirmação dos dados do participante.
+          </p>
           <AthleteRows list={orphansVisible} />
         </div>
       )}
