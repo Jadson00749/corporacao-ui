@@ -359,6 +359,8 @@ const ManageOrganizerDialog = ({
   const [pixKey, setPixKey] = useState("");
   const [pixRecipient, setPixRecipient] = useState("");
   const [paymentWhatsapp, setPaymentWhatsapp] = useState("");
+  const [paymentEmail, setPaymentEmail] = useState("");
+  const [paymentContactName, setPaymentContactName] = useState("");
   const [payLoaded, setPayLoaded] = useState(false);
 
   useEffect(() => {
@@ -366,6 +368,8 @@ const ManageOrganizerDialog = ({
     setPixKey(pay.pix_key ?? "");
     setPixRecipient(pay.pix_recipient ?? "");
     setPaymentWhatsapp(pay.payment_whatsapp ?? "");
+    setPaymentEmail(pay.payment_email ?? "");
+    setPaymentContactName(pay.payment_contact_name ?? "");
     setPayLoaded(true);
   }, [pay, payLoaded]);
 
@@ -388,6 +392,8 @@ const ManageOrganizerDialog = ({
         pix_key: pixKey.trim(),
         pix_recipient: pixRecipient.trim(),
         payment_whatsapp: paymentWhatsapp.replace(/\D/g, ""),
+        payment_email: paymentEmail.trim(),
+        payment_contact_name: paymentContactName.trim(),
       })
       .eq("id", organizer.id);
     setSaving(false);
@@ -523,6 +529,27 @@ const ManageOrganizerDialog = ({
                 telefone pessoal do responsável.
                 {!isMain && " Sem este número, o botão de comprovante não é exibido nas provas deste organizador."}
               </p>
+            </div>
+
+            <div>
+              <Label>E-mail financeiro</Label>
+              <Input
+                className="mt-1"
+                type="email"
+                value={paymentEmail}
+                onChange={(e) => setPaymentEmail(e.target.value)}
+                placeholder="financeiro@empresa.com"
+              />
+            </div>
+
+            <div>
+              <Label>Nome do responsável financeiro</Label>
+              <Input
+                className="mt-1"
+                value={paymentContactName}
+                onChange={(e) => setPaymentContactName(e.target.value)}
+                placeholder="Ex.: João Financeiro"
+              />
             </div>
           </div>
         )}

@@ -31,6 +31,7 @@ import { Route as AdminGalleryRouteImport } from './routes/admin.gallery'
 import { Route as AdminHighlightsRouteImport } from './routes/admin.highlights'
 import { Route as AdminOrganizersRouteImport } from './routes/admin.organizers'
 import { Route as AdminPartnersRouteImport } from './routes/admin.partners'
+import { Route as AdminPaymentSettingsRouteImport } from './routes/admin.payment-settings'
 import { Route as AdminPhotoEventsRouteImport } from './routes/admin.photo-events'
 import { Route as AdminPlansRouteImport } from './routes/admin.plans'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
@@ -154,6 +155,11 @@ const AdminPartnersRoute = AdminPartnersRouteImport.update({
   path: '/partners',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPaymentSettingsRoute = AdminPaymentSettingsRouteImport.update({
+  id: '/payment-settings',
+  path: '/payment-settings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminPhotoEventsRoute = AdminPhotoEventsRouteImport.update({
   id: '/photo-events',
   path: '/photo-events',
@@ -237,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/admin/highlights': typeof AdminHighlightsRoute
   '/admin/organizers': typeof AdminOrganizersRoute
   '/admin/partners': typeof AdminPartnersRoute
+  '/admin/payment-settings': typeof AdminPaymentSettingsRoute
   '/admin/photo-events': typeof AdminPhotoEventsRoute
   '/admin/plans': typeof AdminPlansRoute
   '/admin/products': typeof AdminProductsRoute
@@ -272,6 +279,7 @@ export interface FileRoutesByTo {
   '/admin/highlights': typeof AdminHighlightsRoute
   '/admin/organizers': typeof AdminOrganizersRoute
   '/admin/partners': typeof AdminPartnersRoute
+  '/admin/payment-settings': typeof AdminPaymentSettingsRoute
   '/admin/photo-events': typeof AdminPhotoEventsRoute
   '/admin/plans': typeof AdminPlansRoute
   '/admin/products': typeof AdminProductsRoute
@@ -309,6 +317,7 @@ export interface FileRoutesById {
   '/admin/highlights': typeof AdminHighlightsRoute
   '/admin/organizers': typeof AdminOrganizersRoute
   '/admin/partners': typeof AdminPartnersRoute
+  '/admin/payment-settings': typeof AdminPaymentSettingsRoute
   '/admin/photo-events': typeof AdminPhotoEventsRoute
   '/admin/plans': typeof AdminPlansRoute
   '/admin/products': typeof AdminProductsRoute
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
     | '/admin/highlights'
     | '/admin/organizers'
     | '/admin/partners'
+    | '/admin/payment-settings'
     | '/admin/photo-events'
     | '/admin/plans'
     | '/admin/products'
@@ -382,6 +392,7 @@ export interface FileRouteTypes {
     | '/admin/highlights'
     | '/admin/organizers'
     | '/admin/partners'
+    | '/admin/payment-settings'
     | '/admin/photo-events'
     | '/admin/plans'
     | '/admin/products'
@@ -418,6 +429,7 @@ export interface FileRouteTypes {
     | '/admin/highlights'
     | '/admin/organizers'
     | '/admin/partners'
+    | '/admin/payment-settings'
     | '/admin/photo-events'
     | '/admin/plans'
     | '/admin/products'
@@ -608,6 +620,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPartnersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/payment-settings': {
+      id: '/admin/payment-settings'
+      path: '/payment-settings'
+      fullPath: '/admin/payment-settings'
+      preLoaderRoute: typeof AdminPaymentSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/photo-events': {
       id: '/admin/photo-events'
       path: '/photo-events'
@@ -704,6 +723,7 @@ interface AdminRouteChildren {
   AdminHighlightsRoute: typeof AdminHighlightsRoute
   AdminOrganizersRoute: typeof AdminOrganizersRoute
   AdminPartnersRoute: typeof AdminPartnersRoute
+  AdminPaymentSettingsRoute: typeof AdminPaymentSettingsRoute
   AdminPhotoEventsRoute: typeof AdminPhotoEventsRoute
   AdminPlansRoute: typeof AdminPlansRoute
   AdminProductsRoute: typeof AdminProductsRoute
@@ -724,6 +744,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminHighlightsRoute: AdminHighlightsRoute,
   AdminOrganizersRoute: AdminOrganizersRoute,
   AdminPartnersRoute: AdminPartnersRoute,
+  AdminPaymentSettingsRoute: AdminPaymentSettingsRoute,
   AdminPhotoEventsRoute: AdminPhotoEventsRoute,
   AdminPlansRoute: AdminPlansRoute,
   AdminProductsRoute: AdminProductsRoute,

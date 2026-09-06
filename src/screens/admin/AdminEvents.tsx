@@ -13,8 +13,8 @@ import { isKidsDistance } from "@/lib/eventPricing";
 import { EventBannerConfig } from "@/components/admin/EventBannerConfig";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganizerStats, brl, isMainOrg } from "@/hooks/useOrganizerStats";
-import { useOrganizerPayment } from "@/lib/eventPayment";
-import { useSearchParams } from "@/lib/router-compat";
+import { isOrganizerPaymentReady, maskPixKey, useOrganizerPayment } from "@/lib/eventPayment";
+import { Link, useSearchParams } from "@/lib/router-compat";
 import { cn } from "@/lib/utils";
 
 
@@ -469,45 +469,95 @@ const AdminEvents = () => {
                 <Field label="Link do regulamento (PDF/site)"><Input value={editing.regulation_url} onChange={(e) => setEditing({ ...editing, regulation_url: e.target.value })} placeholder="https://..." /></Field>
               </Section>
 
-              {/* PIX */}
+              {/* PIX / recebimento */}
               {editing.internal_signup && (
-                <Section title="Pagamento via PIX">
-                  {editingIsPartner ? (
-                    <div className="rounded-lg border border-brand/30 bg-brand/5 p-3 space-y-1.5">
-                      <p className="text-xs font-semibold">
-                        Os pagamentos desta prova vão para {editingOrg?.name || "o organizador"}.
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        A chave PIX, o beneficiário e o WhatsApp que recebe os comprovantes vêm do
-                        cadastro do organizador, não desta tela.
-                        {isAdmin && " Para alterar, abra Organizadores › Gerenciar › Pagamento."}
-                      </p>
+                <Section title={editingIsPartner || (!isAdmin && !!organizerId) ? "Recebimento desta prova" : "Pagamento via PIX"}>
+                  {(editingIsPartner || (!isAdmin && !!organizerId)) ? (
+                    <div className="space-y-3">
+                      <div className="rounded-lg border border-brand/30 bg-brand/5 p-3 space-y-2">
+                        <p className="text-xs font-semibold">
+                          Os pagamentos desta prova vão para {editingOrg?.name || "sua organização"}.
+                        </p>
+                        <dl className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                          <div>
+                            <dt className="text-muted-foreground">Beneficiário PIX</dt>
+                            <dd className="font-medium">{editingOrg?.pix_recipient?.trim() || "—"}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">Chave PIX</dt>
+                            <dd className="font-medium font-mono break-all">
+                              {editingOrg?.pix_key?.trim()
+                                ? isAdmin
+                                  ? editingOrg.pix_key
+                                  : maskPixKey(editingOrg.pix_key)
+                                : "—"}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">WhatsApp para comprovantes</dt>
+                            <dd className="font-medium">{editingOrg?.payment_whatsapp?.trim() || "—"}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">E-mail financeiro</dt>
+                            <dd className="font-medium">{editingOrg?.payment_email?.trim() || "—"}</dd>
+                          </div>
+                        </dl>
+                        {!isOrganizerPaymentReady(editingOrg) && (
+                          <p className="text-[11px] text-warning flex items-center gap-1 pt-1">
+                            Complete os dados de pagamento antes de publicar novas inscrições.
+                          </p>
+                        )}
+                      </div>
+                      {!isAdmin && (
+                        <Button asChild variant="outline" size="sm">
+                          <Link to="/admin/payment-settings">Editar dados de recebimento</Link>
+                        </Button>
+                      )}
+                      {isAdmin && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Para alterar, abra Organizadores › Gerenciar › Pagamento.
+                        </p>
+                      )}
+                      <Field label="Instruções de pagamento">
+                        <Textarea
+                          rows={3}
+                          value={editing.payment_instructions || ""}
+                          onChange={(e) => setEditing({ ...editing, payment_instructions: e.target.value })}
+                          placeholder="Ex: envie o comprovante para nosso WhatsApp."
+                        />
+                      </Field>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-muted-foreground">
-                      Prova da Corporação: o pagamento usa a chave abaixo e o comprovante vai para o
-                      WhatsApp das configurações do site.
-                    </p>
+                    <>
+                      <p className="text-[11px] text-muted-foreground">
+                        Prova da Corporação: o pagamento usa a chave abaixo e o comprovante vai para o
+                        WhatsApp das configurações do site.
+                      </p>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <Field label="Chave PIX">
+                          <Input
+                            value={editing.pix_key || ""}
+                            onChange={(e) => setEditing({ ...editing, pix_key: e.target.value })}
+                            placeholder="CNPJ, e-mail ou telefone"
+                          />
+                        </Field>
+                        <Field label="Nome do recebedor">
+                          <Input
+                            value={editing.pix_recipient || ""}
+                            onChange={(e) => setEditing({ ...editing, pix_recipient: e.target.value })}
+                          />
+                        </Field>
+                      </div>
+                      <Field label="Instruções de pagamento">
+                        <Textarea
+                          rows={3}
+                          value={editing.payment_instructions || ""}
+                          onChange={(e) => setEditing({ ...editing, payment_instructions: e.target.value })}
+                          placeholder="Ex: envie o comprovante para nosso WhatsApp."
+                        />
+                      </Field>
+                    </>
                   )}
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <Field label="Chave PIX">
-                      <Input
-                        value={editingIsPartner ? editingOrg?.pix_key || "" : editing.pix_key || ""}
-                        onChange={(e) => setEditing({ ...editing, pix_key: e.target.value })}
-                        placeholder={editingIsPartner ? "Definida no cadastro do organizador" : "CNPJ, e-mail ou telefone"}
-                        disabled={editingIsPartner}
-                      />
-                    </Field>
-                    <Field label="Nome do recebedor">
-                      <Input
-                        value={editingIsPartner ? editingOrg?.pix_recipient || "" : editing.pix_recipient || ""}
-                        onChange={(e) => setEditing({ ...editing, pix_recipient: e.target.value })}
-                        placeholder={editingIsPartner ? "Definido no cadastro do organizador" : ""}
-                        disabled={editingIsPartner}
-                      />
-                    </Field>
-                  </div>
-                  <Field label="Instruções de pagamento"><Textarea rows={3} value={editing.payment_instructions || ""} onChange={(e) => setEditing({ ...editing, payment_instructions: e.target.value })} placeholder="Ex: envie o comprovante para nosso WhatsApp." /></Field>
                 </Section>
               )}
 

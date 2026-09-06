@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate, Link } from "@/lib/router-co
 import { useAuth } from "@/contexts/AuthContext";
 import { useForceTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings, ListChecks, Calendar, Trophy, ShoppingBag, Image, Camera, MessageSquare, HelpCircle, LayoutDashboard, ExternalLink, Handshake, Users, Megaphone, Tent } from "lucide-react";
+import { LogOut, Settings, ListChecks, Calendar, Trophy, ShoppingBag, Image, Camera, MessageSquare, HelpCircle, LayoutDashboard, ExternalLink, Handshake, Users, Megaphone, Tent, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OrganizerOnboardingTour } from "@/components/admin/OrganizerOnboardingTour";
 
@@ -14,6 +14,7 @@ const items = [
   // Seleção de estruturas é experiência do organizador; o admin gerencia o catálogo
   // em Organizadores › Estruturas.
   { to: "/admin/event-structure", label: "Locação de Estruturas", icon: Tent, organizer: true, organizerOnly: true },
+  { to: "/admin/payment-settings", label: "Dados de pagamento", icon: Wallet, organizer: true, organizerOnly: true },
   { to: "/admin/highlights", label: "Destaques da Home", icon: Megaphone },
   { to: "/admin/plans", label: "Planos", icon: ListChecks },
   { to: "/admin/trainings", label: "Treinos", icon: Calendar },
@@ -37,6 +38,8 @@ const organizerRoutes = new Set([
   "/admin/event-signups/",
   "/admin/event-structure",
   "/admin/event-structure/",
+  "/admin/payment-settings",
+  "/admin/payment-settings/",
 ]);
 
 const AdminLayout = () => {
