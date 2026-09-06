@@ -10,6 +10,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, Users, Trophy, Wallet, Clock, Percent, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AttentionNeeded, type AttentionItem } from "@/components/site/AttentionNeeded";
+import { EmptyState } from "@/components/site/EmptyState";
+import { OrganizerActivationChecklist } from "@/components/admin/OrganizerActivationChecklist";
+import { isOrganizerPaymentReady, useOrganizerPayment } from "@/lib/eventPayment";
+import { statusOf } from "@/lib/rentalOrders";
 
 const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
@@ -30,6 +35,8 @@ const Kpi = ({
   hint,
   hint2,
   accent,
+  compact,
+  to,
 }: {
   icon: any;
   label: string;
@@ -37,21 +44,51 @@ const Kpi = ({
   hint?: string;
   hint2?: string;
   accent?: boolean;
-}) => (
-  <div
-    className={cn(
-      "rounded-2xl border p-5",
-      accent ? "border-brand/40 bg-brand/10" : "border-border bg-card"
-    )}
-  >
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <Icon className={cn("w-4 h-4", accent && "text-brand")} />
-      {label}
-    </div>
-    <div className="font-display text-3xl font-bold mt-2 tabular-nums">{value}</div>
-    {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
-    {hint2 && <div className="text-xs text-muted-foreground/80 mt-1">{hint2}</div>}
-  </div>
+  compact?: boolean;
+  to?: string;
+}) => {
+  const className = cn(
+    "rounded-xl border h-full flex flex-col text-left transition-colors",
+    compact ? "p-3.5" : "p-4",
+    accent ? "border-brand/40 bg-brand/10" : "border-border bg-card",
+    to &&
+      "hover:border-brand/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 cursor-pointer"
+  );
+
+  const body = (
+    <>
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+        <Icon className={cn("w-3.5 h-3.5 shrink-0", accent && "text-brand")} />
+        <span className="truncate">{label}</span>
+      </div>
+      <div
+        className={cn(
+          "font-display font-bold mt-2 tabular-nums leading-none",
+          compact ? "text-2xl" : "text-[1.75rem] sm:text-3xl",
+          accent && "text-brand"
+        )}
+      >
+        {value}
+      </div>
+      {hint && <div className="text-[11px] text-muted-foreground mt-2 leading-snug">{hint}</div>}
+      {hint2 && <div className="text-[11px] text-muted-foreground/70 mt-0.5 leading-snug">{hint2}</div>}
+    </>
+  );
+
+  if (to) {
+    return (
+      <Link to={to} className={className}>
+        {body}
+      </Link>
+    );
+  }
+  return <div className={className}>{body}</div>;
+};
+
+const SectionLabel = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  <h2 className={cn("text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80", className)}>
+    {children}
+  </h2>
 );
 
 const MiniCard = ({ title, count, to }: { title: string; count: number; to: string }) => (
@@ -76,7 +113,7 @@ const AdminDashboard = () => {
   const { data: pricing = [] } = useQuery({
     queryKey: ["admin_events_pricing", isAdmin ? "all" : organizerId],
     queryFn: async (): Promise<AdminPricingRow[]> => {
-      let q = supabase.from("events").select("id,name,distances,organizer_id");
+      let q = supabase.from("events").select("id,name,date,distances,organizer_id");
       if (!isAdmin && organizerId) q = q.eq("organizer_id" as any, organizerId);
       const { data, error } = await q;
       if (error) throw error;
@@ -107,7 +144,7 @@ const AdminDashboard = () => {
     },
   });
 
-  const { data: signups = [], isLoading: loadingSignups } = useQuery({
+  const { data: signups = [], isLoading: loadingSignups, isError: signupsError, refetch: refetchSignups } = useQuery({
     queryKey: ["admin_signups_metrics", isAdmin ? "all" : organizerId, pricing.map((e) => e.id).join(",")],
     enabled: isAdmin || !!organizerId,
     queryFn: async (): Promise<ExportSignup[]> => {
@@ -135,6 +172,25 @@ const AdminDashboard = () => {
         });
       }
       return rows as ExportSignup[];
+    },
+  });
+
+  const { data: organizerPayment } = useOrganizerPayment(!isAdmin ? organizerId : null);
+
+  const { data: rentalRows = [] } = useQuery({
+    queryKey: ["admin_dashboard_rentals", isAdmin ? "all" : organizerId],
+    enabled: isAdmin || !!organizerId,
+    queryFn: async () => {
+      let q = (supabase as any)
+        .from("rental_orders")
+        .select("id,status,event_name,event_date,organizer_id")
+        .neq("status", "draft")
+        .order("updated_at", { ascending: false })
+        .limit(40);
+      if (!isAdmin && organizerId) q = q.eq("organizer_id", organizerId);
+      const { data, error } = await q;
+      if (error) return [];
+      return (data ?? []) as { id: string; status: string; event_name: string | null; event_date: string | null; organizer_id: string }[];
     },
   });
 
@@ -270,14 +326,105 @@ const AdminDashboard = () => {
 
   const maxRevenue = Math.max(1, ...metrics.topEvents.map((e) => e.revenue));
 
+  const eventsWithoutConfig = useMemo(
+    () =>
+      (pricing as AdminPricingRow[]).filter((e) => {
+        const d = (e as any).distances;
+        return !Array.isArray(d) || d.length === 0;
+      }),
+    [pricing]
+  );
+
+  const upcomingOrgEvents = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return (pricing as AdminPricingRow[]).filter((e: any) => {
+      if (!e.date) return false;
+      return new Date(e.date + "T12:00:00") >= start;
+    }).length;
+  }, [pricing]);
+
+  const rentalsNeedingAction = useMemo(
+    () =>
+      rentalRows.filter((r) => {
+        const s = statusOf(r.status);
+        return s === "requested" || s === "under_review";
+      }),
+    [rentalRows]
+  );
+
+  const attentionItems = useMemo((): AttentionItem[] => {
+    const items: AttentionItem[] = [];
+    if (!isAdmin && !isOrganizerPaymentReady(organizerPayment)) {
+      items.push({
+        id: "pay",
+        title: "Dados de pagamento incompletos",
+        description: "Configure PIX e WhatsApp para receber das suas provas.",
+        to: "/admin/payment-settings",
+      });
+    }
+    if (!isAdmin && eventsWithoutConfig.length > 0) {
+      items.push({
+        id: "event-config",
+        title:
+          eventsWithoutConfig.length === 1
+            ? "Uma prova sem configuração essencial"
+            : `${eventsWithoutConfig.length} provas sem configuração essencial`,
+        description: "Defina modalidades e valores para abrir inscrições.",
+        to: "/admin/events",
+      });
+    }
+    if (metrics.pending > 0) {
+      items.push({
+        id: "pending-signups",
+        title:
+          metrics.pending === 1
+            ? "1 inscrição aguardando tratamento"
+            : `${metrics.pending} inscrições aguardando tratamento`,
+        description: "Confira pagamentos e confirme inscritos.",
+        to: "/admin/event-signups?status=pendente",
+      });
+    }
+    if (rentalsNeedingAction.length > 0) {
+      items.push({
+        id: "rentals",
+        title:
+          rentalsNeedingAction.length === 1
+            ? "1 solicitação de estrutura em aberto"
+            : `${rentalsNeedingAction.length} solicitações de estrutura em aberto`,
+        description: "Pedidos solicitados ou em análise.",
+        to: "/admin/rental-orders?status=requested",
+      });
+    }
+    if (!isAdmin && upcomingOrgEvents > 0) {
+      items.push({
+        id: "upcoming",
+        title:
+          upcomingOrgEvents === 1
+            ? "1 prova próxima"
+            : `${upcomingOrgEvents} provas próximas`,
+        description: "Revise banner, lotes e dados de pagamento.",
+        to: "/admin/events",
+      });
+    }
+    return items;
+  }, [
+    isAdmin,
+    organizerPayment,
+    eventsWithoutConfig.length,
+    metrics.pending,
+    rentalsNeedingAction.length,
+    upcomingOrgEvents,
+  ]);
+
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="font-display text-3xl font-bold">Olá, {user?.email?.split("@")[0]} 👋</h1>
           <p className="text-muted-foreground mt-1">Resultados da plataforma em tempo real.</p>
         </div>
-        <div className="flex gap-1 bg-secondary rounded-lg p-1">
+        <div className="flex gap-1 bg-secondary rounded-lg p-1 shrink-0">
           {PERIODS.map((p) => (
             <button
               key={p.key}
@@ -293,13 +440,186 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {loading ? (
-        <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}
+      <AttentionNeeded items={attentionItems} className="mt-6" />
+
+      {!isAdmin && organizerId && (
+        <OrganizerActivationChecklist
+          organizerId={organizerId}
+          payment={organizerPayment}
+          events={pricing as any}
+          signupCount={signups.length}
+        />
+      )}
+
+      {signupsError ? (
+        <div className="mt-8">
+          <EmptyState
+            title="Não foi possível carregar os indicadores"
+            description="Verifique sua conexão e tente novamente. Os dados do período selecionado não foram carregados."
+            actionLabel="Tentar novamente"
+            onAction={() => refetchSignups()}
+          />
         </div>
+      ) : loading ? (
+        <div className="mt-8 space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+          </div>
+        </div>
+      ) : isAdmin ? (
+        <>
+          {/* Financeiro */}
+          <section className="mt-8">
+            <SectionLabel className="mb-2.5">Financeiro</SectionLabel>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+              <Kpi
+                icon={Wallet}
+                label="Receita confirmada"
+                value={brl(metrics.revenue)}
+                hint={`${metrics.confirmed} inscrições pagas`}
+                hint2={`Corp. ${brl(metrics.revenueCorporate)} · Org. ${brl(metrics.revenueOrganizers)}`}
+                accent
+              />
+              <Kpi
+                icon={Clock}
+                label="Receita em aberto"
+                value={brl(metrics.pendingRevenue)}
+                hint={`${metrics.pending} pendentes`}
+                hint2={`Corp. ${brl(metrics.pendingRevenueCorporate)} · Org. ${brl(metrics.pendingRevenueOrganizers)}`}
+                to="/admin/event-signups?status=pendente"
+              />
+              <Kpi
+                icon={TrendingUp}
+                label="Ticket médio"
+                value={brl(metrics.ticket)}
+                hint="Por inscrição confirmada"
+              />
+              <Kpi
+                icon={Wallet}
+                label="Comissão estimada"
+                value={brl(metrics.estimatedCommission)}
+                hint="Sobre confirmadas de parceiros"
+                to="/admin/organizers"
+              />
+            </div>
+          </section>
+
+          {/* Operação */}
+          <section className="mt-6">
+            <SectionLabel className="mb-2.5">Operação</SectionLabel>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Kpi
+                icon={Trophy}
+                label="Inscrições vendidas"
+                value={String(metrics.confirmed)}
+                hint={`${metrics.total} no total · ${metrics.canceled} canceladas`}
+                compact
+                to="/admin/event-signups?status=confirmada"
+              />
+              <Kpi
+                icon={Users}
+                label="Novos cadastros"
+                value={String(metrics.newMembers)}
+                hint={`${metrics.totalMembers} atletas na base`}
+                compact
+              />
+              <Kpi
+                icon={Percent}
+                label="Conversão de inscrições"
+                value={`${metrics.conversion.toFixed(0)}%`}
+                hint={`Aderência da base: ${metrics.adherence.toFixed(1)}%`}
+                compact
+              />
+            </div>
+          </section>
+
+          {/* Desempenho por prova */}
+          <section className="mt-6">
+            <div className="flex items-center justify-between gap-3 mb-2.5">
+              <SectionLabel>Desempenho por prova</SectionLabel>
+              <Button asChild variant="ghost" size="sm" className="-mt-1">
+                <Link to="/admin/event-signups">
+                  Ver todas <ArrowRight className="w-4 h-4" />
+                </Link>
+              </Button>
+            </div>
+
+            {metrics.topEvents.length === 0 ? (
+              <div className="rounded-xl border border-border bg-card px-4 py-6 text-sm text-muted-foreground">
+                Nenhuma inscrição no período selecionado.
+              </div>
+            ) : (
+              <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+                {metrics.topEvents.map((e) => {
+                  const totalInsc = e.count + e.pending;
+                  return (
+                    <div
+                      key={`${e.name}-${e.organizerName}`}
+                      className="px-4 py-3.5 flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4"
+                    >
+                      <div className="min-w-0 lg:w-[28%] lg:shrink-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-medium truncate">{e.name}</span>
+                          <span
+                            className={cn(
+                              "shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                              e.isCorp ? "bg-brand/15 text-brand" : "bg-secondary text-muted-foreground"
+                            )}
+                          >
+                            {e.isCorp ? "Corp." : "Org."}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                          {e.organizerName}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 sm:gap-4 lg:contents text-center lg:text-left">
+                        <div className="lg:w-20 lg:shrink-0">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Inscritos</div>
+                          <div className="text-sm font-semibold tabular-nums">{totalInsc}</div>
+                        </div>
+                        <div className="lg:w-20 lg:shrink-0">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Aprovados</div>
+                          <div className="text-sm font-semibold tabular-nums">{e.count}</div>
+                        </div>
+                        <div className="lg:w-20 lg:shrink-0">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Pendentes</div>
+                          <div className="text-sm font-semibold tabular-nums">{e.pending}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0 flex items-center gap-3">
+                        <div className="min-w-[5.5rem] shrink-0">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Receita</div>
+                          <div className="text-sm font-semibold tabular-nums">{brl(e.revenue)}</div>
+                        </div>
+                        <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden min-w-[4rem]">
+                          <div
+                            className={cn("h-full rounded-full", e.isCorp ? "bg-brand" : "bg-muted-foreground/40")}
+                            style={{ width: `${(e.revenue / maxRevenue) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <Button asChild variant="ghost" size="sm" className="shrink-0 self-start lg:self-center">
+                        <Link to="/admin/event-signups">
+                          Ver inscrições <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </>
       ) : (
         <>
-          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <Kpi
               icon={Wallet}
               label="Receita confirmada"
@@ -307,6 +627,7 @@ const AdminDashboard = () => {
               hint={`${metrics.confirmed} inscrições pagas`}
               hint2={`Corporação: ${brl(metrics.revenueCorporate)} • Organizadores: ${brl(metrics.revenueOrganizers)}`}
               accent
+              to="/admin/event-signups?status=confirmada"
             />
             <Kpi
               icon={Clock}
@@ -314,6 +635,7 @@ const AdminDashboard = () => {
               value={brl(metrics.pendingRevenue)}
               hint={`${metrics.pending} inscrições pendentes`}
               hint2={`Corporação: ${brl(metrics.pendingRevenueCorporate)} • Organizadores: ${brl(metrics.pendingRevenueOrganizers)}`}
+              to="/admin/event-signups?status=pendente"
             />
             <Kpi
               icon={TrendingUp}
@@ -326,52 +648,39 @@ const AdminDashboard = () => {
               label="Inscrições vendidas"
               value={String(metrics.confirmed)}
               hint={`${metrics.total} no total • ${metrics.canceled} canceladas`}
+              to="/admin/event-signups?status=confirmada"
             />
-            {isAdmin ? (
-              <>
-                <Kpi
-                  icon={Users}
-                  label="Novos cadastros"
-                  value={String(metrics.newMembers)}
-                  hint={`${metrics.totalMembers} atletas na base`}
-                />
-                <Kpi
-                  icon={Percent}
-                  label="Conversão de inscrições"
-                  value={`${metrics.conversion.toFixed(0)}%`}
-                  hint={`Aderência da base: ${metrics.adherence.toFixed(1)}%`}
-                />
-                <Kpi
-                  icon={Wallet}
-                  label="Comissão estimada dos organizadores"
-                  value={brl(metrics.estimatedCommission)}
-                  hint="Sobre inscrições confirmadas de parceiros"
-                />
-              </>
-            ) : (
-              <Kpi
-                icon={Users}
-                label="Total de inscrições"
-                value={String(metrics.total)}
-                hint={`${metrics.confirmed} aprovadas • ${metrics.pending} pendentes`}
-              />
-            )}
+            <Kpi
+              icon={Users}
+              label="Total de inscrições"
+              value={String(metrics.total)}
+              hint={`${metrics.confirmed} aprovadas • ${metrics.pending} pendentes`}
+              to="/admin/event-signups"
+            />
           </div>
 
-          <div className="mt-8 bg-card border border-border rounded-2xl p-5">
+          {metrics.topEvents.length === 0 && (
+            <div className="mt-6">
+              <EmptyState
+                icon={Trophy}
+                title="Nenhuma inscrição no período"
+                description="Quando houver inscrições nas suas provas, o desempenho aparece aqui."
+                actionLabel="Ver minhas provas"
+                actionTo="/admin/events"
+              />
+            </div>
+          )}
+
+          {metrics.topEvents.length > 0 && (
+          <div className="mt-8 bg-card border border-border rounded-xl p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-lg font-bold">{isAdmin ? "Receita por prova" : "Desempenho por prova"}</h2>
+              <h2 className="font-display text-lg font-bold">Desempenho por prova</h2>
               <Button asChild variant="ghost" size="sm">
                 <Link to="/admin/event-signups">
                   Ver inscrições <ArrowRight className="w-4 h-4" />
                 </Link>
               </Button>
             </div>
-            {metrics.topEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground mt-4">
-                Nenhuma inscrição no período selecionado.
-              </p>
-            ) : (
               <div className="mt-4 space-y-4">
                 {metrics.topEvents.map((e) => (
                   <div key={e.name}>
@@ -413,23 +722,23 @@ const AdminDashboard = () => {
                   </div>
                 ))}
               </div>
-            )}
           </div>
+          )}
         </>
       )}
 
       {isAdmin && (
         <>
-      <h2 className="font-display text-lg font-bold mt-10">Conteúdo do site</h2>
-      <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <MiniCard title="Planos" count={plans.length} to="/admin/plans" />
-        <MiniCard title="Treinos" count={trainings.length} to="/admin/trainings" />
-        <MiniCard title="Provas" count={eventsList.length} to="/admin/events" />
-        <MiniCard title="Produtos" count={products.length} to="/admin/products" />
-        <MiniCard title="Fotos" count={gallery.length} to="/admin/gallery" />
-        <MiniCard title="Depoimentos" count={testimonials.length} to="/admin/testimonials" />
-        <MiniCard title="FAQs" count={faqs.length} to="/admin/faqs" />
-      </div>
+          <h2 className="font-display text-lg font-bold mt-10">Conteúdo do site</h2>
+          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MiniCard title="Planos" count={plans.length} to="/admin/plans" />
+            <MiniCard title="Treinos" count={trainings.length} to="/admin/trainings" />
+            <MiniCard title="Provas" count={eventsList.length} to="/admin/events" />
+            <MiniCard title="Produtos" count={products.length} to="/admin/products" />
+            <MiniCard title="Fotos" count={gallery.length} to="/admin/gallery" />
+            <MiniCard title="Depoimentos" count={testimonials.length} to="/admin/testimonials" />
+            <MiniCard title="FAQs" count={faqs.length} to="/admin/faqs" />
+          </div>
         </>
       )}
     </div>

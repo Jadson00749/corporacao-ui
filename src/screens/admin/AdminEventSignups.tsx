@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, ClipboardList } from "lucide-react";
 import { exportSignupsXlsx } from "@/lib/exportSignupsXlsx";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { isMainOrg } from "@/hooks/useOrganizerStats";
+import { useSearchParams } from "@/lib/router-compat";
+import { EmptyState, ErrorState } from "@/components/site/EmptyState";
 
 
 type Row = {
@@ -57,9 +59,15 @@ const formatKitOption = (value: string) => {
 
 const AdminEventSignups = () => {
   const { isAdmin, organizerId } = useAuth();
+  const [searchParams] = useSearchParams();
+  const statusFromUrl = searchParams.get("status") || "all";
+  const initialStatus =
+    statusFromUrl === "pendente" || statusFromUrl === "confirmada" || statusFromUrl === "cancelada"
+      ? statusFromUrl
+      : "all";
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
   const [genderFilter, setGenderFilter] = useState<"all" | "F" | "M">("all");
   const [ownership, setOwnership] = useState<"all" | "corp" | "external">("all");
   const [orgFilter, setOrgFilter] = useState<string>("all");
@@ -88,7 +96,7 @@ const AdminEventSignups = () => {
 
   const eventIds = useMemo(() => (events as any[]).map((e) => e.id), [events]);
 
-  const { data: signups = [], isLoading, refetch } = useQuery({
+  const { data: signups = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["admin_event_signups", isAdmin ? "all" : organizerId, eventIds.join(",")],
     enabled: isAdmin || (!!organizerId && events.length >= 0),
     queryFn: async (): Promise<Row[]> => {
@@ -148,7 +156,11 @@ const AdminEventSignups = () => {
         if (orgFilter === "corp" && !own.corp) return false;
         if (orgFilter !== "all" && orgFilter !== "corp" && own.organizerId !== orgFilter) return false;
       }
-      if (statusFilter !== "all" && statusFilter !== "cancelada" && status !== statusFilter) return false;
+      if (statusFilter === "pendente") {
+        if (status === "confirmada" || status === "cancelada") return false;
+      } else if (statusFilter !== "all" && statusFilter !== "cancelada" && status !== statusFilter) {
+        return false;
+      }
       if (search) {
         const q = search.toLowerCase();
         const hay = `${(r as any).participant_full_name || ""} ${r.profiles?.full_name || ""} ${r.profiles?.email || ""} ${r.profiles?.cpf || ""} ${r.events?.name || ""}`.toLowerCase();
@@ -334,8 +346,22 @@ const AdminEventSignups = () => {
 
       {isLoading ? (
         <Skeleton className="h-64" />
+      ) : isError ? (
+        <ErrorState
+          title="Não foi possível carregar as inscrições"
+          description="Tente novamente. Se o problema continuar, verifique sua conexão."
+          onRetry={() => refetch()}
+        />
       ) : filtered.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Nenhuma inscrição encontrada.</p>
+        <EmptyState
+          icon={ClipboardList}
+          title="Nenhuma inscrição encontrada"
+          description={
+            statusFilter !== "all" || search || eventFilter !== "all"
+              ? "Nada corresponde aos filtros atuais. Ajuste a busca ou o status e tente de novo."
+              : "Quando houver inscrições nas provas, elas aparecem aqui para conferência e confirmação."
+          }
+        />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-sm">

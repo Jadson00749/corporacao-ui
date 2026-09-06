@@ -11,6 +11,13 @@ import { toast } from "sonner";
 import { OrganizersTabs } from "@/components/admin/OrganizersTabs";
 import { brl } from "@/hooks/useOrganizerStats";
 import { cn } from "@/lib/utils";
+import { useSearchParams } from "@/lib/router-compat";
+import { EmptyState } from "@/components/site/EmptyState";
+import {
+  RENTAL_TIMELINE_STEPS,
+  StatusTimeline,
+  rentalTimelineIndex,
+} from "@/components/site/StatusTimeline";
 import {
   ORDER_COLUMNS,
   ORDER_COLUMNS_WITH_REQUESTED,
@@ -47,8 +54,14 @@ const orderRef = (o: AdminOrder) => o.contract_number || o.id.slice(0, 8).toUppe
 
 const AdminRentalOrders = () => {
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const statusFromUrl = searchParams.get("status");
+  const initialStatus =
+    statusFromUrl && (RENTAL_STATUSES as readonly string[]).includes(statusFromUrl)
+      ? statusFromUrl
+      : "all";
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
   const [open, setOpen] = useState<AdminOrder | null>(null);
 
   const { data: rows = [], isLoading } = useQuery({
@@ -174,7 +187,16 @@ const AdminRentalOrders = () => {
           </p>
         </div>
       ) : filtered.length === 0 ? (
-        <p className="mt-5 text-sm text-muted-foreground">Nenhum pedido encontrado para este filtro.</p>
+        <EmptyState
+          className="mt-5"
+          icon={ClipboardList}
+          title="Nenhum pedido encontrado"
+          description={
+            statusFilter !== "all" || search
+              ? "Nada corresponde aos filtros. Limpe a busca ou mude o status."
+              : "Quando organizadores solicitarem estruturas, os pedidos aparecem aqui."
+          }
+        />
       ) : (
         <>
           <div className="mt-5 hidden md:block overflow-x-auto rounded-xl border border-border">
@@ -303,6 +325,15 @@ const AdminRentalOrders = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {statusOf(open.status) !== "cancelled" && statusOf(open.status) !== "draft" && (
+                  <div className="mt-3 rounded-xl border border-border/60 bg-muted/30 px-3 py-3">
+                    <StatusTimeline
+                      steps={RENTAL_TIMELINE_STEPS}
+                      currentIndex={rentalTimelineIndex(open.status).index}
+                      failed={rentalTimelineIndex(open.status).failed}
+                    />
+                  </div>
+                )}
               </div>
 
               {itemsLoading ? (

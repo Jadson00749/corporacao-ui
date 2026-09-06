@@ -114,7 +114,9 @@ const CompletarCadastro = () => {
     }
     await qc.invalidateQueries({ queryKey: ["profile", user.id] });
     toast.success("Cadastro concluído!");
-    try { localStorage.setItem("show_welcome", "1"); } catch {}
+    try {
+      localStorage.setItem("show_welcome", "1");
+    } catch {}
     navigate("/minha-conta", { replace: true });
   };
 
@@ -126,27 +128,30 @@ const CompletarCadastro = () => {
         title="Complete seu cadastro | Corporação Assessoria"
         description="Finalize seu cadastro para se inscrever em provas e treinos."
       />
-      <section className="section-padding pt-32">
+      <section className="px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-28 sm:section-padding sm:pt-32">
         <div className="container-page max-w-3xl">
-          <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-card">
-            <div className="flex items-center gap-4 mb-6">
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-8">
+            <div className="mb-5 flex items-start gap-3 sm:mb-6 sm:items-center sm:gap-4">
               {avatar ? (
                 <img
                   src={avatar}
                   alt={`Foto de ${googleName || "perfil"}`}
-                  className="w-14 h-14 rounded-full object-cover border border-border"
+                  className="h-12 w-12 shrink-0 rounded-full border border-border object-cover sm:h-14 sm:w-14"
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center font-display text-xl font-bold">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary font-display text-lg font-bold sm:h-14 sm:w-14 sm:text-xl">
                   {initials}
                 </div>
               )}
-              <div>
-                <h1 className="font-display text-2xl font-bold">Complete seu cadastro</h1>
-                <p className="text-sm text-muted-foreground">
-                  Seu acesso foi realizado. Precisamos apenas de algumas informações para que você
-                  possa se inscrever em provas e treinos.
+              <div className="min-w-0">
+                <h1 className="font-display text-xl font-bold sm:text-2xl">Complete seu cadastro</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  <span className="sm:hidden">Faltam alguns dados para você se inscrever em provas e treinos.</span>
+                  <span className="hidden sm:inline">
+                    Seu acesso foi realizado. Precisamos apenas de algumas informações para que você
+                    possa se inscrever em provas e treinos.
+                  </span>
                 </p>
               </div>
             </div>
@@ -159,11 +164,22 @@ const CompletarCadastro = () => {
               </div>
             ) : (
               <FormProvider {...methods}>
-                <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-5">
+                <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-5 pb-24 sm:pb-0">
                   <ProfileFields emailReadOnly={!!user.email} />
-                  <Button type="submit" variant="brand" size="lg" className="w-full" disabled={submitting}>
-                    {submitting ? "Salvando..." : "Finalizar cadastro"}
-                  </Button>
+                  <div
+                    className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none"
+                    style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+                  >
+                    <Button
+                      type="submit"
+                      variant="brand"
+                      size="lg"
+                      className="h-12 w-full touch-manipulation"
+                      disabled={submitting}
+                    >
+                      {submitting ? "Salvando..." : "Finalizar cadastro"}
+                    </Button>
+                  </div>
                 </form>
               </FormProvider>
             )}

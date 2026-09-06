@@ -18,11 +18,10 @@ import { profileSchema, ProfileValues } from "@/lib/profileSchema";
 import { isProfileComplete } from "@/lib/profileComplete";
 import { onlyDigits } from "@/lib/cpf";
 import { signupValue } from "@/lib/exportSignupsXlsx";
+import { formatBRL } from "@/lib/eventPricing";
 import { buildSignupWhatsMessage } from "@/lib/signupWhatsMessage";
 import { toast } from "sonner";
 import {
-  Calendar,
-  MapPin,
   LogOut,
   MessageCircle,
   ChevronRight,
@@ -34,7 +33,6 @@ import {
   UserRound,
   ClipboardList,
   Package,
-
 } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useEventPayment, whatsappLinkFor } from "@/lib/eventPayment";
@@ -45,6 +43,14 @@ import type { EventSignup } from "@/hooks/useProfile";
 import { ParticipantsPanel } from "@/components/account/ParticipantsPanel";
 import { CompleteParticipantCard } from "@/components/account/CompleteParticipantCard";
 import { TabsCoachmark } from "@/components/site/TabsCoachmark";
+import { AttentionNeeded, type AttentionItem } from "@/components/site/AttentionNeeded";
+import { EmptyState } from "@/components/site/EmptyState";
+import {
+  SIGNUP_TIMELINE_STEPS,
+  StatusTimeline,
+  signupTimelineIndex,
+} from "@/components/site/StatusTimeline";
+import { incompleteKidsSignups } from "@/lib/participantCompletion";
 
 
 const today = () => new Date();
@@ -164,13 +170,51 @@ const MinhaConta = () => {
       ? confirmedSignups
       : signups;
 
+  const kidsIncomplete = incompleteKidsSignups(signups);
+
+  const attentionItems = useMemo((): AttentionItem[] => {
+    const items: AttentionItem[] = [];
+    // Cadastro incompleto já tem IncompleteProfileBanner — não duplicar aqui.
+    if (pendingSignups.length > 0) {
+      items.push({
+        id: "pending-pay",
+        title:
+          pendingSignups.length === 1
+            ? "1 inscrição aguardando pagamento"
+            : `${pendingSignups.length} inscrições aguardando pagamento`,
+        description: "Pague via PIX e envie o comprovante para confirmar.",
+        onClick: () => {
+          setActiveTab("signups");
+          setStatusFilter("pending");
+          setTimeout(() => signupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+        },
+      });
+    }
+    if (kidsIncomplete.length > 0) {
+      items.push({
+        id: "kids-data",
+        title:
+          kidsIncomplete.length === 1
+            ? "Dados do participante incompletos"
+            : `${kidsIncomplete.length} participantes com dados incompletos`,
+        description: "Informe nome e data de nascimento para classificação Kids.",
+        onClick: () => {
+          setActiveTab("signups");
+          setTimeout(() => signupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+        },
+      });
+    }
+    return items;
+  }, [pendingSignups.length, kidsIncomplete.length]);
+
 
 
   return (
     <Layout>
       <SEO title="Minha Corporação | Corporação Assessoria" description="Gerencie seus dados, treinos, provas e inscrições." />
-      <WelcomeDialog firstName={firstName} />
-      <OnboardingTour />
+      {/* Prioridade: banner completar cadastro → welcome → tour conta → coachmark abas */}
+      {profileComplete && <WelcomeDialog firstName={firstName} />}
+      {profileComplete && <OnboardingTour />}
       <section className="section-padding pt-28 md:pt-32">
         <div className="container-page max-w-6xl">
           {/* Header */}
@@ -197,6 +241,8 @@ const MinhaConta = () => {
 
           <IncompleteProfileBanner className="mb-6 rounded-2xl border" />
 
+          <AttentionNeeded items={attentionItems} className="mb-6" />
+
           <CompleteParticipantCard
             signups={signups}
             onSaved={() => {
@@ -207,26 +253,22 @@ const MinhaConta = () => {
 
           <div className="flex flex-col">
 
-          {/* Contador compacto (mobile) */}
-          <p className="order-1 md:hidden mb-3 text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">{signups.length}</span> inscriç{signups.length === 1 ? "ão" : "ões"}
-            {pendingSignups.length > 0 && (
-              <> • <span className="font-semibold text-warning">{pendingSignups.length}</span> aguardando pagamento</>
-            )}
-          </p>
-
-          {/* Quick stats row */}
-          <div className="order-4 md:order-1 hidden md:grid grid-cols-3 gap-2.5 md:gap-4 mb-6 md:mb-8">
+          {/* Quick stats — compactos no mobile, cards no desktop */}
+          <div className="order-1 mb-4 grid grid-cols-3 gap-1.5 sm:gap-2.5 md:mb-8 md:gap-4">
             <button
               type="button"
               onClick={() => {
                 setActiveTab("signups");
                 signupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
-              className="bg-card border border-border/60 rounded-2xl p-3 md:p-4 text-center transition-colors hover:border-brand/40"
+              className="rounded-xl border border-border/60 bg-card px-1.5 py-2 text-center transition-colors hover:border-brand/40 sm:rounded-2xl sm:px-3 sm:py-3 md:p-4"
             >
-              <p className="text-2xl md:text-3xl font-display font-bold text-brand leading-none">{signups.length}</p>
-              <p className="text-[11px] md:text-xs text-muted-foreground mt-1.5 leading-tight">Inscrições</p>
+              <p className="font-display text-lg font-bold leading-none text-brand sm:text-2xl md:text-3xl">
+                {signups.length}
+              </p>
+              <p className="mt-1 text-[10px] leading-tight text-muted-foreground sm:mt-1.5 sm:text-[11px] md:text-xs">
+                Inscrições
+              </p>
             </button>
             <button
               type="button"
@@ -235,7 +277,7 @@ const MinhaConta = () => {
                 signupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
               className={cn(
-                "rounded-2xl border p-3 md:p-4 text-center transition-colors",
+                "rounded-xl border px-1.5 py-2 text-center transition-colors sm:rounded-2xl sm:px-3 sm:py-3 md:p-4",
                 pendingSignups.length > 0
                   ? "border-warning/40 bg-warning/10 hover:border-warning/70"
                   : "border-border/60 bg-card hover:border-brand/40"
@@ -243,18 +285,28 @@ const MinhaConta = () => {
             >
               <p
                 className={cn(
-                  "text-2xl md:text-3xl font-display font-bold leading-none",
+                  "font-display text-lg font-bold leading-none sm:text-2xl md:text-3xl",
                   pendingSignups.length > 0 ? "text-warning" : "text-brand"
                 )}
               >
                 {pendingSignups.length}
               </p>
-              <p className="text-[11px] md:text-xs text-muted-foreground mt-1.5 leading-tight">Aguardando pagamento</p>
+              <p className="mt-1 text-[10px] leading-tight text-muted-foreground sm:mt-1.5 sm:text-[11px] md:text-xs">
+                <span className="sm:hidden">Aguardando</span>
+                <span className="hidden sm:inline">Aguardando pagamento</span>
+              </p>
             </button>
-            <div className="bg-card border border-border/60 rounded-2xl p-3 md:p-4 text-center">
-              <p className="text-2xl md:text-3xl font-display font-bold text-brand leading-none">{upcomingSignups.length}</p>
-              <p className="text-[11px] md:text-xs text-muted-foreground mt-1.5 leading-tight">Próximas provas</p>
-            </div>
+            <Link
+              to="/provas"
+              className="rounded-xl border border-border/60 bg-card px-1.5 py-2 text-center transition-colors hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 sm:rounded-2xl sm:px-3 sm:py-3 md:p-4"
+            >
+              <p className="font-display text-lg font-bold leading-none text-brand sm:text-2xl md:text-3xl">
+                {upcomingSignups.length}
+              </p>
+              <p className="mt-1 text-[10px] leading-tight text-muted-foreground sm:mt-1.5 sm:text-[11px] md:text-xs">
+                Próximas provas
+              </p>
+            </Link>
           </div>
 
 
@@ -389,20 +441,21 @@ const MinhaConta = () => {
             </div>
 
             <TabsCoachmark
+              enabled={profileComplete && tabsMounted}
               steps={[
                 {
                   el: tabsMounted ? tabSignupsRef.current : null,
-                  title: "Suas provas ficam aqui 🏃",
+                  title: "Suas provas ficam aqui",
                   text: "Acompanhe inscrições, pagamentos e confirmações.",
                 },
                 {
                   el: tabsMounted ? tabParticipantsRef.current : null,
-                  title: "Inscreva sua turma mais rápido 👥",
-                  text: "Salve familiares, amigos ou alunos para reutilizar os dados nas próximas provas.",
+                  title: "Inscreva sua turma mais rápido",
+                  text: "Salve familiares, amigos ou alunos para reutilizar nas próximas provas.",
                 },
                 {
                   el: tabsMounted ? tabDataRef.current : null,
-                  title: "Seus dados, sempre atualizados ✓",
+                  title: "Seus dados atualizados",
                   text: "Consulte e atualize as informações da sua conta.",
                 },
               ]}
@@ -423,10 +476,10 @@ const MinhaConta = () => {
                   </div>
 
                   {signups.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1">
+                    <div className="mb-4 -mx-1 flex gap-2 overflow-x-auto px-1 no-scrollbar">
                       {([
                         ["all", `Todas (${signups.length})`],
-                        ["pending", `Aguardando pagamento (${pendingSignups.length})`],
+                        ["pending", `Pendentes (${pendingSignups.length})`],
                         ["confirmed", `Confirmadas (${confirmedSignups.length})`],
                       ] as const).map(([key, label]) => (
                         <button
@@ -434,9 +487,9 @@ const MinhaConta = () => {
                           type="button"
                           onClick={() => setStatusFilter(key)}
                           className={cn(
-                            "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                            "min-h-9 shrink-0 touch-manipulation rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
                             statusFilter === key
-                              ? "border-brand bg-brand/10 text-brand"
+                              ? "border-brand/50 bg-brand/10 text-brand shadow-sm"
                               : "border-border/60 text-muted-foreground hover:text-foreground"
                           )}
                         >
@@ -452,18 +505,17 @@ const MinhaConta = () => {
                       <Skeleton className="h-24" />
                     </div>
                   ) : signups.length === 0 ? (
-                    <div className="text-center py-10 md:py-14">
-                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                        <ClipboardList className="w-7 h-7 text-muted-foreground" />
-                      </div>
-                      <p className="font-display font-semibold">Você ainda não tem inscrições</p>
-                      <p className="text-sm text-muted-foreground mb-4">Escolha uma prova e faça sua primeira inscrição.</p>
-                      <Button asChild variant="brand"><Link to="/provas">Ver provas</Link></Button>
-                    </div>
+                    <EmptyState
+                      icon={ClipboardList}
+                      title="Você ainda não tem inscrições"
+                      description="Escolha uma prova e faça sua primeira inscrição. O status e o pagamento ficam todos aqui."
+                      actionLabel="Ver provas"
+                      actionTo="/provas"
+                    />
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-3 pb-16 md:pb-0">
                       {filteredSignups.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma inscrição neste filtro.</p>
+                        <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma inscrição neste filtro.</p>
                       ) : (
                         filteredSignups.map((s) => (
                           <SignupCard
@@ -475,7 +527,7 @@ const MinhaConta = () => {
                           />
                         ))
                       )}
-                      <Button asChild variant="outline" className="w-full min-h-11 mt-1">
+                      <Button asChild variant="outline" className="mt-1 min-h-11 w-full">
                         <Link to="/provas">+ Inscrever outra pessoa</Link>
                       </Button>
                     </div>
@@ -544,7 +596,8 @@ const SignupCard = ({
   const kits = parseKits(s.kit_option);
   const kitDelivery = (s.events?.kit_delivery || "").trim();
   const kitInfo = (s.events?.kit_info || "").trim();
-  const athlete = s.participant_full_name || s.events?.name || "Prova";
+  const eventName = s.events?.name || "Prova";
+  const participantName = (s.participant_full_name || "").trim();
 
   // Valor da inscrição a partir do preço da modalidade no evento + extras do kit.
   const kitExtra = Array.isArray(pricing?.kitOptions)
@@ -575,9 +628,11 @@ const SignupCard = ({
   return (
     <article
       className={cn(
-        "rounded-2xl border bg-background p-3.5 sm:p-4 transition-shadow",
-        isPending ? "border-warning/40" : isConfirmed ? "border-success/30" : "border-border/60",
-        isCancelled && "opacity-60",
+        "rounded-xl border bg-background px-3.5 py-3 transition-shadow sm:rounded-2xl sm:px-4 sm:py-3.5",
+        isPending && "border-warning/40",
+        isConfirmed && "border-success/35 bg-success/[0.03]",
+        isCancelled && "border-border/60 opacity-60",
+        !isPending && !isConfirmed && !isCancelled && "border-border/60",
         highlight && "ring-2 ring-brand ring-offset-2 ring-offset-background"
       )}
     >
@@ -587,58 +642,90 @@ const SignupCard = ({
         </p>
       )}
 
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="font-display text-base sm:text-lg font-bold leading-snug break-words">{athlete}</h3>
-          {s.participant_full_name && (
-            <p className="text-sm text-muted-foreground break-words">{s.events?.name || "Prova"}</p>
-          )}
-          <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground break-words">
+      {/* Status no topo — pendente bem visível; confirmada como estado positivo */}
+      {isPending && (
+        <p className="mb-2 inline-flex rounded-full border border-warning/40 bg-warning/15 px-2.5 py-1 text-[11px] font-semibold text-warning">
+          Aguardando pagamento
+        </p>
+      )}
+      {isConfirmed && (
+        <p className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-success/35 bg-success/12 px-2.5 py-1 text-[11px] font-semibold text-success">
+          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+          Inscrição confirmada
+        </p>
+      )}
+      {isCancelled && (
+        <p className="mb-2 inline-flex rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+          Cancelada
+        </p>
+      )}
+
+      <div className="min-w-0 space-y-1">
+        <h3 className="break-words font-display text-base font-bold leading-snug sm:text-lg">{eventName}</h3>
+        <p className="break-words text-sm text-foreground/90">
+          <span className="text-muted-foreground">Participante:</span>{" "}
+          <span className="font-medium">{participantName || "—"}</span>
+        </p>
+        {(modality || category) && (
+          <p className="break-words text-xs text-muted-foreground sm:text-sm">
             {[modality, category].filter(Boolean).join(" · ")}
           </p>
-        </div>
-        <span
-          className={cn(
-            "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-tight text-center",
-            isConfirmed
-              ? "bg-success/15 text-success border-success/40"
-              : isCancelled
-              ? "bg-muted text-muted-foreground border-border"
-              : "bg-warning/15 text-warning border-warning/40"
-          )}
-        >
-          {isConfirmed ? "🟢 Confirmada" : isCancelled ? "⚪ Cancelada" : "🟡 Aguardando pagamento"}
-        </span>
+        )}
+        {signupTotal > 0 && (
+          <p className="pt-0.5 text-sm font-semibold tabular-nums text-foreground">
+            {formatBRL(signupTotal)}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-3 rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5">
+        <StatusTimeline
+          steps={
+            isCancelled
+              ? [
+                  { id: "created", label: "Inscrição criada" },
+                  { id: "cancelled", label: "Cancelada" },
+                ]
+              : SIGNUP_TIMELINE_STEPS
+          }
+          currentIndex={isCancelled ? 1 : signupTimelineIndex(s.status).index}
+          failed={isCancelled}
+        />
       </div>
 
       {isPending && (
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-stretch">
           {s.events?.id && (
-            <Button asChild variant="brand" className="min-h-11 flex-1">
-              <Link to={`/provas/${s.events.id}/inscricao?retomar=${s.id}`}>Pagar agora</Link>
+            <Button asChild variant="brand" className="h-11 min-h-11 w-full flex-1 touch-manipulation sm:flex-[1.4]">
+              <Link to={`/provas/${s.events.id}/inscricao?retomar=${s.id}`}>Pagar via PIX</Link>
             </Button>
           )}
           {proofLink && (
-            <Button asChild variant="outline" className="min-h-11 flex-1 sm:flex-none">
+            <Button
+              asChild
+              variant="outline"
+              className="h-11 min-h-11 w-full touch-manipulation text-muted-foreground sm:w-auto sm:flex-1"
+            >
               <a
                 href={proofLink}
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Enviar comprovante no WhatsApp"
               >
-                <MessageCircle className="w-4 h-4" /> Enviar comprovante
+                <MessageCircle className="h-4 w-4" /> Enviar comprovante
               </a>
             </Button>
           )}
         </div>
       )}
 
-      <details className="group mt-2.5">
-        <summary className="cursor-pointer list-none flex items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground py-1.5">
-          <span>Ver detalhes</span>
-          <ChevronRight className="w-4 h-4 group-open:rotate-90 transition-transform" />
+      <details className="group mt-2">
+        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between py-1.5 text-sm font-medium text-muted-foreground touch-manipulation hover:text-foreground">
+          <span>Detalhes da inscrição</span>
+          <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" />
         </summary>
-        <div className="pt-2 space-y-1.5 text-sm border-t border-border/60 mt-1">
+        <div className="mt-1 space-y-1.5 border-t border-border/60 pt-2 text-sm">
+          <DetailRow label="Participante" value={participantName} />
           <DetailRow label="Modalidade" value={modality} />
           <DetailRow label="Categoria" value={category} />
           <DetailRow label="Kit" value={kits.join(", ")} />
@@ -651,11 +738,13 @@ const SignupCard = ({
           {isConfirmed && (kitDelivery || kitInfo) && (
             <div className="mt-2.5 rounded-xl border border-brand/25 bg-brand/5 p-3">
               <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-brand">
-                <Package className="w-4 h-4" /> Retirada do kit
+                <Package className="h-4 w-4" /> Retirada do kit
               </p>
-              {kitDelivery && <p className="mt-1.5 whitespace-pre-line text-sm font-medium break-words">{kitDelivery}</p>}
+              {kitDelivery && (
+                <p className="mt-1.5 whitespace-pre-line break-words text-sm font-medium">{kitDelivery}</p>
+              )}
               {kitInfo && (
-                <p className="mt-1.5 whitespace-pre-line text-sm text-muted-foreground break-words">{kitInfo}</p>
+                <p className="mt-1.5 whitespace-pre-line break-words text-sm text-muted-foreground">{kitInfo}</p>
               )}
             </div>
           )}

@@ -925,6 +925,13 @@ const ProvaInscricao = () => {
                       amount={total}
                       txid={`INSC${String(signupId || event.id).replace(/\D/g, "").slice(0, 10)}`}
                       instructions={payment.payment_instructions}
+                      summary={{
+                        eventName: event.name,
+                        participant: pName,
+                        modality: distance,
+                        organizerName: eventPayment?.organizer_name || payment.pix_recipient,
+                        isPartner: !!eventPayment?.is_partner,
+                      }}
                     />
                   </div>
 
@@ -934,9 +941,9 @@ const ProvaInscricao = () => {
                     </p>
                     {proofLink ? (
                       <>
-                        <Button asChild variant="brand" size="lg" className="w-full">
+                        <Button asChild variant="outline" size="lg" className="w-full">
                           <a href={proofLink} target="_blank" rel="noreferrer">
-                            <MessageCircle className="w-4 h-4" /> Enviar comprovante no WhatsApp
+                            <MessageCircle className="w-4 h-4" /> Enviar comprovante
                           </a>
                         </Button>
                         {eventPayment?.is_partner && eventPayment.organizer_name && (
