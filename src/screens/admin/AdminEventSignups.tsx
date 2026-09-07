@@ -98,12 +98,13 @@ const AdminEventSignups = () => {
   const { isAdmin, organizerId } = useAuth();
   const [searchParams] = useSearchParams();
   const statusFromUrl = searchParams.get("status") || "all";
+  const eventFromUrl = searchParams.get("event") || "all";
   const initialStatus =
     statusFromUrl === "pendente" || statusFromUrl === "confirmada" || statusFromUrl === "cancelada"
       ? statusFromUrl
       : "all";
   const [search, setSearch] = useState("");
-  const [eventFilter, setEventFilter] = useState<string>("all");
+  const [eventFilter, setEventFilter] = useState<string>(eventFromUrl);
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
   const [genderFilter, setGenderFilter] = useState<"all" | "F" | "M" | "kids">("all");
   const [ownership, setOwnership] = useState<"all" | "corp" | "external">("all");

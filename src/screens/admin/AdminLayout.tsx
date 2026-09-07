@@ -369,7 +369,7 @@ const AdminLayout = () => {
             <NavItemLink key={it.to} item={it} label={it.label} compact />
           ))}
         </div>
-        <div className="p-6 md:p-10 max-w-7xl w-full">
+        <div className="w-full max-w-[1600px] p-5 md:p-8 lg:p-10">
           <Outlet />
         </div>
       </main>
