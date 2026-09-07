@@ -194,7 +194,7 @@ export const PlanCard = ({ plan, monthlyReference }: Props) => {
         )}
         size="lg"
       >
-        <a href={whatsappLink(plan.ctaMessage)} target="_blank" rel="noreferrer">
+        <a data-whatsapp-cta href={whatsappLink(plan.ctaMessage)} target="_blank" rel="noreferrer">
           Quero começar agora
         </a>
       </Button>

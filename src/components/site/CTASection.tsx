@@ -63,6 +63,7 @@ export const CTASection = () => {
           <div className="mt-10 flex flex-wrap gap-4 justify-center">
             <Button asChild variant="brand" size="lg" className="rounded-full">
               <a
+                data-whatsapp-cta
                 href={whatsappLink(
                   "Olá! Quero treinar com a equipe da Corporação."
                 )}

@@ -168,7 +168,7 @@ const CompletarCadastro = () => {
                 <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-5 pb-24 sm:pb-0">
                   <ProfileFields emailReadOnly={!!user.email} />
                   <div
-                    className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none"
+                    className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-4 py-3 sm:static sm:border-0 sm:bg-transparent sm:p-0"
                     style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
                   >
                     <Button

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -10,10 +11,24 @@ type Props = {
   loading?: "lazy" | "eager";
 };
 
+const useIsMdUp = () => {
+  const [mdUp, setMdUp] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 768px)").matches : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const apply = () => setMdUp(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return mdUp;
+};
+
 /**
  * Moldura de banner que preserva a proporção original da imagem.
- * A imagem aparece inteira (object-contain) sobre um fundo desfocado
- * gerado da própria imagem — evita cortes em banners largos.
+ * Mobile: um único <img> + fundo sólido (sem 2ª requisição).
+ * Desktop: imagem inteira (object-contain) sobre blur da própria foto.
  */
 export const BannerFrame = ({
   src,
@@ -22,25 +37,37 @@ export const BannerFrame = ({
   imgClassName,
   children,
   loading = "lazy",
-}: Props) => (
-  <div className={cn("relative overflow-hidden bg-[#0b0b0b]", className)}>
-    {src && (
-      <>
-        <img
-          src={src}
-          alt=""
-          aria-hidden
-          loading={loading}
-          className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40"
-        />
-        <img
-          src={src}
-          alt={alt}
-          loading={loading}
-          className={cn("relative w-full h-full object-contain", imgClassName)}
-        />
-      </>
-    )}
-    {children}
-  </div>
-);
+}: Props) => {
+  const mdUp = useIsMdUp();
+
+  return (
+    <div className={cn("relative overflow-hidden bg-[#0b0b0b]", className)}>
+      {src && (
+        <>
+          {mdUp && (
+            <img
+              src={src}
+              alt=""
+              aria-hidden
+              loading={loading}
+              decoding="async"
+              className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
+            />
+          )}
+          <img
+            src={src}
+            alt={alt}
+            loading={loading}
+            decoding="async"
+            className={cn(
+              "relative h-full w-full",
+              mdUp ? "object-contain" : "object-cover",
+              imgClassName
+            )}
+          />
+        </>
+      )}
+      {children}
+    </div>
+  );
+};

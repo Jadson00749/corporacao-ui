@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-[color,background-color,box-shadow,transform,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.98] active:opacity-90",
   {
     variants: {
       variant: {
@@ -14,11 +14,11 @@ const buttonVariants = cva(
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        brand: "bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-[0_0_24px_hsl(var(--accent-brand)/0.55)] shadow-brand transition-all duration-300",
-        hero: "bg-brand text-brand-foreground hover:bg-brand-glow hover:shadow-[0_0_28px_hsl(var(--accent-brand)/0.6)] shadow-brand hover:scale-[1.02] transition-all duration-300",
-        outlineLight: "border-2 border-brand/70 text-white bg-white/5 backdrop-blur-sm hover:bg-brand hover:text-brand-foreground hover:border-brand transition-all duration-300",
-        whatsapp: "bg-success text-white hover:bg-success/90 shadow-card transition-all duration-300",
+        link: "text-primary underline-offset-4 hover:underline active:scale-100 active:opacity-80",
+        brand: "bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-[0_0_24px_hsl(var(--accent-brand)/0.55)] shadow-brand",
+        hero: "bg-brand text-brand-foreground hover:bg-brand-glow hover:shadow-[0_0_28px_hsl(var(--accent-brand)/0.6)] shadow-brand hover:scale-[1.02]",
+        outlineLight: "border-2 border-brand/70 text-white bg-white/5 backdrop-blur-sm hover:bg-brand hover:text-brand-foreground hover:border-brand",
+        whatsapp: "bg-success text-white hover:bg-success/90 shadow-card",
       },
       size: {
         default: "h-10 px-4 py-2",

@@ -34,6 +34,9 @@ const useHomeHighlights = () =>
 
 const isExternal = (url: string) => /^(https?:)?\/\//.test(url) || url.startsWith("mailto:") || url.startsWith("tel:");
 
+const isWhatsAppHref = (url: string) =>
+  /wa\.me\b|api\.whatsapp\.com\b|whatsapp\.com\/send\b/i.test(url);
+
 export const HomeHighlightCarousel = () => {
   const { data: items = [] } = useHomeHighlights();
   const [index, setIndex] = useState(0);
@@ -61,6 +64,7 @@ export const HomeHighlightCarousel = () => {
               const link = item.button_link?.trim();
               const hasLink = !!link;
               const external = hasLink && isExternal(link);
+              const isWa = hasLink && isWhatsAppHref(link);
 
               const ButtonEl = btn && hasLink ? (
                 external ? (
@@ -68,6 +72,7 @@ export const HomeHighlightCarousel = () => {
                     href={link}
                     target="_blank"
                     rel="noreferrer"
+                    {...(isWa ? { "data-whatsapp-cta": true } : {})}
                     onClick={(e) => e.stopPropagation()}
                     className="inline-flex items-center gap-2 rounded-full bg-brand text-brand-foreground px-6 h-12 text-sm font-semibold shadow-[0_10px_28px_-10px_hsl(var(--brand)/0.55)] hover:shadow-[0_14px_36px_-10px_hsl(var(--brand)/0.7)] active:scale-[0.98] transition-all"
                   >
@@ -133,6 +138,7 @@ export const HomeHighlightCarousel = () => {
                     href={link}
                     target="_blank"
                     rel="noreferrer"
+                    {...(isWa ? { "data-whatsapp-cta": true } : {})}
                     aria-label={item.title || "Abrir destaque"}
                     className="w-full shrink-0 block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >

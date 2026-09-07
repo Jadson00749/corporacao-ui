@@ -130,6 +130,7 @@ export const PlansHomeSection = () => {
           <div className="mt-7 flex flex-wrap gap-3 justify-center items-center">
             <Button asChild variant="brand" size="lg" className="rounded-full px-7">
               <a
+                data-whatsapp-cta
                 href={whatsappLink("Olá! Quero falar com o professor sobre os planos da Corporação.")}
                 target="_blank"
                 rel="noreferrer"

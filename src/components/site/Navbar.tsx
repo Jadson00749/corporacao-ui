@@ -23,7 +23,7 @@ const navItems = [
 export const Navbar = () => {
   const siteSettings = useSettings();
   const whatsappLink = useWhatsappLink();
-  const { user, isAdmin, isOrganizer } = useAuth();
+  const { user, isAdmin, isOrganizer, loading: authLoading } = useAuth();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
@@ -33,6 +33,9 @@ export const Navbar = () => {
   const overDarkHero = isHome && !scrolled && !open;
   /** Fundo legível: scrolled, menu aberto, ou página sem hero escuro. */
   const solidHeader = scrolled || open || !isHome;
+  const accountHref = user ? "/minha-conta" : "/auth";
+  const accountLabel = authLoading ? "Conta" : user ? "Minha conta" : "Entrar";
+  const brandMobile = siteSettings.brand.short || siteSettings.brand.name;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -74,17 +77,20 @@ export const Navbar = () => {
             )
       )}
     >
-      <div className="container-page flex h-[52px] md:h-[88px] items-center justify-between gap-3">
-        <Link to="/" className="flex items-center gap-2 md:gap-3 group" aria-label={siteSettings.brand.name}>
+      <div className="container-page flex h-[52px] md:h-[88px] items-center justify-between gap-2 sm:gap-3">
+        <Link to="/" className="flex min-w-0 items-center gap-2 md:gap-3 group" aria-label={siteSettings.brand.name}>
           <LogoMark
             className="w-8 h-8 md:w-11 md:h-11 shrink-0"
             alt={`${siteSettings.brand.name} logo`}
           />
-          <span className={cn(
-            "font-display font-semibold md:font-bold text-[15px] md:text-lg tracking-tight leading-tight transition-colors",
-            overDarkHero ? "text-white" : "text-foreground"
-          )}>
-            {siteSettings.brand.name}
+          <span
+            className={cn(
+              "font-display font-semibold md:font-bold text-[15px] md:text-lg tracking-tight leading-tight transition-colors truncate",
+              overDarkHero ? "text-white" : "text-foreground"
+            )}
+          >
+            <span className="md:hidden">{brandMobile}</span>
+            <span className="hidden md:inline">{siteSettings.brand.name}</span>
           </span>
         </Link>
 
@@ -134,7 +140,7 @@ export const Navbar = () => {
             </Button>
           )}
           <Button asChild variant="ghost" size="sm" className={cn("rounded-full", overDarkHero && "text-white hover:text-white hover:bg-white/10")}>
-            <Link to={user ? "/minha-conta" : "/auth"}>
+            <Link to={accountHref}>
               <User className="w-4 h-4" /> {user ? "Minha conta" : "Entrar"}
             </Link>
           </Button>
@@ -151,18 +157,31 @@ export const Navbar = () => {
         </div>
 
 
-        <div className="lg:hidden flex items-center gap-1">
+        <div className="lg:hidden flex items-center gap-0.5 shrink-0">
           <div className="hidden md:flex"><ThemeToggle onDark={overDarkHero} /></div>
-          <button
+          <Link
+            to={accountHref}
+            aria-label={accountLabel}
+            aria-busy={authLoading || undefined}
             className={cn(
-              "min-h-10 min-w-10 md:min-h-11 md:min-w-11 inline-flex items-center justify-center rounded-md transition-colors",
+              "inline-flex h-11 w-11 items-center justify-center rounded-md transition-colors active:scale-95 active:opacity-90",
+              overDarkHero ? "text-white" : "text-foreground",
+              authLoading && "opacity-60"
+            )}
+          >
+            <User className="h-5 w-5" aria-hidden />
+          </Link>
+          <button
+            type="button"
+            className={cn(
+              "inline-flex h-11 w-11 items-center justify-center rounded-md transition-colors active:scale-95 active:opacity-90",
               overDarkHero ? "text-white" : "text-foreground"
             )}
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Fechar menu" : "Abrir menu"}
             aria-expanded={open}
           >
-            {open ? <X className="w-5 h-5 md:w-6 md:h-6" /> : <Menu className="w-5 h-5 md:w-6 md:h-6" />}
+            {open ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
           </button>
         </div>
       </div>
@@ -208,7 +227,12 @@ export const Navbar = () => {
               </Button>
             )}
             <Button asChild variant="brand" size="lg" className="mt-2">
-              <a href={whatsappLink("Olá! Quero conhecer a Corporação Assessoria Esportiva.")} target="_blank" rel="noreferrer">
+              <a
+                data-whatsapp-cta
+                href={whatsappLink("Olá! Quero conhecer a Corporação Assessoria Esportiva.")}
+                target="_blank"
+                rel="noreferrer"
+              >
                 Fale no WhatsApp
               </a>
             </Button>

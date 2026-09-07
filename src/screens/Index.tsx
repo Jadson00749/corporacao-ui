@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Users, Target, HeartPulse, Trophy, Calendar, Camera, Clock, MapPin } from "lucide-react";
 import { Link } from "@/lib/router-compat";
+import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/site/Layout";
@@ -24,14 +25,17 @@ import { PartnersSection } from "@/components/site/PartnersSection";
 import { GoldSponsorsSection } from "@/components/site/GoldSponsorsSection";
 import { UpcomingRacesSection } from "@/components/site/UpcomingRacesSection";
 import { HomeHighlightCarousel } from "@/components/site/HomeHighlightCarousel";
-import { useSettings, useSettingsLoaded, useWhatsappLink } from "@/contexts/SettingsContext";
+import { useSettings, useWhatsappLink } from "@/contexts/SettingsContext";
 import {
   useTrainings,
   useEvents,
   useProducts,
   useTestimonials,
 } from "@/hooks/useContent";
-import heroAsset from "@/assets/hero-corporacao-portico.jpg.asset.json";
+/** Hero otimizado (mesma foto do portico). Original CDN ~10,7 MB / 6240×4160. */
+import heroMobileWebp from "@/assets/hero-corporacao-portico-mobile.webp";
+import heroDesktopWebp from "@/assets/hero-corporacao-portico-desktop.webp";
+import heroFallbackWebp from "@/assets/hero-corporacao-portico.webp";
 import quemSomosBg from "@/assets/quem-somos-duo.jpg.asset.json";
 import avatarLucas from "@/assets/coach-lucas.jpg";
 import avatarHelo from "@/assets/coach-helo.jpg";
@@ -39,7 +43,16 @@ import avatarDuo from "@/assets/coaches-duo.jpg";
 import avatarFund from "@/assets/fundadores.jpg";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 
-const heroImg = resolveMediaUrl(heroAsset.url);
+/** Detecta o hero pesado do CDN L5e (ou ausência de override no settings). */
+const isHeavyPorticoHero = (url?: string | null) => {
+  const u = (url || "").trim();
+  if (!u) return true;
+  return (
+    u.includes("hero-corporacao-portico.jpg") ||
+    u.includes("254407eb-f3fb-4d70-b8d3-ce8221cbc68f")
+  );
+};
+
 const quemSomosImg = resolveMediaUrl(quemSomosBg.url);
 
 const benefits = [
@@ -100,7 +113,6 @@ const NextTreinaoCard = ({ training }: { training: Training }) => (
 
 const Index = () => {
   const siteSettings = useSettings();
-  const settingsLoaded = useSettingsLoaded();
   const whatsappLink = useWhatsappLink();
 
   
@@ -123,6 +135,9 @@ const Index = () => {
     }
   };
 
+  const settingsHeroUrl = resolveMediaUrl(siteSettings.hero.image);
+  const useOptimizedHero = isHeavyPorticoHero(siteSettings.hero.image);
+
   const [showStickyCta, setShowStickyCta] = useState(false);
   useEffect(() => {
     const onScroll = () => setShowStickyCta(window.scrollY > 420);
@@ -141,28 +156,69 @@ const Index = () => {
       />
 
       {/* HERO */}
-      <section className="relative min-h-[86svh] sm:min-h-[100svh] flex items-end overflow-hidden bg-[#070707]">
-        {/* Imagem de fundo: leve blur no mobile p/ legibilidade */}
-        <div className="absolute inset-0 overflow-hidden">
-          {(settingsLoaded || !siteSettings.hero.image) && (
+      <section
+        id="home-hero"
+        className="relative overflow-hidden bg-[#070707] md:flex md:min-h-[100svh] md:items-end"
+      >
+        {/*
+          Imagem:
+          - Mobile: faixa no topo (corta céu/fios; pessoas claras, sem texto por cima)
+          - Desktop: full-bleed absoluto (inalterado)
+        */}
+        <div
+          className={cn(
+            "overflow-hidden bg-[#070707]",
+            "relative h-[min(50svh,400px)] w-full",
+            "md:absolute md:inset-0 md:h-auto"
+          )}
+        >
+          {useOptimizedHero ? (
             <img
-              key={siteSettings.hero.image || "fallback-hero"}
-              src={resolveMediaUrl(siteSettings.hero.image) || heroImg}
+              key="hero-portico-optimized"
+              src={heroFallbackWebp}
+              srcSet={`${heroMobileWebp} 1280w, ${heroFallbackWebp} 1600w, ${heroDesktopWebp} 1920w`}
+              sizes="100vw"
               alt="Equipe da Corporação Assessoria Esportiva correndo em grupo"
               fetchPriority="high"
-              decoding="sync"
+              decoding="async"
               loading="eager"
-              className="absolute inset-0 w-full h-full object-cover object-[68%_center] animate-hero-zoom [filter:contrast(1.14)_saturate(1.04)_brightness(0.92)_blur(1.5px)] md:[filter:contrast(1.05)_saturate(1.08)] animate-fade-in"
               width={1920}
               height={1280}
+              className={cn(
+                "absolute inset-0 h-full w-full object-cover",
+                // Mobile: faixa baixa → object-cover corta céu/asfalto; foco no grupo + arco
+                "object-[50%_62%] scale-[1.12] origin-center",
+                "md:object-[68%_center] md:scale-100",
+                "md:animate-hero-zoom md:[filter:contrast(1.05)_saturate(1.08)] md:animate-fade-in"
+              )}
+            />
+          ) : (
+            <img
+              key={settingsHeroUrl || "custom-hero"}
+              src={settingsHeroUrl}
+              alt="Equipe da Corporação Assessoria Esportiva correndo em grupo"
+              fetchPriority="high"
+              decoding="async"
+              loading="eager"
+              width={1920}
+              height={1280}
+              className={cn(
+                "absolute inset-0 h-full w-full object-cover",
+                "object-[50%_62%] scale-[1.12] origin-center",
+                "md:object-[68%_center] md:scale-100",
+                "md:animate-hero-zoom md:[filter:contrast(1.05)_saturate(1.08)] md:animate-fade-in"
+              )}
             />
           )}
+
+          {/* Fade suave só na junção foto → conteúdo (mobile) */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#070707] to-transparent md:hidden"
+          />
         </div>
 
-
-
-        {/* Overlay base no mobile + gradiente lateral no desktop */}
-        <div aria-hidden className="absolute inset-0 bg-black/50 md:hidden" />
+        {/* Overlays DESKTOP only (mobile sem cobrir a faixa de foto) */}
         <div
           aria-hidden
           className="absolute inset-0 hidden md:block"
@@ -179,29 +235,22 @@ const Index = () => {
               "radial-gradient(80% 60% at 22% 55%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 45%, transparent 75%)",
           }}
         />
-        {/* Cinematic overlay localizado atrás do texto (mobile) */}
         <div
           aria-hidden
-          className="absolute inset-0 md:hidden"
-          style={{
-            background:
-              "radial-gradient(130% 75% at 18% 62%, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.72) 40%, rgba(0,0,0,0.3) 72%, transparent 100%)",
-          }}
+          className="absolute inset-x-0 bottom-0 hidden h-48 bg-gradient-to-t from-black/45 via-black/10 to-transparent md:block"
         />
-        <div aria-hidden className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black via-black/55 to-transparent md:from-black/45 md:via-black/10 md:h-48" />
 
-
-        {/* Halo verde discreto, lateral */}
+        {/* Halo verde — desktop only */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-40 -left-32 w-[55vw] h-[55vw] max-w-[680px] max-h-[680px] rounded-full opacity-[0.22] blur-[140px]"
+          className="pointer-events-none absolute -bottom-40 -left-32 hidden w-[55vw] h-[55vw] max-w-[680px] max-h-[680px] rounded-full opacity-[0.22] blur-[140px] md:block"
           style={{ background: "radial-gradient(circle, hsl(var(--brand)) 0%, transparent 70%)" }}
         />
 
-        {/* Linhas de rota GPS abstratas (desktop) */}
+        {/* Linhas GPS (desktop) */}
         <svg
           aria-hidden
-          className="pointer-events-none absolute inset-0 w-full h-full opacity-[0.10] mix-blend-screen hidden md:block"
+          className="pointer-events-none absolute inset-0 hidden h-full w-full opacity-[0.10] mix-blend-screen md:block"
           preserveAspectRatio="none"
           viewBox="0 0 1600 900"
         >
@@ -210,164 +259,237 @@ const Index = () => {
         </svg>
 
         {/* Indicador esportivo (desktop) */}
-        <div className="hidden md:flex absolute top-28 right-10 lg:right-16 flex-col items-end gap-2 text-white/55 z-10">
+        <div className="absolute right-10 top-28 z-10 hidden flex-col items-end gap-2 text-white/55 md:flex lg:right-16">
           <div className="flex items-center gap-2 text-[10px] tracking-[0.32em] uppercase">
             <span className="relative flex">
               <span className="absolute inset-0 rounded-full bg-brand animate-ping opacity-60" />
-              <span className="relative w-1.5 h-1.5 rounded-full bg-brand" />
+              <span className="relative h-1.5 w-1.5 rounded-full bg-brand" />
             </span>
             São Paulo, BR
           </div>
-          <div className="text-[10px] tracking-[0.28em] uppercase text-white/35">
-            Pace 5ʹ20ʺ/km
-          </div>
+          <div className="text-[10px] tracking-[0.28em] uppercase text-white/35">Pace 5ʹ20ʺ/km</div>
         </div>
 
-        <div className="container-page relative pt-20 sm:pt-32 pb-14 sm:pb-24 md:pb-28 z-10">
-          <div className="relative max-w-2xl text-white animate-fade-up [animation-fill-mode:both]">
-            {/* Selo lateral vertical (desktop) */}
-            <div className="hidden md:flex flex-col items-start gap-3 absolute -left-10 top-2 bottom-2">
-              <span className="text-[10px] font-semibold tracking-[0.32em] uppercase text-brand-glow [writing-mode:vertical-rl] rotate-180">
-                Est. 2017
+        {/* ════════════ MOBILE HERO — conteúdo centralizado abaixo da foto ════════════ */}
+        <div className="container-page relative z-10 flex w-full flex-col items-center pb-3 pt-3 text-center md:hidden">
+          <div className="mx-auto w-full max-w-md animate-fade-up text-white [animation-fill-mode:both]">
+            <span className="mb-2.5 inline-flex items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/70">
+              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                <span className="absolute inset-0 rounded-full bg-brand opacity-60 animate-ping" />
+                <span className="relative h-1.5 w-1.5 rounded-full bg-brand shadow-[0_0_10px_hsl(var(--brand))]" />
               </span>
-              <span className="flex-1 w-px bg-gradient-to-b from-brand/60 via-white/15 to-transparent" />
-            </div>
-
-            {/* Eyebrow refinado */}
-            <span className="inline-flex items-center gap-2.5 text-[10px] sm:text-[11px] font-semibold tracking-[0.28em] sm:tracking-[0.32em] uppercase text-white/70 mb-3.5 sm:mb-7">
-              <span className="relative flex w-1.5 h-1.5">
-                <span className="absolute inset-0 rounded-full bg-brand animate-ping opacity-60" />
-                <span className="relative w-1.5 h-1.5 rounded-full bg-brand shadow-[0_0_10px_hsl(var(--brand))]" />
-              </span>
-              {siteSettings.hero.eyebrow}
+              Treino em grupo · Corrida & evolução
             </span>
 
-            <h1 className="font-display font-semibold leading-[1.02] tracking-[-0.025em] text-balance [text-shadow:0_2px_18px_rgba(0,0,0,0.55)] sm:[text-shadow:none] text-[1.7rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem]">
-              {siteSettings.hero.title}
-              <span className="block mt-1.5 sm:mt-3 font-light text-white/90 sm:text-white/80 text-[1.25rem] sm:text-[2.6rem] md:text-[3.4rem] lg:text-[4.2rem] leading-[1.15]">
-                {siteSettings.hero.titleAccent}
-              </span>
+            <h1 className="font-display text-[2.35rem] font-semibold leading-[1.02] tracking-[-0.03em] text-balance">
+              <span className="block">Você não</span>
+              <span className="block">treina sozinho.</span>
             </h1>
 
-            <p className="mt-3.5 sm:mt-7 text-[14px] sm:text-[15px] md:text-[16px] text-white/80 sm:text-white/70 max-w-[34ch] sm:max-w-[460px] leading-[1.6] sm:leading-[1.7] [text-shadow:0_1px_10px_rgba(0,0,0,0.6)] sm:[text-shadow:none] line-clamp-3 sm:line-clamp-none">
-              {siteSettings.hero.subtitle}
+            <p className="mx-auto mt-2.5 max-w-[26ch] text-[14px] leading-snug text-white/75">
+              Treino, corrida e evolução com um time de verdade.
             </p>
 
-
-            <div className="mt-5 sm:mt-10 flex flex-col sm:flex-row sm:flex-wrap gap-2.5 sm:gap-3 items-center sm:items-center">
+            <div className="mx-auto mt-5 flex w-full max-w-sm flex-col items-center gap-1">
               <Button
                 asChild
                 variant="brand"
                 size="lg"
-                className="rounded-full px-6 w-full sm:w-auto h-12 text-[14.5px] font-semibold shadow-[0_10px_28px_-10px_hsl(var(--brand)/0.55)] hover:shadow-[0_14px_36px_-10px_hsl(var(--brand)/0.7)] active:scale-[0.98] transition-all"
+                className="h-12 w-full rounded-full px-6 text-[15px] font-semibold shadow-[0_12px_32px_-12px_hsl(var(--brand)/0.65)]"
               >
-                <a href={whatsappLink("Olá! Quero treinar com a Corporação Assessoria Esportiva.")} target="_blank" rel="noreferrer">
-                  {siteSettings.hero.primaryCta} <ArrowRight className="w-4 h-4" />
+                <a
+                  data-whatsapp-cta
+                  href={whatsappLink("Olá! Quero treinar com a Corporação Assessoria Esportiva.")}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {siteSettings.hero.primaryCta} <ArrowRight className="h-4 w-4" />
                 </a>
               </Button>
               <a
                 href="#proximas-provas"
                 onClick={scrollToProvas}
-                className="md:hidden group inline-flex items-center justify-center sm:justify-start gap-1.5 h-10 sm:h-auto px-4 sm:px-0 rounded-full border border-white/15 sm:border-0 bg-white/[0.06] sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-0 text-[13px] sm:text-[13.5px] font-medium text-white/80 hover:text-white transition-colors"
+                className="inline-flex h-11 items-center justify-center gap-1 px-3 text-[13px] font-medium text-white/65 transition-colors active:scale-[0.98] active:opacity-80 hover:text-white"
               >
                 Ver próximas provas
-                <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                <ArrowRight className="h-3.5 w-3.5 opacity-80" />
               </a>
+            </div>
+
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <div className="flex -space-x-2.5">
+                {[avatarLucas, avatarHelo, avatarDuo, avatarFund].map((fallback, i) => {
+                  const src = siteSettings.images?.homeTeamAvatars?.[i] || fallback;
+                  return (
+                    <div
+                      key={i}
+                      className="h-9 w-9 overflow-hidden rounded-full border-2 border-black/50 ring-1 ring-white/15"
+                    >
+                      <img
+                        src={src}
+                        alt=""
+                        width={36}
+                        height={36}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        fetchPriority="low"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="max-w-[14rem] text-left text-[12.5px] leading-snug text-white/75">
+                <span className="font-semibold text-white">+120 atletas</span>
+                {" "}treinando com a Corporação
+              </p>
+            </div>
+
+            <div className="mt-3.5 grid grid-cols-3 gap-0 border-t border-white/12 pt-3">
+              {(siteSettings.hero?.stats ?? []).map((s, i) => {
+                const shortLabels = ["atletas", "anos", "provas"];
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "min-w-0 px-2 text-center first:pl-0 last:pr-0",
+                      i > 0 && "border-l border-white/12"
+                    )}
+                  >
+                    <div className="font-display text-[1.28rem] font-semibold leading-none tracking-[-0.03em] text-white">
+                      {s.value}
+                    </div>
+                    <div className="mt-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-white/68">
+                      {shortLabels[i] ?? s.label}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ════════════ DESKTOP HERO (intact) ════════════ */}
+        <div className="container-page relative z-10 hidden pb-28 pt-32 md:block">
+          <div className="relative max-w-2xl animate-fade-up text-white [animation-fill-mode:both]">
+            <div className="absolute -left-10 bottom-2 top-2 hidden flex-col items-start gap-3 md:flex">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.32em] text-brand-glow [writing-mode:vertical-rl] rotate-180">
+                Est. 2017
+              </span>
+              <span className="w-px flex-1 bg-gradient-to-b from-brand/60 via-white/15 to-transparent" />
+            </div>
+
+            <span className="mb-7 inline-flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/70">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inset-0 rounded-full bg-brand opacity-60 animate-ping" />
+                <span className="relative h-1.5 w-1.5 rounded-full bg-brand shadow-[0_0_10px_hsl(var(--brand))]" />
+              </span>
+              {siteSettings.hero.eyebrow}
+            </span>
+
+            <h1 className="font-display text-[3.4rem] font-semibold leading-[1.02] tracking-[-0.025em] text-balance lg:text-[4.2rem]">
+              {siteSettings.hero.title}
+              <span className="mt-3 block text-[3.4rem] font-light leading-[1.15] text-white/80 lg:text-[4.2rem]">
+                {siteSettings.hero.titleAccent}
+              </span>
+            </h1>
+
+            <p className="mt-7 max-w-[460px] text-[15px] leading-[1.7] text-white/70 md:text-[16px]">
+              {siteSettings.hero.subtitle}
+            </p>
+
+            <div className="mt-10 flex flex-row flex-wrap items-center gap-3">
+              <Button
+                asChild
+                variant="brand"
+                size="lg"
+                className="h-12 w-auto rounded-full px-6 text-[14.5px] font-semibold shadow-[0_10px_28px_-10px_hsl(var(--brand)/0.55)] transition-all hover:shadow-[0_14px_36px_-10px_hsl(var(--brand)/0.7)] active:scale-[0.98]"
+              >
+                <a
+                  data-whatsapp-cta
+                  href={whatsappLink("Olá! Quero treinar com a Corporação Assessoria Esportiva.")}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {siteSettings.hero.primaryCta} <ArrowRight className="h-4 w-4" />
+                </a>
+              </Button>
               <Link
                 to="/provas"
-                className="hidden md:inline-flex items-center justify-start gap-1.5 h-auto px-0 text-[13.5px] font-medium text-white/80 hover:text-white transition-colors group"
+                className="group inline-flex items-center justify-start gap-1.5 text-[13.5px] font-medium text-white/80 transition-colors hover:text-white"
               >
                 Ver próximas provas
-                <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
             </div>
 
-            {/* Prova social humana (mobile + desktop) */}
-            <div className="mt-5 sm:mt-9 flex items-center gap-2.5 sm:gap-3">
+            <div className="mt-9 flex items-center gap-3">
               <div className="flex -space-x-2">
                 {[avatarLucas, avatarHelo, avatarDuo, avatarFund].map((fallback, i) => {
                   const src = siteSettings.images?.homeTeamAvatars?.[i] || fallback;
                   return (
                     <div
                       key={i}
-                      className="w-8 h-8 sm:w-8 sm:h-8 rounded-full border-2 border-black/60 overflow-hidden ring-1 ring-white/10"
+                      className="h-8 w-8 overflow-hidden rounded-full border-2 border-black/60 ring-1 ring-white/10"
                     >
-                      <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      <img
+                        src={src}
+                        alt=""
+                        width={32}
+                        height={32}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        fetchPriority="low"
+                      />
                     </div>
                   );
                 })}
               </div>
-              <p className="text-[12.5px] sm:text-[13px] text-white/70 leading-snug">
-                <span className="text-white font-semibold">+120 atletas</span> treinando com a Corporação
+              <p className="text-[13px] leading-snug text-white/70">
+                <span className="font-semibold text-white">+120 atletas</span> treinando com a Corporação
               </p>
             </div>
 
-            {/* Stats mobile: bloco glass único */}
-            <div className="mt-5 sm:hidden rounded-2xl border border-white/[0.09] bg-black/55 backdrop-blur-xl px-1 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_24px_48px_-28px_rgba(0,0,0,0.85)]">
-              <div className="grid grid-cols-3 divide-x divide-white/[0.08]">
-                {(siteSettings.hero?.stats ?? []).map((s, i) => {
-                  const Icon = [Users, Calendar, Trophy][i] ?? Users;
-                  const mobileLabels = ["atletas", "anos de estrada", "provas"];
-                  const label = mobileLabels[i] ?? s.label;
-                  return (
-                    <div key={i} className="min-w-0 px-3 text-center">
-                      <Icon className="mx-auto w-[13px] h-[13px] text-white/35" strokeWidth={1.75} />
-                      <div className="mt-2 font-display text-[1.5rem] font-semibold text-white tracking-[-0.035em] leading-none">
-                        {s.value}
-                      </div>
-                      <div className="mt-1.5 text-[10.5px] text-white/55 leading-tight tracking-[-0.005em]">
-                        {label}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-
-
-
-
-            {/* Stats desktop: editorial premium */}
-            <div className="hidden sm:grid mt-14 grid-cols-3 gap-px max-w-2xl bg-white/[0.06] rounded-2xl overflow-hidden border border-white/[0.06] backdrop-blur-sm">
+            <div className="mt-14 grid max-w-2xl grid-cols-3 gap-px overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.06] backdrop-blur-sm">
               {(siteSettings.hero?.stats ?? []).map((s, i) => (
                 <div
                   key={i}
                   className="bg-black/30 px-6 py-5 transition-colors duration-300 hover:bg-black/10 animate-fade-up"
                   style={{ animationDelay: `${120 + i * 90}ms`, animationFillMode: "both" }}
                 >
-                  <div className="text-[10px] font-semibold tracking-[0.28em] uppercase text-brand-glow/80">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-brand-glow/80">
                     {String(i + 1).padStart(2, "0")}
                   </div>
-                  <div className="mt-3 font-display text-3xl md:text-[2.25rem] font-semibold text-white tracking-[-0.03em] leading-none">
+                  <div className="mt-3 font-display text-3xl font-semibold leading-none tracking-[-0.03em] text-white md:text-[2.25rem]">
                     {s.value}
                   </div>
-                  <div className="mt-2 text-[12px] md:text-[12.5px] text-white/55 leading-snug max-w-[180px]">
+                  <div className="mt-2 max-w-[180px] text-[12px] leading-snug text-white/55 md:text-[12.5px]">
                     {s.label}
                   </div>
                 </div>
               ))}
             </div>
-
           </div>
         </div>
 
-        {/* CTA Sticky Mobile: aparece após scroll, compacto e elegante */}
+        {/* CTA Sticky Mobile */}
         <div
-          className={`md:hidden fixed inset-x-0 bottom-0 z-40 px-5 pointer-events-none transition-all duration-300 ${
+          className={`fixed inset-x-0 bottom-0 z-40 px-5 pointer-events-none transition-all duration-300 md:hidden ${
             showStickyCta ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
           }`}
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
         >
           <div className="pointer-events-auto mx-auto max-w-xs">
             <a
+              {...(showStickyCta ? { "data-whatsapp-cta": true } : {})}
               href={whatsappLink("Olá! Quero treinar com a Corporação Assessoria Esportiva.")}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-1.5 w-full h-11 rounded-full bg-brand/95 backdrop-blur-md text-brand-foreground font-semibold text-[13.5px] shadow-[0_14px_36px_-12px_hsl(var(--brand)/0.7),0_0_0_1px_hsl(var(--brand)/0.3)] active:scale-[0.97] transition-transform"
+              className="flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-brand text-brand-foreground text-[13.5px] font-semibold shadow-[0_14px_36px_-12px_hsl(var(--brand)/0.7),0_0_0_1px_hsl(var(--brand)/0.3)] transition-transform active:scale-[0.97]"
             >
               {siteSettings.hero.primaryCta}
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="h-3.5 w-3.5" />
             </a>
           </div>
         </div>
@@ -436,7 +558,16 @@ const Index = () => {
                       key={i}
                       className="w-9 h-9 rounded-full border-2 border-background overflow-hidden"
                     >
-                      <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      <img
+                        src={src}
+                        alt=""
+                        width={36}
+                        height={36}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        fetchPriority="low"
+                      />
                     </div>
                   );
                 })}

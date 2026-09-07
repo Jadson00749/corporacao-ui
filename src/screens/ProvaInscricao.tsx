@@ -886,7 +886,22 @@ const ProvaInscricao = () => {
 
 
 
-  if (loading || !user) return null;
+  if (loading || !user) {
+    return (
+      <Layout>
+        <div className="section-padding pt-24 container-page pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+          <Skeleton className="mb-4 h-4 w-40" />
+          <Skeleton className="mb-6 h-8 w-56" />
+          <div className="mx-auto max-w-2xl space-y-4">
+            <Skeleton className="h-28 w-full rounded-2xl" />
+            <Skeleton className="h-48 w-full rounded-2xl" />
+            <Skeleton className="h-12 w-full rounded-xl" />
+            <Skeleton className="h-12 w-full rounded-xl" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   const summaryCard = event && (
     <div className="bg-card border border-border rounded-2xl p-5 space-y-4 lg:sticky lg:top-28">
@@ -1283,7 +1298,7 @@ const ProvaInscricao = () => {
                           )}
                         </div>
 
-                        <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                        <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
                           <Button onClick={goStep2} variant="brand" size="lg" className="w-full min-h-12 sm:w-auto sm:min-w-56">
                             Continuar
                           </Button>
@@ -1574,7 +1589,7 @@ const ProvaInscricao = () => {
                           </label>
                         </div>
 
-                        <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                        <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
                           {submitError && (
                             <div className="mb-3 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
                               {submitError}

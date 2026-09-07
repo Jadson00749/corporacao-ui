@@ -132,6 +132,7 @@ export const BenefitsSection = () => {
         <div className="mt-16 flex justify-center">
           <Button asChild variant="brand" size="lg" className="rounded-full px-7">
             <a
+              data-whatsapp-cta
               href={whatsappLink(
                 "Olá! Quero saber mais sobre os benefícios de fazer parte da Corporação."
               )}

@@ -139,7 +139,25 @@ const MinhaConta = () => {
     if (!loading && !user) navigate("/auth", { replace: true });
   }, [loading, user, navigate]);
 
-  if (loading || !user) return null;
+  if (loading || !user) {
+    return (
+      <Layout>
+        <div className="section-padding pt-24 container-page space-y-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <Skeleton className="h-16 rounded-xl" />
+            <Skeleton className="h-16 rounded-xl" />
+            <Skeleton className="h-16 rounded-xl" />
+          </div>
+          <Skeleton className="h-40 w-full rounded-3xl" />
+          <Skeleton className="h-56 w-full rounded-3xl" />
+        </div>
+      </Layout>
+    );
+  }
 
   const firstName = profile?.full_name?.split(" ")[0] || user.user_metadata?.full_name?.split(" ")[0] || user.email?.split("@")[0] || "Atleta";
   const profileComplete = isProfileComplete(profile);

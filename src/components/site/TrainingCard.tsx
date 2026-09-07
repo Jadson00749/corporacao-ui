@@ -97,7 +97,7 @@ export const TrainingCard = ({ training }: { training: Training }) => {
 
         <div className="mt-6 space-y-2">
           <Button asChild variant="brand" className="w-full rounded-full">
-            <a href={whatsappLink(waMsg)} target="_blank" rel="noreferrer">
+            <a data-whatsapp-cta href={whatsappLink(waMsg)} target="_blank" rel="noreferrer">
               Treinar com a equipe <ArrowRight className="w-4 h-4" />
             </a>
           </Button>

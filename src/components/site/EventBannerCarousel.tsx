@@ -15,6 +15,15 @@ const formatDate = (iso: string) =>
 
 type Props = { events: RaceEvent[] };
 
+/** Só carrega slide atual e vizinhos (±1); demais ficam de fora do DOM. */
+const shouldLoadSlide = (i: number, index: number, len: number) => {
+  if (len <= 3) return true;
+  if (i === index) return true;
+  if (i === (index - 1 + len) % len) return true;
+  if (i === (index + 1) % len) return true;
+  return false;
+};
+
 export const EventBannerCarousel = ({ events }: Props) => {
   const open = events.filter((e) => e.status === "open");
   const [index, setIndex] = useState(0);
@@ -77,22 +86,30 @@ export const EventBannerCarousel = ({ events }: Props) => {
         <div className="md:hidden rounded-2xl overflow-hidden border border-border bg-card shadow-card">
           <div className="relative aspect-[16/10] bg-[#0b0b0b]">
             {open.map((ev, i) => {
+              if (!shouldLoadSlide(i, index, open.length)) return null;
               const bg =
                 ev.bannerMobileImage ||
                 ev.bannerImage ||
                 ev.image ||
                 getEventBannerFallback(ev.id);
+              const active = i === index;
               return (
                 <div
                   key={ev.id}
                   className={cn(
                     "absolute inset-0 transition-opacity duration-700",
-                    i === index ? "opacity-100" : "opacity-0"
+                    active ? "opacity-100" : "opacity-0 pointer-events-none"
                   )}
+                  aria-hidden={!active}
                 >
                   <img
                     src={bg}
-                    alt={`Banner ${ev.name}`}
+                    alt={active ? `Banner ${ev.name}` : ""}
+                    width={800}
+                    height={500}
+                    loading={active ? "eager" : "lazy"}
+                    fetchPriority={active ? "high" : "low"}
+                    decoding="async"
                     className="absolute inset-0 w-full h-full object-cover object-center"
                   />
                 </div>
@@ -109,7 +126,7 @@ export const EventBannerCarousel = ({ events }: Props) => {
                   type="button"
                   aria-label="Anterior"
                   onClick={() => go(-1)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 z-[1] w-9 h-9 rounded-full bg-black/45 text-white flex items-center justify-center"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-[1] w-9 h-9 rounded-full bg-black/45 text-white flex items-center justify-center active:scale-95"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
@@ -117,7 +134,7 @@ export const EventBannerCarousel = ({ events }: Props) => {
                   type="button"
                   aria-label="Próximo"
                   onClick={() => go(1)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 z-[1] w-9 h-9 rounded-full bg-black/45 text-white flex items-center justify-center"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-[1] w-9 h-9 rounded-full bg-black/45 text-white flex items-center justify-center active:scale-95"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -172,24 +189,31 @@ export const EventBannerCarousel = ({ events }: Props) => {
         {/* ── Desktop: composição atual preservada ── */}
         <div className="relative hidden md:block rounded-2xl overflow-hidden shadow-card border border-border bg-[#0b0b0b] aspect-[21/9]">
           {open.map((ev, i) => {
+            if (!shouldLoadSlide(i, index, open.length)) return null;
             const bg = ev.bannerImage || ev.image || getEventBannerFallback(ev.id);
+            const active = i === index;
             return (
               <div
                 key={ev.id}
                 className={cn(
                   "absolute inset-0 transition-opacity duration-700",
-                  i === index ? "opacity-100" : "opacity-0"
+                  active ? "opacity-100" : "opacity-0 pointer-events-none"
                 )}
+                aria-hidden={!active}
               >
                 <img
                   src={bg}
                   alt=""
                   aria-hidden
+                  loading={active ? "eager" : "lazy"}
+                  decoding="async"
                   className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40"
                 />
                 <img
                   src={bg}
-                  alt={`Banner ${ev.name}`}
+                  alt={active ? `Banner ${ev.name}` : ""}
+                  loading={active ? "eager" : "lazy"}
+                  decoding="async"
                   className="relative w-full h-full object-contain"
                 />
               </div>

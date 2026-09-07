@@ -33,6 +33,7 @@ export const Footer = () => {
                 <Instagram className="w-5 h-5" />
               </a>
               <a
+                data-whatsapp-cta
                 href={whatsappLink()}
                 target="_blank"
                 rel="noreferrer"
@@ -69,7 +70,7 @@ export const Footer = () => {
             <ul className="space-y-3 text-sm text-white/70">
               <li className="flex items-start gap-2">
                 <MessageCircle className="w-4 h-4 mt-0.5 text-brand-glow" />
-                <a href={whatsappLink()} target="_blank" rel="noreferrer" className="hover:text-white">
+                <a data-whatsapp-cta href={whatsappLink()} target="_blank" rel="noreferrer" className="hover:text-white">
                   {siteSettings.contact.whatsappDisplay}
                 </a>
               </li>

@@ -91,6 +91,7 @@ export const ProductCard = ({ product }: { product: Product }) => {
             <div className="font-display text-lg font-semibold text-foreground tracking-tight">{product.price}</div>
           )}
           <a
+            data-whatsapp-cta
             href={whatsappLink(
               product.ctaMessage ||
                 `Olá! Tenho interesse no produto: ${product.name}${product.price ? ` (${product.price})` : ""}. Quero combinar a retirada.`
