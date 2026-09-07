@@ -89,7 +89,19 @@ export const useOrganizerStats = (enabled = true) => {
         .select("*, events(id,name,date,city)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as ExportSignup[];
+      const rows = (data ?? []) as any[];
+      const userIds = Array.from(new Set(rows.map((r) => r.user_id).filter(Boolean)));
+      if (userIds.length) {
+        const { data: profiles } = await db
+          .from("profiles")
+          .select("user_id,full_name,cpf,email,whatsapp,team_name,city,state,gender,birth_date")
+          .in("user_id", userIds);
+        const map = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
+        rows.forEach((r) => {
+          r.profiles = map.get(r.user_id) ?? null;
+        });
+      }
+      return rows as ExportSignup[];
     },
   });
 

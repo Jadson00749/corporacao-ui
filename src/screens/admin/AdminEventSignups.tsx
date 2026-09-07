@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileSpreadsheet, ClipboardList } from "lucide-react";
-import { exportSignupsXlsx } from "@/lib/exportSignupsXlsx";
+import { exportSignupsXlsx, hasParticipantSnapshot } from "@/lib/exportSignupsXlsx";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { isMainOrg } from "@/hooks/useOrganizerStats";
@@ -26,9 +26,26 @@ type Row = {
   shirt_size: string | null;
   coupon_code: string;
   team_name: string;
+  participant_full_name?: string | null;
+  participant_cpf?: string | null;
+  participant_birth_date?: string | null;
+  participant_gender?: string | null;
+  participant_phone?: string | null;
   events: { id: string; name: string; date: string; city: string } | null;
-  profiles: { full_name: string; cpf: string; email: string; whatsapp: string; team_name: string; city: string; state: string; gender: string } | null;
+  profiles: {
+    full_name: string;
+    cpf: string;
+    email: string;
+    whatsapp: string;
+    team_name: string;
+    city: string;
+    state: string;
+    gender: string;
+    birth_date?: string | null;
+  } | null;
 };
+
+const filled = (v?: string | null) => !!(v && String(v).trim());
 
 const normalizeGender = (g?: string | null): "F" | "M" | "O" => {
   const s = (g || "").trim().toLowerCase();
@@ -37,14 +54,27 @@ const normalizeGender = (g?: string | null): "F" | "M" | "O" => {
   return "O";
 };
 
-/** Gênero real do perfil; fallback no texto da categoria apenas se o perfil estiver vazio. */
+/** Gênero do participante; perfil só no histórico sem nenhum participant_*. */
 const rowGender = (r: Row): "F" | "M" | "O" => {
-  const fromProfile = normalizeGender((r as any).participant_gender || r.profiles?.gender);
-  if (fromProfile !== "O") return fromProfile;
+  const fromParticipant = normalizeGender(r.participant_gender);
+  if (fromParticipant !== "O") return fromParticipant;
+  if (!hasParticipantSnapshot(r)) {
+    const fromProfile = normalizeGender(r.profiles?.gender);
+    if (fromProfile !== "O") return fromProfile;
+  }
   const cat = (r.category || "").toLowerCase();
   if (/femin/.test(cat)) return "F";
   if (/mascul/.test(cat)) return "M";
   return "O";
+};
+
+const athleteNameOf = (r: Row) =>
+  (filled(r.participant_full_name) ? r.participant_full_name!.trim() : "") || r.profiles?.full_name || "-";
+
+const athleteCpfOf = (r: Row) => {
+  if (filled(r.participant_cpf)) return r.participant_cpf!.trim();
+  if (!hasParticipantSnapshot(r)) return r.profiles?.cpf || "-";
+  return "-";
 };
 
 const formatKitOption = (value: string) => {
@@ -163,7 +193,7 @@ const AdminEventSignups = () => {
       }
       if (search) {
         const q = search.toLowerCase();
-        const hay = `${(r as any).participant_full_name || ""} ${r.profiles?.full_name || ""} ${r.profiles?.email || ""} ${r.profiles?.cpf || ""} ${r.events?.name || ""}`.toLowerCase();
+        const hay = `${r.participant_full_name || ""} ${r.profiles?.full_name || ""} ${r.profiles?.email || ""} ${r.participant_cpf || ""} ${r.profiles?.cpf || ""} ${r.events?.name || ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -391,11 +421,13 @@ const AdminEventSignups = () => {
                     })()}
                   </td>
                   <td className="p-3">
-                    <div className="font-medium">{(r as any).participant_full_name || r.profiles?.full_name || "-"}</div>
-                    <div className="text-xs text-muted-foreground">CPF {(r as any).participant_cpf || r.profiles?.cpf || "-"}</div>
-                    {(r as any).participant_full_name &&
-                      (r as any).participant_full_name !== r.profiles?.full_name && (
-                        <div className="text-xs text-muted-foreground">Responsável: {r.profiles?.full_name || "-"}</div>
+                    <div className="font-medium">{athleteNameOf(r)}</div>
+                    <div className="text-xs text-muted-foreground">CPF {athleteCpfOf(r)}</div>
+                    {r.profiles?.full_name &&
+                      athleteNameOf(r) !== r.profiles.full_name && (
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Responsável: {r.profiles.full_name}
+                        </div>
                       )}
                   </td>
                   <td className="p-3">

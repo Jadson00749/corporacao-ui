@@ -64,16 +64,77 @@ export const bracketOf = (category: string) => {
   return /anos/i.test(last) ? last.replace(/\s*anos\s*/i, "").trim() : "";
 };
 
-/** Dados do atleta: participante quando houver, senão o titular da conta (histórico). */
-export const athleteName = (s: ExportSignup) => s.participant_full_name || s.profiles?.full_name || "";
-export const athleteCpf = (s: ExportSignup) => s.participant_cpf || s.profiles?.cpf || "";
-export const athleteBirth = (s: ExportSignup) => s.participant_birth_date || s.profiles?.birth_date || null;
-export const athletePhone = (s: ExportSignup) => s.participant_phone || s.profiles?.whatsapp || "";
+const filled = (v?: string | null) => !!(v && String(v).trim());
+
+export type ParticipantSnapshotFields = {
+  participant_full_name?: string | null;
+  participant_birth_date?: string | null;
+  participant_cpf?: string | null;
+  participant_gender?: string | null;
+  participant_phone?: string | null;
+};
+
+/**
+ * Há qualquer dado gravado do atleta na inscrição.
+ * Só a ausência total caracteriza inscrição histórica (pré-snapshot).
+ */
+export const hasParticipantSnapshot = (s: ParticipantSnapshotFields) =>
+  filled(s.participant_full_name) ||
+  filled(s.participant_birth_date) ||
+  filled(s.participant_cpf) ||
+  filled(s.participant_gender) ||
+  filled(s.participant_phone);
+
+/**
+ * Nome do atleta/participante.
+ * Fallback visual para o titular é permitido mesmo com snapshot parcial
+ * (ex.: só nascimento Kids), mas isso NÃO autoriza misturar CPF/nasc/gênero.
+ */
+export const athleteName = (s: ExportSignup) =>
+  (filled(s.participant_full_name) ? s.participant_full_name!.trim() : "") ||
+  s.profiles?.full_name ||
+  "";
+
+/**
+ * CPF do atleta. Profiles só se a inscrição for realmente antiga (sem nenhum participant_*).
+ */
+export const athleteCpf = (s: ExportSignup) => {
+  if (filled(s.participant_cpf)) return s.participant_cpf!.trim();
+  if (!hasParticipantSnapshot(s)) return s.profiles?.cpf || "";
+  return "";
+};
+
+/**
+ * Nascimento do atleta — base de idade/60+/Kids.
+ * Sem misturar profiles.birth_date quando já existe qualquer snapshot.
+ */
+export const athleteBirth = (s: ExportSignup): string | null => {
+  if (filled(s.participant_birth_date)) return s.participant_birth_date!.trim();
+  if (!hasParticipantSnapshot(s)) return s.profiles?.birth_date ?? null;
+  return null;
+};
+
+/** Telefone do participante; contato do titular fica em profiles. */
+export const athletePhone = (s: ExportSignup) => {
+  if (filled(s.participant_phone)) return s.participant_phone!.trim();
+  if (!hasParticipantSnapshot(s)) return s.profiles?.whatsapp || "";
+  return "";
+};
+
+export const responsibleName = (s: ExportSignup) => s.profiles?.full_name || "";
 
 export const genderLabel = (s: ExportSignup): string => {
-  const g = (s.participant_gender || s.profiles?.gender || "").trim().toLowerCase();
-  if (g.startsWith("f")) return "Feminino";
-  if (g.startsWith("m")) return "Masculino";
+  const fromParticipant = (s.participant_gender || "").trim().toLowerCase();
+  if (fromParticipant.startsWith("f")) return "Feminino";
+  if (fromParticipant.startsWith("m")) return "Masculino";
+
+  // Histórico sem nenhum participant_*: só então o gênero do titular é seguro.
+  if (!hasParticipantSnapshot(s)) {
+    const fromProfile = (s.profiles?.gender || "").trim().toLowerCase();
+    if (fromProfile.startsWith("f")) return "Feminino";
+    if (fromProfile.startsWith("m")) return "Masculino";
+  }
+
   const cat = (s.category || "").toLowerCase();
   if (/femin/.test(cat)) return "Feminino";
   if (/mascul/.test(cat)) return "Masculino";
@@ -140,7 +201,8 @@ export async function exportSignupsXlsx(
       kit: formatKitOption(r.kit_option || ""),
       cidade: `${r.profiles?.city || ""}${r.profiles?.state ? ` / ${r.profiles.state}` : ""}`.trim(),
       equipe: r.team_name || r.profiles?.team_name || "",
-      whats: athletePhone(r),
+      // Contato do responsável pela compra (conta); telefone do participante só como reforço.
+      whats: r.profiles?.whatsapp || athletePhone(r),
       email: r.profiles?.email || "",
       valor: signupValue(r, eventMap.get(r.event_id)),
       status: (r.status || "").toLowerCase() === "confirmada" ? "Aprovada" : "Em andamento",

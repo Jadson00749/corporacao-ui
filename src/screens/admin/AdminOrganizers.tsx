@@ -581,7 +581,16 @@ const ManageOrganizerDialog = ({
             {visibleSignups.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma inscrição.</p>}
             {visibleSignups.map((sg) => (
               <div key={sg.id} className="border border-border rounded-lg p-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-                <div className="min-w-[160px] flex-1 text-sm font-medium">{athleteName(sg) || "Atleta"}</div>
+                <div className="min-w-[160px] flex-1">
+                  <div className="text-sm font-medium">{athleteName(sg) || "Atleta"}</div>
+                  {sg.profiles?.full_name &&
+                    athleteName(sg) &&
+                    athleteName(sg) !== sg.profiles.full_name && (
+                      <div className="text-[11px] text-muted-foreground">
+                        Responsável: {sg.profiles.full_name}
+                      </div>
+                    )}
+                </div>
                 <div className="text-xs text-muted-foreground">{sg.events?.name}</div>
                 <div className="text-xs text-muted-foreground">{sg.category}</div>
                 <span

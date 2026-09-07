@@ -598,7 +598,9 @@ const SignupCard = ({
   const kitDelivery = (s.events?.kit_delivery || "").trim();
   const kitInfo = (s.events?.kit_info || "").trim();
   const eventName = s.events?.name || "Prova";
-  const participantName = (s.participant_full_name || "").trim();
+  // Histórico: sem participant_full_name, o titular era o atleta.
+  const participantName =
+    (s.participant_full_name || "").trim() || (responsibleName || "").trim();
 
   // Valor da inscrição a partir do preço da modalidade no evento + extras do kit.
   const kitExtra = Array.isArray(pricing?.kitOptions)
@@ -614,7 +616,7 @@ const SignupCard = ({
     eventName: s.events?.name || "",
     blocks: [
       {
-        participant: s.participant_full_name || "",
+        participant: participantName,
         modality,
         category,
         kits,
