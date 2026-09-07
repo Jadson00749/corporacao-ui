@@ -25,6 +25,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Users, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCPF, formatPhone } from "@/lib/cpf";
+import { BirthDateInput } from "@/components/account/BirthDateInput";
+import {
+  toBirthDateInputValue,
+  formatBirthDateBR,
+  parseBirthDateInput,
+} from "@/lib/birthDate";
 import {
   Participant,
   RELATIONSHIP_OPTIONS,
@@ -33,9 +39,6 @@ import {
   useParticipants,
   findExistingParticipant,
 } from "@/hooks/useParticipants";
-
-const formatBirth = (d?: string | null) =>
-  d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "";
 
 export type FormState = {
   full_name: string;
@@ -59,14 +62,19 @@ export const ParticipantForm = ({
   onCancel: () => void;
   onSubmit: (v: FormState) => void;
 }) => {
-  const [form, setForm] = useState<FormState>({ ...EMPTY, ...initial });
+  const [form, setForm] = useState<FormState>({
+    ...EMPTY,
+    ...initial,
+    birth_date: toBirthDateInputValue(initial?.birth_date || ""),
+  });
   const patch = (p: Partial<FormState>) => setForm((f) => ({ ...f, ...p }));
 
   const submit = () => {
     if (!form.full_name.trim()) return toast.error("Informe o nome completo.");
-    if (!form.birth_date) return toast.error("Informe a data de nascimento.");
+    const birth = parseBirthDateInput(form.birth_date);
+    if (!birth.ok) return toast.error(birth.error);
     if (!form.gender) return toast.error("Selecione o sexo.");
-    onSubmit(form);
+    onSubmit({ ...form, birth_date: birth.iso });
   };
 
   return (
@@ -79,8 +87,12 @@ export const ParticipantForm = ({
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
           <Label htmlFor="pt-birth">Data de nascimento *</Label>
-          <Input id="pt-birth" type="date" className="mt-1" value={form.birth_date}
-            onChange={(e) => patch({ birth_date: e.target.value })} />
+          <BirthDateInput
+            id="pt-birth"
+            className="mt-1"
+            value={form.birth_date}
+            onChange={(iso) => patch({ birth_date: iso })}
+          />
         </div>
         <div>
           <Label>Sexo *</Label>
@@ -190,7 +202,7 @@ export const ParticipantsPanel = () => {
               <p className="font-display text-lg font-bold leading-tight truncate">{p.full_name}</p>
               {p.relationship && <p className="text-sm text-muted-foreground">{p.relationship}</p>}
               <div className="mt-1 text-xs text-muted-foreground space-y-0.5">
-                {p.birth_date && <p>Nascimento: {formatBirth(p.birth_date)}</p>}
+                {p.birth_date && <p>Nascimento: {formatBirthDateBR(p.birth_date)}</p>}
                 {p.cpf && <p>CPF {maskCpf(p.cpf)}</p>}
               </div>
               <div className="flex gap-2 mt-3">

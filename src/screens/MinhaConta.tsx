@@ -17,6 +17,7 @@ import { ProfileFields } from "@/components/account/ProfileFields";
 import { profileSchema, ProfileValues } from "@/lib/profileSchema";
 import { isProfileComplete } from "@/lib/profileComplete";
 import { onlyDigits } from "@/lib/cpf";
+import { toBirthDateInputValue } from "@/lib/birthDate";
 import { signupValue } from "@/lib/exportSignupsXlsx";
 import { formatBRL } from "@/lib/eventPricing";
 import { buildSignupWhatsMessage } from "@/lib/signupWhatsMessage";
@@ -819,7 +820,7 @@ const ProfileEditor = ({ profile }: { profile: any }) => {
     defaultValues: {
       full_name: profile?.full_name || "",
       cpf: profile?.cpf || "",
-      birth_date: profile?.birth_date || "",
+      birth_date: toBirthDateInputValue(profile?.birth_date),
       gender: profile?.gender || "",
       phone: profile?.phone || "",
       whatsapp: profile?.whatsapp || "",

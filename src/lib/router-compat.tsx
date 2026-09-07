@@ -28,9 +28,14 @@ export interface NavLinkProps extends Omit<LinkProps, "className" | "children"> 
 }
 
 function splitTo(to: string) {
-  const [beforeHash, hash] = to.split("#");
+  const [beforeHash, hashPart] = to.split("#");
   const [pathname, search] = (beforeHash ?? "").split("?");
-  return { pathname: pathname || "/", search: search ? `?${search}` : "", hash: hash ?? "" };
+  return {
+    pathname: pathname || "/",
+    search: search ? `?${search}` : "",
+    // split("#") remove o "#"; repor ao remontar o href evita /treinostreino-...
+    hash: hashPart ? `#${hashPart}` : "",
+  };
 }
 
 export function useNavigate() {

@@ -14,6 +14,7 @@ import { ProfileFields } from "@/components/account/ProfileFields";
 import { profileSchema, ProfileValues } from "@/lib/profileSchema";
 import { isProfileComplete } from "@/lib/profileComplete";
 import { formatCEP, formatCPF, formatPhone, onlyDigits } from "@/lib/cpf";
+import { toBirthDateInputValue } from "@/lib/birthDate";
 import { toast } from "sonner";
 
 const CompletarCadastro = () => {
@@ -59,7 +60,7 @@ const CompletarCadastro = () => {
     reset({
       full_name: profile?.full_name || googleName,
       cpf: profile?.cpf ? formatCPF(profile.cpf) : "",
-      birth_date: profile?.birth_date || "",
+      birth_date: toBirthDateInputValue(profile?.birth_date),
       gender: profile?.gender || "",
       phone: profile?.phone ? formatPhone(profile.phone) : "",
       whatsapp: profile?.whatsapp ? formatPhone(profile.whatsapp) : "",

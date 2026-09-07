@@ -7,6 +7,8 @@
 //   lote3_starts_at  -> data (YYYY-MM-DD) em que o 3º lote passa a valer
 // Provas antigas com 1 ou 2 lotes continuam funcionando sem alteração.
 
+import { parseBirthDateInput } from "@/lib/birthDate";
+
 export type DistancePricing = {
   distance: string;
   price?: number;
@@ -101,7 +103,9 @@ export const SENIOR_MIN_AGE = 60;
 
 export const calcAgeFromBirth = (birth?: string | null): number | null => {
   if (!birth) return null;
-  const d = new Date(birth.length <= 10 ? `${birth}T12:00:00` : birth);
+  const parsed = parseBirthDateInput(birth);
+  if (!parsed.ok) return null;
+  const d = new Date(`${parsed.iso}T12:00:00`);
   if (Number.isNaN(d.getTime())) return null;
   const now = new Date();
   let age = now.getFullYear() - d.getFullYear();
@@ -119,7 +123,9 @@ export const isSenior = (birth?: string | null) => {
 export const ageAtEvent = (birth?: string | null, eventDate?: string | null): number | null => {
   if (!birth) return null;
   if (!eventDate) return calcAgeFromBirth(birth);
-  const b = new Date(birth.length <= 10 ? `${birth}T12:00:00` : birth);
+  const parsed = parseBirthDateInput(birth);
+  if (!parsed.ok) return null;
+  const b = new Date(`${parsed.iso}T12:00:00`);
   const e = new Date(eventDate.length <= 10 ? `${eventDate}T12:00:00` : eventDate);
   if (Number.isNaN(b.getTime()) || Number.isNaN(e.getTime())) return null;
   let age = e.getFullYear() - b.getFullYear();
@@ -141,7 +147,9 @@ export const isSeniorAtEvent = (birth?: string | null, eventDate?: string | null
  */
 export const sportAgeAtEvent = (birth?: string | null, eventDate?: string | null): number | null => {
   if (!birth || !eventDate) return null;
-  const by = Number(String(birth).slice(0, 4));
+  const parsed = parseBirthDateInput(birth);
+  if (!parsed.ok) return null;
+  const by = Number(parsed.iso.slice(0, 4));
   const ey = Number(String(eventDate).slice(0, 4));
   if (!Number.isFinite(by) || !Number.isFinite(ey)) return null;
   return ey - by;

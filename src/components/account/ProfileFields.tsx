@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BRAZIL_STATES } from "@/data/brazilStates";
 import { formatCEP, formatCPF, formatPhone, onlyDigits } from "@/lib/cpf";
+import { BirthDateInput } from "@/components/account/BirthDateInput";
 import { Eye, EyeOff } from "lucide-react";
 
 /**
@@ -18,6 +19,7 @@ export const ProfileFields = ({
   const { register, setValue, formState: { errors }, control } = useFormContext<any>();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const cep = useWatch({ control, name: "cep" });
+  const birthDate = useWatch({ control, name: "birth_date" }) as string | undefined;
 
   // ViaCEP autofill
   useEffect(() => {
@@ -62,7 +64,13 @@ export const ProfileFields = ({
         </div>
         <div>
           <Label htmlFor="birth_date">Data de nascimento *</Label>
-          <Input id="birth_date" type="date" autoComplete="bday" {...register("birth_date")} className="mt-1" />
+          <BirthDateInput
+            id="birth_date"
+            value={birthDate || ""}
+            onChange={(iso) => setValue("birth_date", iso, { shouldValidate: true, shouldDirty: true })}
+            className="mt-1"
+            aria-invalid={!!err("birth_date")}
+          />
           {err("birth_date") && <p className="text-xs text-destructive mt-1">{err("birth_date")}</p>}
         </div>
       </div>

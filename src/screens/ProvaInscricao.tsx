@@ -38,6 +38,11 @@ import { buildSignupWhatsMessage, type SignupBlock } from "@/lib/signupWhatsMess
 import { useEventPayment, whatsappLinkFor } from "@/lib/eventPayment";
 
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
+import {
+  toBirthDateInputValue,
+  parseBirthDateInput,
+} from "@/lib/birthDate";
+import { BirthDateInput } from "@/components/account/BirthDateInput";
 
 import { PixPayment } from "@/components/site/PixPayment";
 import { Confetti } from "@/components/site/Confetti";
@@ -49,7 +54,9 @@ type Coupon = { code: string; description?: string };
 
 const calcAge = (birth?: string | null) => {
   if (!birth) return null;
-  const d = new Date(birth);
+  const parsed = parseBirthDateInput(birth);
+  if (!parsed.ok) return null;
+  const d = new Date(`${parsed.iso}T12:00:00`);
   const now = new Date();
   let a = now.getFullYear() - d.getFullYear();
   const m = now.getMonth() - d.getMonth();
@@ -201,7 +208,7 @@ const ProvaInscricao = () => {
       ...d,
       name: d.name || profile?.full_name || "",
       cpf: d.cpf || profile?.cpf || "",
-      birth: d.birth || (profile as any)?.birth_date || "",
+      birth: d.birth || toBirthDateInputValue((profile as any)?.birth_date),
       gender: d.gender || (profile as any)?.gender || "",
       phone: d.phone || profile?.whatsapp || "",
     }));
@@ -366,9 +373,12 @@ const ProvaInscricao = () => {
   useEffect(() => { setGender(participantGenderLabel); }, [participantGenderLabel]);
 
   // Idade esportiva do PARTICIPANTE (ano da prova - ano de nascimento)
+  // Draft e input nativo guardam YYYY-MM-DD; persistência usa o mesmo formato.
+  const pBirthParsed = useMemo(() => parseBirthDateInput(pBirth), [pBirth]);
+  const pBirthIso = pBirthParsed.ok ? pBirthParsed.iso : "";
   const categoryAge = useMemo(
-    () => sportAgeAtEvent(pBirth, (event as any)?.date),
-    [pBirth, event]
+    () => sportAgeAtEvent(pBirthIso || null, (event as any)?.date),
+    [pBirthIso, event]
   );
   const autoBracket = useMemo(() => {
     if (categoryAge == null || !ageBrackets.length) return "";
@@ -382,7 +392,7 @@ const ProvaInscricao = () => {
   /** Menor de 18 na data da prova -> CPF opcional. */
   const isMinor = categoryAge != null && categoryAge < 18;
   const cpfRequired = !isMinor;
-  const participantComplete = !!(pName.trim() && pBirth && pGender && (!cpfRequired || pCpf.trim()));
+  const participantComplete = !!(pName.trim() && pBirthParsed.ok && pGender && (!cpfRequired || pCpf.trim()));
 
   const kidsDistances = useMemo(() => distances.filter((d) => isKidsDistance(d.distance)), [distances]);
   const adultDistances = useMemo(() => distances.filter((d) => !isKidsDistance(d.distance)), [distances]);
@@ -404,7 +414,7 @@ const ProvaInscricao = () => {
 
   const distanceObj = distances.find((d) => d.distance === distance);
   // 60+ pela idade do PARTICIPANTE na data da prova
-  const senior = isSeniorAtEvent(pBirth, (event as any)?.date);
+  const senior = isSeniorAtEvent(pBirthIso || null, (event as any)?.date);
   const basePriceOf = (d: any) => currentPrice(d ?? {});
   const seniorForDistance = (d: any) => senior && !isKidsDistance(d?.distance);
   const priceOf = (d: any) => effectivePrice(d ?? {}, seniorForDistance(d));
@@ -502,7 +512,7 @@ const ProvaInscricao = () => {
       const restored = {
         name: sg.participant_full_name,
         cpf: sg.participant_cpf || "",
-        birth: sg.participant_birth_date || "",
+        birth: toBirthDateInputValue(sg.participant_birth_date),
         gender: sg.participant_gender || "",
         phone: sg.participant_phone || "",
         shirtSize: savedSize,
@@ -559,7 +569,11 @@ const ProvaInscricao = () => {
     const newErrors: Record<string, boolean> = {};
     const missing: string[] = [];
     if (!pName.trim()) { newErrors.pName = true; missing.push("Nome completo"); }
-    if (!pBirth) { newErrors.pBirth = true; missing.push("Data de nascimento"); }
+    const birth = parseBirthDateInput(pBirth);
+    if (!birth.ok) {
+      newErrors.pBirth = true;
+      missing.push(birth.error);
+    }
     if (!pGender) { newErrors.pGender = true; missing.push("Sexo"); }
     if (cpfRequired && !pCpf.trim()) { newErrors.pCpf = true; missing.push("CPF"); }
     if (missing.length) {
@@ -567,8 +581,9 @@ const ProvaInscricao = () => {
       toast.error("Preencha para continuar", { description: missing.join(" · "), position: "top-center" });
       return;
     }
+    const birthIso = birth.ok ? birth.iso : "";
     const dup = doneParticipants.some(
-      (p) => p.name.trim().toLowerCase() === pName.trim().toLowerCase() && p.birth === pBirth
+      (p) => p.name.trim().toLowerCase() === pName.trim().toLowerCase() && p.birth === birthIso
     );
     if (dup) toast.warning("Você já inscreveu alguém com este nome e data de nascimento nesta sessão.");
     setErrors({});
@@ -583,7 +598,11 @@ const ProvaInscricao = () => {
     if (distances.length > 0 && !distance) { newErrors.distance = true; missingLabels.push("Modalidade"); }
     if (!pName.trim()) { newErrors.pName = true; missingLabels.push("Nome completo"); }
     if (cpfRequired && !pCpf.trim()) { newErrors.pCpf = true; missingLabels.push("CPF"); }
-    if (!pBirth) { newErrors.pBirth = true; missingLabels.push("Data de nascimento"); }
+    const birthParsed = parseBirthDateInput(pBirth);
+    if (!birthParsed.ok) {
+      newErrors.pBirth = true;
+      missingLabels.push(birthParsed.error);
+    }
     if (!pGender) { newErrors.pGender = true; missingLabels.push("Sexo"); }
     if (ageBrackets.length > 0 && !bracket && !isKidsDistance(distance)) { newErrors.bracket = true; missingLabels.push("Data de nascimento"); }
     if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Kit"); }
@@ -614,6 +633,8 @@ const ProvaInscricao = () => {
 
     setSubmitting(true);
 
+    const birthIso = birthParsed.ok ? birthParsed.iso : "";
+
     const payload = {
       category: categoryLabel,
       status: "pendente",
@@ -625,7 +646,7 @@ const ProvaInscricao = () => {
       accepted_event_terms_at: new Date().toISOString(),
       participant_full_name: pName.trim(),
       participant_cpf: pCpf.trim(),
-      participant_birth_date: pBirth,
+      participant_birth_date: birthIso,
       participant_gender: pGender,
       participant_phone: pPhone.trim() || null,
     };
@@ -714,7 +735,7 @@ const ProvaInscricao = () => {
     setDoneParticipants((prev) => {
       const entry: DoneParticipant = {
         name: pName.trim(),
-        birth: pBirth,
+        birth: birthIso,
         self: isSelf,
         modality: cleanDistanceLabel(distance),
         category: categoryForMessage,
@@ -736,7 +757,7 @@ const ProvaInscricao = () => {
       const dup = findExistingParticipant(savedParticipants, {
         full_name: pName.trim(),
         cpf: pCpf,
-        birth_date: pBirth,
+        birth_date: birthIso,
       });
       if (dup) {
         toast.info("Este participante já está salvo em Meus participantes.");
@@ -745,7 +766,7 @@ const ProvaInscricao = () => {
           await createParticipant.mutateAsync({
             full_name: pName.trim(),
             cpf: pCpf.trim() || null,
-            birth_date: pBirth || null,
+            birth_date: birthIso || null,
             gender: pGender || null,
             phone: pPhone.trim() || null,
           });
@@ -1034,7 +1055,7 @@ const ProvaInscricao = () => {
                                     ...d,
                                     name: p.full_name || "",
                                     cpf: p.cpf || "",
-                                    birth: p.birth_date || "",
+                                    birth: toBirthDateInputValue(p.birth_date),
                                     gender: p.gender || "",
                                     phone: p.phone || "",
                                   }));
@@ -1093,8 +1114,13 @@ const ProvaInscricao = () => {
                             </div>
                             <div data-invalid={errors.pBirth || undefined}>
                               <Label htmlFor="p-birth">Data de nascimento *</Label>
-                              <Input id="p-birth" type="date" value={pBirth} onChange={(e) => setPBirth(e.target.value)} className="mt-1"
-                                aria-invalid={!!errors.pBirth} />
+                              <BirthDateInput
+                                id="p-birth"
+                                value={pBirth}
+                                onChange={setPBirth}
+                                className="mt-1"
+                                aria-invalid={!!errors.pBirth}
+                              />
                             </div>
                             <div data-invalid={errors.pGender || undefined}>
                               <Label>Sexo *</Label>

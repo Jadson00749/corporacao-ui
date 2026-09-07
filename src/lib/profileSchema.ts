@@ -1,10 +1,28 @@
 import { z } from "zod";
 import { isValidCPF, onlyDigits } from "@/lib/cpf";
+import { parseBirthDateInput } from "@/lib/birthDate";
+
+/** Campo de nascimento: aceita BR ou ISO e grava sempre YYYY-MM-DD. */
+export const birthDateFieldSchema = z
+  .string()
+  .trim()
+  .min(1, "Informe a data de nascimento")
+  .superRefine((val, ctx) => {
+    const parsed = parseBirthDateInput(val);
+    if (!parsed.ok) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: parsed.error });
+    }
+  })
+  .transform((val) => {
+    const parsed = parseBirthDateInput(val);
+    // superRefine já bloqueou inválidos; aqui só normaliza.
+    return parsed.ok ? parsed.iso : val;
+  });
 
 const baseProfileShape = {
   full_name: z.string().trim().min(2, "Informe seu nome completo").max(120),
   cpf: z.string().refine((v) => isValidCPF(v), "CPF inválido"),
-  birth_date: z.string().min(1, "Informe a data de nascimento"),
+  birth_date: birthDateFieldSchema,
   gender: z.string().optional().default(""),
   phone: z.string().optional().default(""),
   whatsapp: z.string().refine((v) => onlyDigits(v).length >= 10, "Informe um celular válido"),
