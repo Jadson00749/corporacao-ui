@@ -194,6 +194,9 @@ const KIDS_RE = /(kids|infantil|kid|mirim)/i;
 export const isKidsDistance = (name?: string | null) =>
   !!name && KIDS_RE.test(name);
 
+/** Alias semântico para category / textos históricos (KIDS · Feminino, Kids - Ligeirinhos, etc.). */
+export const isKidsCategory = (category?: string | null) => isKidsDistance(category);
+
 /** Caminhada é participativa: lista única, sem divisão por idade ou sexo. */
 const WALK_RE = /caminhada/i;
 
@@ -201,18 +204,82 @@ export const isWalkDistance = (name?: string | null) =>
   !!name && WALK_RE.test(name);
 
 /**
- * Corridinha Kids tem exatamente três faixas, independentes das faixas
- * configuradas na prova. Fonte única: a lista pública e o fluxo de
- * complemento de dados em Minha Conta leem daqui.
+ * Categorias oficiais da Corridinha Kids (mista — sem masculino/feminino).
+ * Fonte única: formulário, lista pública, complemento e exportação.
  */
-export const KIDS_BRACKETS: Array<{ label: string; min: number; max: number }> = [
-  { label: "Até 5 anos", min: 0, max: 5 },
-  { label: "6 a 10 anos", min: 6, max: 10 },
-  { label: "11 anos ou mais", min: 11, max: 200 },
+export type KidsBracket = {
+  id: "ligeirinhos" | "papaleguas" | "turma-do-flash";
+  /** Título da bateria na lista / UI */
+  title: string;
+  /** Subtítulo: faixa etária · distância */
+  subtitle: string;
+  /** Texto gravado em event_signups.category */
+  category: string;
+  ageLabel: string;
+  raceDistance: string;
+  min: number;
+  max: number;
+};
+
+export const KIDS_BRACKETS: KidsBracket[] = [
+  {
+    id: "ligeirinhos",
+    title: "Kids - Ligeirinhos",
+    subtitle: "2 a 5 anos · 50m",
+    category: "Kids - Ligeirinhos (2 a 5 anos)",
+    ageLabel: "2 a 5 anos",
+    raceDistance: "50m",
+    min: 2,
+    max: 5,
+  },
+  {
+    id: "papaleguas",
+    title: "Kids - Papaléguas",
+    subtitle: "6 a 9 anos · 150m",
+    category: "Kids - Papaléguas (6 a 9 anos)",
+    ageLabel: "6 a 9 anos",
+    raceDistance: "150m",
+    min: 6,
+    max: 9,
+  },
+  {
+    id: "turma-do-flash",
+    title: "Kids - Turma do Flash",
+    subtitle: "10 a 13 anos · 400m",
+    category: "Kids - Turma do Flash (10 a 13 anos)",
+    ageLabel: "10 a 13 anos",
+    raceDistance: "400m",
+    min: 10,
+    max: 13,
+  },
 ];
 
+/** Compat: lista pública antiga usava `{ label, min, max }`. */
 export const kidsBracketFor = (age: number | null) =>
   age == null ? null : KIDS_BRACKETS.find((b) => age >= b.min && age <= b.max) ?? null;
+
+export const kidsCategoryForAge = (age: number | null) => kidsBracketFor(age)?.category ?? null;
+
+/** Resolve bateria Kids a partir da idade ou do texto já gravado em category. */
+export const resolveKidsBracket = (opts: {
+  age?: number | null;
+  category?: string | null;
+}): KidsBracket | null => {
+  const byAge = kidsBracketFor(opts.age ?? null);
+  if (byAge) return byAge;
+  const cat = (opts.category || "").toLowerCase();
+  if (!cat) return null;
+  if (/ligeirinho/.test(cat) || /\b2\s*a\s*5\b/.test(cat) || /\bat[eé]\s*5\b/.test(cat)) {
+    return KIDS_BRACKETS[0];
+  }
+  if (/papal[eé]gua/.test(cat) || /\b6\s*a\s*9\b/.test(cat) || /\b6\s*a\s*10\b/.test(cat)) {
+    return KIDS_BRACKETS[1];
+  }
+  if (/turma do flash|flash/.test(cat) || /\b10\s*a\s*13\b/.test(cat) || /\b11\s*(anos|ou)/.test(cat)) {
+    return KIDS_BRACKETS[2];
+  }
+  return null;
+};
 
 export const isSeniorApplicableDistance = (name?: string | null) =>
   !!name && !isSeniorOnlyDistance(name) && !isKidsDistance(name);

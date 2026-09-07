@@ -1,0 +1,44 @@
+-- ============================================================
+-- list_event_signups_public — contrato atual (já aplicado no Supabase)
+--
+-- NÃO executar este arquivo para “atualizar” o banco.
+-- A RPC já foi alterada diretamente no Supabase; reaplicar
+-- DROP/CREATE aqui poderia reverter o estado em produção.
+--
+-- Colunas retornadas (ordem lógica / consumo no front):
+--   full_name                 — legado / adultos; NÃO usar como criança no Kids
+--   participant_full_name     — participante (criança no Kids)
+--   responsible_name          — responsável / titular (profiles.full_name)
+--   category
+--   team_name
+--   city
+--   status
+--   participant_birth_date
+--   participant_gender
+--
+-- Front Kids (PublicSignupList):
+--   criança     → participant_full_name
+--   responsável → responsible_name
+--   full_name NÃO é usado como participante na modalidade Kids.
+-- ============================================================
+
+-- Referência de assinatura (documentação). Não rodar.
+--
+-- create function public.list_event_signups_public(_event_id uuid)
+-- returns table(
+--   full_name text,
+--   participant_full_name text,
+--   responsible_name text,
+--   category text,
+--   team_name text,
+--   city text,
+--   status text,
+--   participant_birth_date text,
+--   participant_gender text
+-- )
+-- ...
+--
+-- Conferência opcional (somente leitura):
+--   select *
+--   from public.list_event_signups_public('<event_uuid>'::uuid)
+--   limit 1;

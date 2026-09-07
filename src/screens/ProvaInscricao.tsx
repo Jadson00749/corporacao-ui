@@ -32,6 +32,9 @@ import {
   isSeniorOnlyDistance,
   isKidsDistance,
   sportAgeAtEvent,
+  KIDS_BRACKETS,
+  kidsBracketFor,
+  kidsCategoryForAge,
 } from "@/lib/eventPricing";
 
 import { buildSignupWhatsMessage, type SignupBlock } from "@/lib/signupWhatsMessage";
@@ -376,39 +379,60 @@ const ProvaInscricao = () => {
   // Draft e input nativo guardam YYYY-MM-DD; persistência usa o mesmo formato.
   const pBirthParsed = useMemo(() => parseBirthDateInput(pBirth), [pBirth]);
   const pBirthIso = pBirthParsed.ok ? pBirthParsed.iso : "";
+  /** Adultos: idade esportiva (ano prova − ano nasc). Kids: idade civil na data do evento. */
   const categoryAge = useMemo(
     () => sportAgeAtEvent(pBirthIso || null, (event as any)?.date),
     [pBirthIso, event]
   );
+  const kidsAge = useMemo(
+    () => ageAtEvent(pBirthIso || null, (event as any)?.date),
+    [pBirthIso, event]
+  );
+  const kidsBracket = useMemo(() => kidsBracketFor(kidsAge), [kidsAge]);
+  const isKidsModality = isKidsDistance(distance);
+
   const autoBracket = useMemo(() => {
+    if (isKidsModality) return "";
     if (categoryAge == null || !ageBrackets.length) return "";
     const match = ageBrackets.find((b) => categoryAge >= b.min && categoryAge <= b.max);
     return match ? `${match.min}-${match.max}` : "";
-  }, [categoryAge, ageBrackets]);
+  }, [categoryAge, ageBrackets, isKidsModality]);
   useEffect(() => { setBracket(autoBracket); }, [autoBracket]);
 
   const profileComplete = profile && profile.full_name && profile.cpf && profile.whatsapp && profile.cep;
 
   /** Menor de 18 na data da prova -> CPF opcional. */
-  const isMinor = categoryAge != null && categoryAge < 18;
+  const ageForMinor = isKidsModality ? kidsAge : categoryAge;
+  const isMinor = ageForMinor != null && ageForMinor < 18;
   const cpfRequired = !isMinor;
   const participantComplete = !!(pName.trim() && pBirthParsed.ok && pGender && (!cpfRequired || pCpf.trim()));
 
   const kidsDistances = useMemo(() => distances.filter((d) => isKidsDistance(d.distance)), [distances]);
   const adultDistances = useMemo(() => distances.filter((d) => !isKidsDistance(d.distance)), [distances]);
 
-  /** Idade x modalidade: evita "KIDS • Feminino • 30–34 anos". */
+  /** Idade x modalidade: Kids 2–13; adultos não misturam com Kids. */
   const ageMismatch = useMemo(() => {
-    if (!distance || categoryAge == null) return null;
+    if (!distance) return null;
     const selKids = isKidsDistance(distance);
-    if (selKids && categoryAge >= 18 && adultDistances.length) {
-      return { message: "Esta modalidade é destinada a crianças.", options: adultDistances };
+    if (selKids) {
+      if (kidsAge == null) return null;
+      if (!kidsBracket) {
+        return {
+          message:
+            kidsAge < 2
+              ? "A Corridinha Kids é para crianças a partir de 2 anos."
+              : "A idade da criança está fora das baterias Kids (2 a 13 anos).",
+          options: adultDistances.length && kidsAge >= 14 ? adultDistances : [],
+        };
+      }
+      return null;
     }
-    if (!selKids && categoryAge <= 12 && kidsDistances.length) {
+    if (categoryAge == null) return null;
+    if (categoryAge <= 12 && kidsDistances.length) {
       return { message: "Esta modalidade não corresponde à idade do participante.", options: kidsDistances };
     }
     return null;
-  }, [distance, categoryAge, kidsDistances, adultDistances]);
+  }, [distance, categoryAge, kidsAge, kidsBracket, kidsDistances, adultDistances]);
 
 
 
@@ -430,24 +454,35 @@ const ProvaInscricao = () => {
     .reduce((sum, k) => sum + (k.extra_price ?? 0), 0);
   const total = distancePrice + kitExtra;
 
+  /** Gravado em event_signups.category — Kids: bateria oficial (sem sexo). */
   const categoryLabel = useMemo(() => {
+    if (isKidsModality) return kidsCategoryForAge(kidsAge) || "";
     const parts = [distance, gender, bracket && `${bracket} anos`].filter(Boolean);
     return parts.join(" · ");
-  }, [distance, gender, bracket]);
+  }, [isKidsModality, kidsAge, distance, gender, bracket]);
 
-  /** Rótulo amigável exibido na tela (o categoryLabel continua igual no banco). */
+  /** Rótulo amigável exibido na tela. */
   const categoryDisplay = useMemo(() => {
-    const ageLabel = isKidsDistance(distance) ? "Infantil" : bracket ? `${bracket.replace("-", "–")} anos` : "";
+    if (isKidsModality && kidsBracket) {
+      return `${kidsBracket.title} · ${kidsBracket.subtitle}`;
+    }
+    const ageLabel = bracket ? `${bracket.replace("-", "–")} anos` : "";
     return [distance && cleanDistanceLabel(distance), gender, ageLabel].filter(Boolean).join(" • ");
-  }, [distance, gender, bracket]);
+  }, [isKidsModality, kidsBracket, distance, gender, bracket]);
 
-  const categoryReady = !!distance && !!gender && (!ageBrackets.length || !!bracket || isKidsDistance(distance)) && !ageMismatch;
+  const categoryReady =
+    !!distance &&
+    !ageMismatch &&
+    (isKidsModality
+      ? !!kidsBracket && !!pBirthParsed.ok
+      : !!gender && (!ageBrackets.length || !!bracket));
 
-  /** Categoria completa para a mensagem: sexo + faixa (ou "Infantil" nas modalidades kids). */
+  /** Categoria para WhatsApp / resumo. */
   const categoryForMessage = useMemo(() => {
-    const ageLabel = isKidsDistance(distance) ? "Infantil" : bracket ? `${bracket.replace("-", "–")} anos` : "";
+    if (isKidsModality && kidsBracket) return kidsBracket.category;
+    const ageLabel = bracket ? `${bracket.replace("-", "–")} anos` : "";
     return [gender, ageLabel].filter(Boolean).join(" · ");
-  }, [distance, gender, bracket]);
+  }, [isKidsModality, kidsBracket, gender, bracket]);
 
   const whatsMessage = useMemo(() => {
     const blocks: SignupBlock[] = doneParticipants.map((p) => ({
@@ -484,12 +519,25 @@ const ProvaInscricao = () => {
 
   // Retomar rascunho pendente sem criar nova inscrição
   const resumeSignup = (signup: { id: string; category: string | null; kit_option?: string | null; team_name?: string | null; coupon_code?: string | null; shirt_size?: string | null }) => {
-    const parts = (signup.category || "").split("·").map((p) => p.trim()).filter(Boolean);
-    const savedDistance = parts.find((p) => distances.some((d) => d.distance === p));
-    if (savedDistance) {
-      const g = groupOf(savedDistance);
-      if (groups.includes(g)) setGroup(g);
-      setDistance(savedDistance);
+    const cat = signup.category || "";
+    let restoredDistance = "";
+    if (isKidsDistance(cat)) {
+      const kidsDist = distances.find((d) => isKidsDistance(d.distance));
+      if (kidsDist) {
+        restoredDistance = kidsDist.distance;
+        const g = groupOf(kidsDist.distance);
+        if (groups.includes(g)) setGroup(g);
+        setDistance(kidsDist.distance);
+      }
+    } else {
+      const parts = cat.split("·").map((p) => p.trim()).filter(Boolean);
+      const savedDistance = parts.find((p) => distances.some((d) => d.distance === p));
+      if (savedDistance) {
+        restoredDistance = savedDistance;
+        const g = groupOf(savedDistance);
+        if (groups.includes(g)) setGroup(g);
+        setDistance(savedDistance);
+      }
     }
     let kits: string[] = [];
     try {
@@ -527,7 +575,7 @@ const ProvaInscricao = () => {
     setAcceptedTerms(true);
     setResumeDismissed(true);
 
-    const ready = !!(sg.participant_full_name || profileComplete) && !!savedDistance && (kitOptions.length === 0 || kits.length > 0);
+    const ready = !!(sg.participant_full_name || profileComplete) && !!restoredDistance && (kitOptions.length === 0 || kits.length > 0);
     if (ready) {
       setDone(true);
       setStep(2);
@@ -604,7 +652,21 @@ const ProvaInscricao = () => {
       missingLabels.push(birthParsed.error);
     }
     if (!pGender) { newErrors.pGender = true; missingLabels.push("Sexo"); }
-    if (ageBrackets.length > 0 && !bracket && !isKidsDistance(distance)) { newErrors.bracket = true; missingLabels.push("Data de nascimento"); }
+    if (isKidsDistance(distance)) {
+      if (!birthParsed.ok) {
+        newErrors.pBirth = true;
+        missingLabels.push("Data de nascimento da criança");
+      } else if (!kidsCategoryForAge(kidsAge)) {
+        newErrors.pBirth = true;
+        missingLabels.push("Idade fora das baterias Kids (2 a 13 anos)");
+      } else if (!categoryLabel) {
+        newErrors.distance = true;
+        missingLabels.push("Categoria Kids");
+      }
+    } else if (ageBrackets.length > 0 && !bracket) {
+      newErrors.bracket = true;
+      missingLabels.push("Data de nascimento");
+    }
     if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Kit"); }
     if (availableSizes.length > 0 && !shirtSize) { newErrors.shirtSize = true; missingLabels.push("Tamanho da camiseta"); }
     if (!acceptedTerms) { newErrors.terms = true; missingLabels.push("Aceitar os termos"); }
@@ -635,8 +697,21 @@ const ProvaInscricao = () => {
 
     const birthIso = birthParsed.ok ? birthParsed.iso : "";
 
+    // Kids: categoria sempre pela idade — nunca aceitar texto incompatível.
+    const savedCategory =
+      (isKidsDistance(distance)
+        ? kidsCategoryForAge(ageAtEvent(birthIso, (event as any)?.date))
+        : categoryLabel) || "";
+    if (isKidsDistance(distance) && !savedCategory) {
+      setSubmitting(false);
+      toast.error("Não é possível finalizar a inscrição Kids sem nascimento válido da criança.", {
+        position: "top-center",
+      });
+      return;
+    }
+
     const payload = {
-      category: categoryLabel,
+      category: savedCategory,
       status: "pendente",
       notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
       kit_option: selectedKits.length ? JSON.stringify(selectedKits) : "",
@@ -676,7 +751,7 @@ const ProvaInscricao = () => {
           .select("id, status, participant_full_name")
           .eq("user_id", user.id)
           .eq("event_id", event.id)
-          .eq("category", categoryLabel)
+          .eq("category", savedCategory)
           .maybeSingle();
         if (existing && existing.status !== "confirmada") {
           const res2 = await supabase.from("event_signups").update(payload as any).eq("id", existing.id);
@@ -841,10 +916,14 @@ const ProvaInscricao = () => {
             <span className="font-medium text-right">{shirtSize}</span>
           </div>
         )}
-        {(gender || bracket) && (
+        {(isKidsModality ? kidsBracket : gender || bracket) && (
           <div className="flex justify-between gap-3">
             <span className="text-muted-foreground">Categoria</span>
-            <span className="font-medium text-right">{[gender, bracket && `${bracket} anos`].filter(Boolean).join(" · ")}</span>
+            <span className="font-medium text-right">
+              {isKidsModality && kidsBracket
+                ? kidsBracket.category
+                : [gender, bracket && `${bracket} anos`].filter(Boolean).join(" · ")}
+            </span>
           </div>
         )}
       </div>
@@ -1103,12 +1182,26 @@ const ProvaInscricao = () => {
 
                         <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
                           <h2 className="font-display text-lg font-bold">
-                            {isSelf ? "Seus dados" : "Dados da pessoa inscrita"}
+                            {isSelf
+                              ? "Seus dados"
+                              : isKidsModality || kidsDistances.length
+                                ? "Dados da criança (participante)"
+                                : "Dados da pessoa inscrita"}
                           </h2>
+                          {(isKidsModality || kidsDistances.length > 0) && profile?.full_name && (
+                            <p className="text-xs text-muted-foreground rounded-xl border border-border bg-secondary/30 px-3 py-2">
+                              Responsável pela inscrição:{" "}
+                              <span className="font-semibold text-foreground">{profile.full_name}</span>
+                            </p>
+                          )}
 
                           <div className="grid sm:grid-cols-2 gap-3">
                             <div className="sm:col-span-2" data-invalid={errors.pName || undefined}>
-                              <Label htmlFor="p-name">Nome completo *</Label>
+                              <Label htmlFor="p-name">
+                                {isKidsModality || kidsDistances.length
+                                  ? "Nome completo da criança *"
+                                  : "Nome completo *"}
+                              </Label>
                               <Input id="p-name" value={pName} onChange={(e) => setPName(e.target.value)} className="mt-1" maxLength={160}
                                 aria-invalid={!!errors.pName} />
                             </div>
@@ -1131,6 +1224,11 @@ const ProvaInscricao = () => {
                                   <SelectItem value="Feminino">Feminino</SelectItem>
                                 </SelectContent>
                               </Select>
+                              {(isKidsModality || kidsDistances.length > 0) && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  O sexo é armazenado, mas a Kids é categoria mista (sem divisão M/F).
+                                </p>
+                              )}
                             </div>
                             <div data-invalid={errors.pCpf || undefined}>
                               <Label htmlFor="p-cpf">CPF {cpfRequired ? "*" : "(opcional)"}</Label>
@@ -1146,13 +1244,21 @@ const ProvaInscricao = () => {
                             </div>
                           </div>
 
-                          {categoryAge != null && (
+                          {((isKidsModality ? kidsAge : categoryAge) != null) && (
                             <div className="rounded-xl border border-border bg-secondary/30 px-4 py-3 text-sm">
                               <span className="text-muted-foreground">Idade na data da prova: </span>
-                              <span className="font-semibold">{categoryAge} anos</span>
-                              {senior && !isKidsDistance(distance) && (
+                              <span className="font-semibold">{isKidsModality ? kidsAge : categoryAge} anos</span>
+                              {senior && !isKidsModality && (
                                 <span className="ml-2 text-success font-semibold">• Benefício 60+ (50%)</span>
                               )}
+                            </div>
+                          )}
+
+                          {isKidsModality && kidsBracket && (
+                            <div className="rounded-xl border border-brand/40 bg-brand/10 px-4 py-3 text-sm">
+                              <span className="text-muted-foreground">Categoria Kids: </span>
+                              <span className="font-semibold">{kidsBracket.title}</span>
+                              <span className="text-muted-foreground"> — {kidsBracket.subtitle}</span>
                             </div>
                           )}
 
@@ -1205,7 +1311,8 @@ const ProvaInscricao = () => {
                           <div className="rounded-2xl border border-warning/50 bg-warning/10 px-4 py-3 space-y-2 text-sm">
                             <p className="font-semibold">{ageMismatch.message}</p>
                             <p className="text-muted-foreground">
-                              {pName || "O participante"} terá {categoryAge} anos na data da prova. Escolha uma modalidade compatível:
+                              {pName || "O participante"} terá {isKidsModality ? kidsAge : categoryAge} anos na data da prova.
+                              {ageMismatch.options.length ? " Escolha uma modalidade compatível:" : " Corrija a data de nascimento ou a modalidade."}
                             </p>
                             <div className="flex flex-wrap gap-2">
                               {ageMismatch.options.map((d: any) => (
@@ -1296,6 +1403,55 @@ const ProvaInscricao = () => {
                                 <p className="text-sm text-muted-foreground">Nenhuma modalidade nessa categoria.</p>
                               )}
                             </div>
+                          </div>
+                        )}
+
+                        {isKidsModality && (
+                          <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-3">
+                            <div>
+                              <h3 className="text-sm uppercase tracking-wide text-muted-foreground">Categoria Kids</h3>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Definida pela data de nascimento da criança na data do evento. Categoria mista.
+                              </p>
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-3">
+                              {KIDS_BRACKETS.map((b) => {
+                                const active = kidsBracket?.id === b.id;
+                                return (
+                                  <div
+                                    key={b.id}
+                                    role="radio"
+                                    aria-checked={active}
+                                    className={[
+                                      "rounded-xl border px-3 py-3 text-left transition-all",
+                                      active
+                                        ? "border-brand bg-brand/10 ring-1 ring-brand/40"
+                                        : "border-border bg-secondary/20 opacity-70",
+                                    ].join(" ")}
+                                  >
+                                    <p className="font-semibold text-sm leading-snug">{b.title}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {b.ageLabel} · {b.raceDistance}
+                                    </p>
+                                    {active && (
+                                      <p className="text-[11px] font-bold uppercase tracking-wide text-brand mt-2">
+                                        Selecionada pela idade
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {!pBirthParsed.ok && (
+                              <p className="text-sm text-destructive">
+                                Informe o nascimento da criança para definir a bateria Kids.
+                              </p>
+                            )}
+                            {pBirthParsed.ok && !kidsBracket && (
+                              <p className="text-sm text-destructive">
+                                Idade fora das baterias (2 a 13 anos). Não é possível salvar a inscrição Kids.
+                              </p>
+                            )}
                           </div>
                         )}
 

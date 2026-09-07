@@ -949,11 +949,13 @@ export type Database = {
       list_event_signups_public: {
         Args: { _event_id: string }
         Returns: {
-          age: number
           category: string
           city: string
           full_name: string
-          gender: string
+          participant_birth_date: string
+          participant_full_name: string
+          participant_gender: string
+          responsible_name: string
           status: string
           team_name: string
         }[]

@@ -1,5 +1,14 @@
 import ExcelJS from "exceljs";
-import { effectivePrice, isSeniorApplicableDistance, isSeniorAtEvent } from "@/lib/eventPricing";
+import {
+  effectivePrice,
+  isSeniorApplicableDistance,
+  isSeniorAtEvent,
+  isKidsDistance,
+  kidsCategoryForAge,
+  resolveKidsBracket,
+  ageAtEvent,
+  KIDS_BRACKETS,
+} from "@/lib/eventPricing";
 
 export type ExportSignup = {
   id: string;
@@ -87,13 +96,14 @@ export const hasParticipantSnapshot = (s: ParticipantSnapshotFields) =>
 
 /**
  * Nome do atleta/participante.
- * Fallback visual para o titular é permitido mesmo com snapshot parcial
- * (ex.: só nascimento Kids), mas isso NÃO autoriza misturar CPF/nasc/gênero.
+ * Em Kids nunca promove o responsável (profiles) a participante.
+ * Em adultos históricos sem snapshot, o fallback visual para o titular permanece.
  */
-export const athleteName = (s: ExportSignup) =>
-  (filled(s.participant_full_name) ? s.participant_full_name!.trim() : "") ||
-  s.profiles?.full_name ||
-  "";
+export const athleteName = (s: ExportSignup) => {
+  if (filled(s.participant_full_name)) return s.participant_full_name!.trim();
+  if (isKidsDistance(s.category)) return "";
+  return s.profiles?.full_name || "";
+};
 
 /**
  * CPF do atleta. Profiles só se a inscrição for realmente antiga (sem nenhum participant_*).
@@ -150,9 +160,12 @@ const toDate = (iso?: string | null) => {
 export const signupValue = (s: ExportSignup, event?: EventPricingRow): number | null => {
   const dist = modalityOf(s.category);
   const list: any[] = Array.isArray(event?.distances) ? (event!.distances as any[]) : [];
-  const d = list.find((x) => (x?.distance || "").trim() === dist);
+  let d = list.find((x) => (x?.distance || "").trim() === dist);
+  if (!d && isKidsDistance(s.category)) {
+    d = list.find((x) => isKidsDistance(x?.distance));
+  }
   if (!d) return null;
-  const senior = isSeniorApplicableDistance(dist) && isSeniorAtEvent(athleteBirth(s), s.events?.date);
+  const senior = isSeniorApplicableDistance(d.distance || dist) && isSeniorAtEvent(athleteBirth(s), s.events?.date);
   const v = effectivePrice(d, senior);
   return typeof v === "number" && v > 0 ? v : null;
 };
@@ -173,6 +186,7 @@ export async function exportSignupsXlsx(
   const ws = wb.addWorksheet("Inscritos", { views: [{ state: "frozen", ySplit: 1 }] });
   ws.columns = [
     { header: "Nome", key: "nome", width: 30 },
+    { header: "Responsável", key: "responsavel", width: 30 },
     { header: "CPF", key: "cpf", width: 16 },
     { header: "Data de nascimento", key: "nasc", width: 18 },
     { header: "Sexo", key: "sexo", width: 14 },
@@ -190,13 +204,19 @@ export async function exportSignupsXlsx(
   ];
 
   for (const r of data) {
+    const kids = isKidsDistance(r.category);
+    const age = ageAtEvent(athleteBirth(r), r.events?.date);
+    const kidsCat = kids
+      ? resolveKidsBracket({ age, category: r.category })?.category || r.category
+      : r.category || "";
     ws.addRow({
       nome: athleteName(r),
+      responsavel: responsibleName(r),
       cpf: athleteCpf(r),
       nasc: toDate(athleteBirth(r)),
-      sexo: genderLabel(r),
-      mod: modalityOf(r.category),
-      cat: r.category || "",
+      sexo: kids ? "Misto" : genderLabel(r),
+      mod: kids ? "Kids" : modalityOf(r.category),
+      cat: kidsCat,
       camiseta: (r.shirt_size || "").toUpperCase(),
       kit: formatKitOption(r.kit_option || ""),
       cidade: `${r.profiles?.city || ""}${r.profiles?.state ? ` / ${r.profiles.state}` : ""}`.trim(),
@@ -224,6 +244,64 @@ export async function exportSignupsXlsx(
     if (i === 1) return;
     row.alignment = { vertical: "top", wrapText: true };
   });
+
+  // ---- Aba Kids / Largada (cronometragem) ----
+  const kidsRows = data.filter((r) => isKidsDistance(r.category));
+  if (kidsRows.length) {
+    const wsKids = wb.addWorksheet("Kids - Largada", { views: [{ state: "frozen", ySplit: 1 }] });
+    wsKids.columns = [
+      { header: "Categoria/Bateria", key: "bateria", width: 36 },
+      { header: "Participante", key: "participante", width: 30 },
+      { header: "Responsável", key: "responsavel", width: 30 },
+      { header: "Data de nascimento", key: "nasc", width: 18 },
+      { header: "Idade no dia do evento", key: "idade", width: 20 },
+      { header: "Cidade", key: "cidade", width: 22 },
+      { header: "Equipe", key: "equipe", width: 22 },
+    ];
+
+    const sorted = [...kidsRows].sort((a, b) => {
+      const ageA = ageAtEvent(athleteBirth(a), a.events?.date);
+      const ageB = ageAtEvent(athleteBirth(b), b.events?.date);
+      const brA = resolveKidsBracket({ age: ageA, category: a.category });
+      const brB = resolveKidsBracket({ age: ageB, category: b.category });
+      const ia = brA ? KIDS_BRACKETS.findIndex((x) => x.id === brA.id) : 99;
+      const ib = brB ? KIDS_BRACKETS.findIndex((x) => x.id === brB.id) : 99;
+      if (ia !== ib) return ia - ib;
+      return athleteName(a).localeCompare(athleteName(b), "pt-BR");
+    });
+
+    for (const r of sorted) {
+      const birth = athleteBirth(r);
+      const age = ageAtEvent(birth, r.events?.date);
+      const br = resolveKidsBracket({ age, category: r.category });
+      const bateria =
+        br?.category ||
+        kidsCategoryForAge(age) ||
+        r.category ||
+        "Aguardando classificação";
+      wsKids.addRow({
+        bateria,
+        participante: athleteName(r) || "(cadastro incompleto)",
+        responsavel: responsibleName(r) || "",
+        nasc: toDate(birth),
+        idade: age ?? "",
+        cidade: `${r.profiles?.city || ""}${r.profiles?.state ? ` / ${r.profiles.state}` : ""}`.trim(),
+        equipe: r.team_name || r.profiles?.team_name || "",
+      });
+    }
+
+    const hk = wsKids.getRow(1);
+    hk.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    hk.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111111" } };
+    hk.alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+    hk.height = 26;
+    wsKids.autoFilter = { from: "A1", to: { row: 1, column: wsKids.columnCount } };
+    wsKids.getColumn("nasc").numFmt = "dd/mm/yyyy";
+    wsKids.eachRow((row, i) => {
+      if (i === 1) return;
+      row.alignment = { vertical: "top", wrapText: true };
+    });
+  }
 
   // ---- Aba 2: Resumo de camisetas ----
   const ws2 = wb.addWorksheet("Resumo de camisetas");
@@ -258,8 +336,13 @@ export async function exportSignupsXlsx(
   const catMap = new Map<string, { mod: string; gen: string; faixa: string; q: number }>();
   for (const r of data) {
     const mod = modalityOf(r.category) || "Não informado";
-    const gen = genderLabel(r);
-    const faixa = bracketOf(r.category) || "Não informada";
+    const kids = isKidsDistance(r.category);
+    const gen = kids ? "Misto" : genderLabel(r);
+    const age = ageAtEvent(athleteBirth(r), r.events?.date);
+    const kidsBr = kids ? resolveKidsBracket({ age, category: r.category }) : null;
+    const faixa = kids
+      ? kidsBr?.ageLabel || bracketOf(r.category) || "Não informada"
+      : bracketOf(r.category) || "Não informada";
     const key = `${mod}|${gen}|${faixa}`;
     const cur = catMap.get(key) ?? { mod, gen, faixa, q: 0 };
     cur.q += 1;

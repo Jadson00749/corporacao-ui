@@ -17,8 +17,8 @@ import {
   useParticipantMutations,
   useParticipants,
 } from "@/hooks/useParticipants";
-import { incompleteKidsSignups, kidsBracketLabel } from "@/lib/participantCompletion";
-import { sportAgeAtEvent } from "@/lib/eventPricing";
+import { incompleteKidsSignups, kidsBracketLabel, buildKidsParticipantPatch } from "@/lib/participantCompletion";
+import { ageAtEvent } from "@/lib/eventPricing";
 import type { EventSignup } from "@/hooks/useProfile";
 
 /**
@@ -65,13 +65,21 @@ export const CompleteParticipantCard = ({
 
     // Somente os campos do participante. Status, valores e pagamento não entram
     // no update, e user_id continua sendo o titular que fez a inscrição.
-    const patch: Record<string, string | null> = {
-      participant_full_name: v.full_name.trim(),
-      participant_birth_date: v.birth_date || null,
-      participant_gender: v.gender || null,
-    };
-    if (v.cpf.trim()) patch.participant_cpf = v.cpf.trim();
-    if (v.phone.trim()) patch.participant_phone = v.phone.trim();
+    const built = buildKidsParticipantPatch(
+      {
+        full_name: v.full_name,
+        birth_date: v.birth_date,
+        gender: v.gender,
+        cpf: v.cpf,
+        phone: v.phone,
+      },
+      target.events?.date,
+    );
+    if (!built.ok) {
+      setSaving(false);
+      return toast.error(built.error);
+    }
+    const patch = built.patch;
 
     const { error } = await supabase
       .from("event_signups")
@@ -105,7 +113,7 @@ export const CompleteParticipantCard = ({
       /* cadastro reutilizável é conveniência, não requisito */
     }
 
-    const bracket = kidsBracketLabel(sportAgeAtEvent(v.birth_date, target.events?.date));
+    const bracket = kidsBracketLabel(ageAtEvent(v.birth_date, target.events?.date));
     setSaving(false);
     setTarget(null);
     toast.success(bracket ? `Dados salvos. Categoria Kids: ${bracket}.` : "Dados do participante salvos.");

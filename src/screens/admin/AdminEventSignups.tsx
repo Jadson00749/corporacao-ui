@@ -12,6 +12,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { isMainOrg } from "@/hooks/useOrganizerStats";
 import { useSearchParams } from "@/lib/router-compat";
 import { EmptyState, ErrorState } from "@/components/site/EmptyState";
+import { isKidsCategory } from "@/lib/eventPricing";
+import { needsParticipantData } from "@/lib/participantCompletion";
+import { AdminSignupDetailSheet, type AdminSignupDetailRow } from "@/components/admin/AdminSignupDetailSheet";
 
 
 type Row = {
@@ -68,8 +71,12 @@ const rowGender = (r: Row): "F" | "M" | "O" => {
   return "O";
 };
 
-const athleteNameOf = (r: Row) =>
-  (filled(r.participant_full_name) ? r.participant_full_name!.trim() : "") || r.profiles?.full_name || "-";
+const athleteNameOf = (r: Row) => {
+  if (filled(r.participant_full_name)) return r.participant_full_name!.trim();
+  // Kids incompleto: nunca promover o responsável a atleta na lista.
+  if (isKidsCategory(r.category)) return "Participante incompleto";
+  return r.profiles?.full_name || "-";
+};
 
 const athleteCpfOf = (r: Row) => {
   if (filled(r.participant_cpf)) return r.participant_cpf!.trim();
@@ -98,7 +105,7 @@ const AdminEventSignups = () => {
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
-  const [genderFilter, setGenderFilter] = useState<"all" | "F" | "M">("all");
+  const [genderFilter, setGenderFilter] = useState<"all" | "F" | "M" | "kids">("all");
   const [ownership, setOwnership] = useState<"all" | "corp" | "external">("all");
   const [orgFilter, setOrgFilter] = useState<string>("all");
 
@@ -206,10 +213,11 @@ const AdminEventSignups = () => {
         const g = rowGender(r);
         if (g === "F") acc.F += 1;
         else if (g === "M") acc.M += 1;
+        if (isKidsCategory(r.category)) acc.kids += 1;
         acc.all += 1;
         return acc;
       },
-      { all: 0, F: 0, M: 0 }
+      { all: 0, F: 0, M: 0, kids: 0 }
     );
   }, [baseFiltered]);
 
@@ -226,10 +234,11 @@ const AdminEventSignups = () => {
     );
   }, [baseFiltered]);
 
-  const filtered = useMemo(
-    () => (genderFilter === "all" ? baseFiltered : baseFiltered.filter((r) => rowGender(r) === genderFilter)),
-    [baseFiltered, genderFilter]
-  );
+  const filtered = useMemo(() => {
+    if (genderFilter === "all") return baseFiltered;
+    if (genderFilter === "kids") return baseFiltered.filter((r) => isKidsCategory(r.category));
+    return baseFiltered.filter((r) => rowGender(r) === genderFilter);
+  }, [baseFiltered, genderFilter]);
 
 
   const updateStatus = async (id: string, status: string) => {
@@ -264,6 +273,7 @@ const AdminEventSignups = () => {
   };
 
   const [exporting, setExporting] = useState(false);
+  const [detail, setDetail] = useState<AdminSignupDetailRow | null>(null);
 
   const exportXlsx = async () => {
     try {
@@ -344,11 +354,12 @@ const AdminEventSignups = () => {
           ["all", "Todos", counts.all],
           ["F", "Feminino", counts.F],
           ["M", "Masculino", counts.M],
+          ["kids", "Kids", counts.kids],
         ] as const).map(([value, label, count]) => (
           <button
             key={value}
             type="button"
-            onClick={() => setGenderFilter(value as "all" | "F" | "M")}
+            onClick={() => setGenderFilter(value)}
             className={[
               "rounded-full border px-4 py-1.5 text-sm transition-colors",
               genderFilter === value
@@ -399,12 +410,16 @@ const AdminEventSignups = () => {
               <tr>
                 <th className="p-3">Prova</th><th className="p-3">Atleta</th>
                 <th className="p-3">Contato</th><th className="p-3">Categoria</th>
-                <th className="p-3">Status</th><th className="p-3">Data</th>
+                <th className="p-3">Status</th><th className="p-3">Data</th><th className="p-3"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((r) => (
-                <tr key={r.id} className="border-t border-border">
+                <tr
+                  key={r.id}
+                  className="border-t border-border cursor-pointer hover:bg-secondary/40 transition-colors"
+                  onClick={() => setDetail(r)}
+                >
                   <td className="p-3">
                     <div className="font-medium">{r.events?.name}</div>
                     <div className="text-xs text-muted-foreground">{r.events?.date}</div>
@@ -423,12 +438,16 @@ const AdminEventSignups = () => {
                   <td className="p-3">
                     <div className="font-medium">{athleteNameOf(r)}</div>
                     <div className="text-xs text-muted-foreground">CPF {athleteCpfOf(r)}</div>
-                    {r.profiles?.full_name &&
-                      athleteNameOf(r) !== r.profiles.full_name && (
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          Responsável: {r.profiles.full_name}
-                        </div>
-                      )}
+                    {r.profiles?.full_name && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Responsável: {r.profiles.full_name}
+                      </div>
+                    )}
+                    {needsParticipantData(r) && (
+                      <div className="mt-1 text-[11px] font-semibold text-warning">
+                        Dados da criança incompletos
+                      </div>
+                    )}
                   </td>
                   <td className="p-3">
                     <div>{r.profiles?.email}</div>
@@ -445,7 +464,7 @@ const AdminEventSignups = () => {
                       </div>
                     )}
                   </td>
-                  <td className="p-3">
+                  <td className="p-3" onClick={(e) => e.stopPropagation()}>
                     <Select value={r.status} onValueChange={(v) => updateStatus(r.id, v)}>
                       <SelectTrigger className={`h-8 w-40 font-medium ${
                         r.status === "pendente" ? "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/40" :
@@ -462,12 +481,36 @@ const AdminEventSignups = () => {
                   <td className="p-3 text-xs text-muted-foreground">
                     {new Date(r.created_at).toLocaleDateString("pt-BR")}
                   </td>
+                  <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-xs"
+                      onClick={() => setDetail(r)}
+                    >
+                      Ver detalhes
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      <AdminSignupDetailSheet
+        signup={detail}
+        open={!!detail}
+        onOpenChange={(o) => !o && setDetail(null)}
+        onSaved={(opts) => {
+          if (opts?.patch && detail) {
+            setDetail({ ...detail, ...opts.patch });
+          }
+          if (opts?.closeSheet) setDetail(null);
+          refetch();
+        }}
+      />
     </div>
   );
 };
