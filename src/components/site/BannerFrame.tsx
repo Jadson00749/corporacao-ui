@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type Props = {
+  /** URL preferencial no desktop (banner_image). */
   src?: string | null;
+  /** URL preferencial no mobile; se omitida, usa `src`. */
+  mobileSrc?: string | null;
   alt: string;
   /** classes de proporção do quadro, ex: "aspect-[16/9] md:aspect-[21/9]" */
   className?: string;
@@ -28,10 +31,11 @@ const useIsMdUp = () => {
 /**
  * Moldura de banner que preserva a proporção original da imagem.
  * Mobile: um único <img> + fundo sólido (sem 2ª requisição).
- * Desktop: imagem inteira (object-contain) sobre blur da própria foto.
+ * Desktop: imagem inteira (object-contain por padrão) sobre blur da própria foto.
  */
 export const BannerFrame = ({
   src,
+  mobileSrc,
   alt,
   className,
   imgClassName,
@@ -39,14 +43,17 @@ export const BannerFrame = ({
   loading = "lazy",
 }: Props) => {
   const mdUp = useIsMdUp();
+  const desktop = (src || "").trim();
+  const mobile = (mobileSrc || src || "").trim();
+  const displaySrc = mdUp ? desktop || mobile : mobile || desktop;
 
   return (
     <div className={cn("relative overflow-hidden bg-[#0b0b0b]", className)}>
-      {src && (
+      {displaySrc && (
         <>
           {mdUp && (
             <img
-              src={src}
+              src={displaySrc}
               alt=""
               aria-hidden
               loading={loading}
@@ -55,7 +62,8 @@ export const BannerFrame = ({
             />
           )}
           <img
-            src={src}
+            key={displaySrc}
+            src={displaySrc}
             alt={alt}
             loading={loading}
             decoding="async"

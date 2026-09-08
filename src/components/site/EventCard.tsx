@@ -2,7 +2,7 @@ import { Link } from "@/lib/router-compat";
 import { Calendar, MapPin, ArrowRight } from "lucide-react";
 import { RaceEvent, eventStatusLabel } from "@/data/events";
 import { cn } from "@/lib/utils";
-import { getEventBannerFallback } from "@/lib/eventBannerFallback";
+import { pickEventBannerDesktop, pickEventBannerMobile } from "@/lib/eventBannerFallback";
 import { BannerFrame } from "@/components/site/BannerFrame";
 import { currentPrice, isSeniorOnlyDistance } from "@/lib/eventPricing";
 import { Button } from "@/components/ui/button";
@@ -22,11 +22,14 @@ const formatDate = (iso: string) =>
 
 export const EventCard = ({ event }: { event: RaceEvent }) => {
   const closed = event.status === "closed";
-  const banner =
-    event.bannerMobileImage ||
-    event.bannerImage ||
-    event.image ||
-    getEventBannerFallback(event.id);
+  const sources = {
+    id: event.id,
+    bannerImage: event.bannerImage,
+    bannerMobileImage: event.bannerMobileImage,
+    image: event.image,
+  };
+  const desktopBanner = pickEventBannerDesktop(sources);
+  const mobileBanner = pickEventBannerMobile(sources);
 
   const modalities =
     (event.distances ?? [])
@@ -62,66 +65,64 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
         />
       )}
 
-      {/* Imagem: só selo de status por cima */}
       <BannerFrame
-        src={banner}
+        src={desktopBanner}
+        mobileSrc={mobileBanner}
         alt={`Banner ${event.name}`}
         className="aspect-[16/10] md:aspect-[16/9] transition-transform duration-[1200ms] ease-out"
-        imgClassName={cn(
-          "transition-transform duration-[1200ms] ease-out group-hover:scale-[1.03]",
-          "object-cover object-center md:object-contain"
-        )}
+        imgClassName="object-cover object-center transition-transform duration-[1200ms] ease-out group-hover:scale-[1.03]"
       >
         <div
           aria-hidden
           className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent md:from-black/50"
         />
+      </BannerFrame>
+
+      {/* Conteúdo — badge abaixo da imagem, sem cobrir a arte */}
+      <div className="relative z-20 flex flex-1 flex-col p-4 sm:p-5 md:p-6 md:pointer-events-none">
         <span
           className={cn(
-            "absolute top-3 left-3 z-[1] inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.22em] uppercase px-2.5 py-1 rounded-full border backdrop-blur-sm",
+            "mb-2.5 inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]",
             statusStyle[event.status]
           )}
         >
           {event.status === "open" && (
-            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
           )}
           {eventStatusLabel[event.status]}
         </span>
-      </BannerFrame>
 
-      {/* Conteúdo em fundo sólido do card */}
-      <div className="relative z-20 flex flex-1 flex-col p-4 sm:p-5 md:p-6 md:pointer-events-none">
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <p className="text-[10px] font-semibold tracking-[0.28em] uppercase text-brand leading-snug">
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <p className="text-[10px] font-semibold uppercase leading-snug tracking-[0.28em] text-brand">
             {modalities}
           </p>
           {minPrice != null && (
-            <span className="shrink-0 inline-flex items-baseline gap-1 text-[10px] font-semibold tracking-[0.18em] uppercase text-foreground/70">
+            <span className="inline-flex shrink-0 items-baseline gap-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70">
               A partir de
-              <strong className="text-sm tracking-normal normal-case text-brand">
+              <strong className="text-sm font-semibold normal-case tracking-normal text-brand">
                 {minPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </strong>
             </span>
           )}
         </div>
 
-        <h3 className="font-display text-lg sm:text-xl font-semibold text-foreground leading-snug md:line-clamp-2 group-hover:text-brand transition-colors">
+        <h3 className="font-display text-lg font-semibold leading-snug text-foreground transition-colors group-hover:text-brand sm:text-xl md:line-clamp-2">
           {event.name}
         </h3>
 
-        <div className="mt-3 md:mt-4 space-y-1.5 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2 min-w-0">
-            <Calendar className="w-3.5 h-3.5 shrink-0 text-brand" />
+        <div className="mt-3 space-y-1.5 text-sm text-muted-foreground md:mt-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <Calendar className="h-3.5 w-3.5 shrink-0 text-brand" />
             <span>{formatDate(event.date)}</span>
           </div>
-          <div className="flex items-center gap-2 min-w-0">
-            <MapPin className="w-3.5 h-3.5 shrink-0 text-brand" />
+          <div className="flex min-w-0 items-center gap-2">
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-brand" />
             <span className="break-words">{event.city}</span>
           </div>
         </div>
 
-        {/* Mobile: CTAs empilhados em largura total */}
-        <div className="mt-auto pt-4 flex flex-col gap-2 md:hidden">
+        {/* Mobile: CTAs empilhados */}
+        <div className="mt-auto flex flex-col gap-2 pt-4 md:hidden">
           {!closed ? (
             <>
               <Button asChild variant="brand" className="w-full">
@@ -138,19 +139,19 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
               </Button>
             </>
           ) : (
-            <p className="text-xs font-semibold tracking-wide uppercase text-muted-foreground text-center py-2">
+            <p className="py-2 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Inscrições encerradas
             </p>
           )}
         </div>
 
-        {/* Desktop: CTA textual atual (clique via overlay) */}
-        <div className="mt-5 hidden md:inline-flex items-center gap-2 text-xs font-semibold tracking-wide uppercase text-foreground">
+        {/* Desktop: CTA textual */}
+        <div className="mt-5 hidden items-center gap-2 text-xs font-semibold uppercase tracking-wide text-foreground md:inline-flex">
           {closed ? "Inscrições encerradas" : "Ver detalhes"}
           {!closed && (
             <>
-              <span className="w-5 h-px bg-foreground/40 group-hover:w-10 group-hover:bg-brand transition-all duration-300" />
-              <ArrowRight className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+              <span className="h-px w-5 bg-foreground/40 transition-all duration-300 group-hover:w-10 group-hover:bg-brand" />
+              <ArrowRight className="h-3.5 w-3.5 -translate-x-1 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" />
             </>
           )}
         </div>

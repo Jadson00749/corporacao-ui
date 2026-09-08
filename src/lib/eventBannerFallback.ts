@@ -16,3 +16,36 @@ export const getEventBannerFallback = (id: string) => {
   }
   return FALLBACK_BANNERS[hash % FALLBACK_BANNERS.length];
 };
+
+/** Campos reais do evento (Admin: banner_image = desktop; banner_mobile_image = mobile). */
+export type EventBannerSources = {
+  id?: string;
+  /** banner_image — arte principal / desktop */
+  bannerImage?: string | null;
+  /** banner_mobile_image — arte específica mobile */
+  bannerMobileImage?: string | null;
+  /** image — fallback genérico legado */
+  image?: string | null;
+};
+
+const firstUrl = (...candidates: Array<string | null | undefined>) => {
+  for (const c of candidates) {
+    const v = (c || "").trim();
+    if (v) return v;
+  }
+  return "";
+};
+
+/**
+ * Desktop: banner_image → image → banner_mobile_image → fallback.
+ */
+export const pickEventBannerDesktop = (s: EventBannerSources) =>
+  firstUrl(s.bannerImage, s.image, s.bannerMobileImage) ||
+  (s.id ? getEventBannerFallback(s.id) : "");
+
+/**
+ * Mobile: banner_mobile_image → banner_image → image → fallback.
+ */
+export const pickEventBannerMobile = (s: EventBannerSources) =>
+  firstUrl(s.bannerMobileImage, s.bannerImage, s.image) ||
+  (s.id ? getEventBannerFallback(s.id) : "");
