@@ -990,6 +990,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_event_coupon_availability: {
+        Args: { _event_id: string; _code: string }
+        Returns: {
+          ok: boolean
+          code: string
+          max_uses: number
+          used: number
+          remaining: number
+          reason: string
+        }[]
+      }
       list_event_signups_public: {
         Args: { _event_id: string }
         Returns: {

@@ -18,6 +18,7 @@ export type ExportSignup = {
   kit_option: string;
   shirt_size: string | null;
   team_name: string;
+  coupon_code?: string | null;
   event_id: string;
   events: { id: string; name: string; date: string; city: string } | null;
   participant_full_name?: string | null;
@@ -201,6 +202,7 @@ export async function exportSignupsXlsx(
     { header: "Valor", key: "valor", width: 14 },
     { header: "Status", key: "status", width: 14 },
     { header: "Data da inscrição", key: "criado", width: 20 },
+    { header: "Cupom utilizado", key: "cupom", width: 18 },
   ];
 
   for (const r of data) {
@@ -209,6 +211,7 @@ export async function exportSignupsXlsx(
     const kidsCat = kids
       ? resolveKidsBracket({ age, category: r.category })?.category || r.category
       : r.category || "";
+    const coupon = String(r.coupon_code || "").trim();
     ws.addRow({
       nome: athleteName(r),
       responsavel: responsibleName(r),
@@ -227,6 +230,7 @@ export async function exportSignupsXlsx(
       valor: signupValue(r, eventMap.get(r.event_id)),
       status: (r.status || "").toLowerCase() === "confirmada" ? "Aprovada" : "Em andamento",
       criado: toDate(r.created_at),
+      cupom: coupon || "Não",
     });
   }
 

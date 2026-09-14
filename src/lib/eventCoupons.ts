@@ -11,6 +11,20 @@ export type EventCoupon = {
   value?: number;
   /** default true quando omitido (legado) */
   active?: boolean;
+  /**
+   * Limite de utilizações (inscrições não canceladas com este código).
+   * null / undefined / omitido → ilimitado.
+   */
+  max_uses?: number | null;
+};
+
+export type CouponAvailability = {
+  ok: boolean;
+  code: string | null;
+  max_uses: number | null;
+  used: number;
+  remaining: number | null;
+  reason: string;
 };
 
 /** Formato legado encontrado: { code, description? } sem type/value/active. */
@@ -19,6 +33,13 @@ export const isLegacyCouponShape = (c: Partial<EventCoupon> | null | undefined) 
   typeof c.code === "string" &&
   c.type == null &&
   (c.value == null || Number.isNaN(Number(c.value)));
+
+const parseMaxUses = (raw: any): number | null | undefined => {
+  if (raw == null || raw === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.floor(n);
+};
 
 export const normalizeCoupon = (raw: any): EventCoupon => {
   const code = String(raw?.code ?? "").trim();
@@ -35,6 +56,7 @@ export const normalizeCoupon = (raw: any): EventCoupon => {
   const value = Number.isFinite(num) && num > 0 ? num : undefined;
 
   const active = raw?.active === false ? false : true;
+  const max_uses = parseMaxUses(raw?.max_uses);
 
   // Legado / incompleto: mantém code+description; type/value só se válidos
   if (!type || value == null) {
@@ -42,6 +64,7 @@ export const normalizeCoupon = (raw: any): EventCoupon => {
       code,
       ...(description ? { description } : {}),
       active,
+      ...(max_uses != null ? { max_uses } : {}),
     };
   }
 
@@ -54,6 +77,7 @@ export const normalizeCoupon = (raw: any): EventCoupon => {
     value: safeValue,
     ...(description ? { description } : {}),
     active,
+    ...(max_uses != null ? { max_uses } : {}),
   };
 };
 
@@ -66,6 +90,12 @@ export const normalizeCoupons = (raw: unknown): EventCoupon[] => {
 export const listApplicableCoupons = (raw: unknown): EventCoupon[] =>
   normalizeCoupons(raw).filter((c) => c.active !== false && c.code.trim());
 
+export const couponHasDiscountConfig = (c: EventCoupon | null | undefined) =>
+  !!c &&
+  (c.type === "percentage" || c.type === "fixed") &&
+  typeof c.value === "number" &&
+  c.value > 0;
+
 /**
  * Desconto sobre a base já calculada (lote/60+ + kits).
  * Legado sem type/value → 0 (comportamento monetário anterior).
@@ -76,14 +106,14 @@ export const computeCouponDiscount = (
 ): number => {
   if (!coupon || coupon.active === false) return 0;
   const base = Math.max(0, Number(baseAmount) || 0);
-  if (!coupon.type || coupon.value == null || !(coupon.value > 0)) return 0;
+  if (!couponHasDiscountConfig(coupon)) return 0;
 
   let discount = 0;
-  if (coupon.type === "percentage") {
-    const pct = Math.min(Math.max(coupon.value, 0), 100);
+  if (coupon!.type === "percentage") {
+    const pct = Math.min(Math.max(coupon!.value!, 0), 100);
     discount = (base * pct) / 100;
-  } else if (coupon.type === "fixed") {
-    discount = coupon.value;
+  } else if (coupon!.type === "fixed") {
+    discount = coupon!.value!;
   }
 
   if (!Number.isFinite(discount) || discount <= 0) return 0;
@@ -112,6 +142,12 @@ export const validateCouponFields = (c: EventCoupon): string | null => {
   if (c.type === "percentage" && v > 100) {
     return `Cupom "${c.code}": porcentagem deve ser no máximo 100.`;
   }
+  if (c.max_uses != null && String(c.max_uses) !== "") {
+    const lim = Number(c.max_uses);
+    if (!Number.isFinite(lim) || lim <= 0 || !Number.isInteger(lim)) {
+      return `Cupom "${c.code}": limite de utilizações deve ser um inteiro maior que zero, ou vazio (ilimitado).`;
+    }
+  }
   return null;
 };
 
@@ -124,6 +160,7 @@ export const toAdminCouponDraft = (raw: any): EventCoupon => {
     type: n.type,
     value: n.value,
     active: n.active !== false,
+    max_uses: n.max_uses ?? null,
   };
 };
 
@@ -134,5 +171,24 @@ export const newAdminCoupon = (): EventCoupon => ({
   value: 10,
   description: "",
   active: true,
+  max_uses: null,
 });
 
+export const formatCouponUsesLabel = (used: number, maxUses: number | null | undefined) => {
+  if (maxUses == null || !(maxUses > 0)) return `${used} / Ilimitado`;
+  return `${used} / ${maxUses}`;
+};
+
+export const couponAvailabilityMessage = (reason: string | null | undefined) => {
+  switch (reason) {
+    case "exhausted":
+      return "Este cupom atingiu o limite de utilizações.";
+    case "inactive":
+      return "Este cupom está inativo.";
+    case "not_found":
+    case "empty_code":
+      return "Cupom não encontrado.";
+    default:
+      return "Não foi possível validar este cupom.";
+  }
+};

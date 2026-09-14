@@ -40,6 +40,8 @@ import {
   type EventCoupon,
   listApplicableCoupons,
   applyCouponToTotal,
+  couponHasDiscountConfig,
+  couponAvailabilityMessage,
 } from "@/lib/eventCoupons";
 
 import { buildSignupWhatsMessage, type SignupBlock } from "@/lib/signupWhatsMessage";
@@ -605,8 +607,7 @@ const ProvaInscricao = () => {
     resumeSignup(pendingSignup);
   }, [pendingSignup, distances, kitOptions, profileComplete]);
 
-  const applyCoupon = () => {
-
+  const applyCoupon = async () => {
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
     const found = coupons.find((c) => c.code.toUpperCase() === code);
@@ -615,6 +616,30 @@ const ProvaInscricao = () => {
       setAppliedCoupon(null);
       return;
     }
+    if (!couponHasDiscountConfig(found)) {
+      toast.error("Este cupom ainda não tem desconto configurado.");
+      setAppliedCoupon(null);
+      return;
+    }
+
+    if (event?.id) {
+      const { data, error } = await supabase.rpc("check_event_coupon_availability", {
+        _event_id: event.id,
+        _code: code,
+      });
+      if (error) {
+        // Migration ainda não aplicada: segue só com validação local
+        console.warn("[check_event_coupon_availability]", error.message);
+      } else {
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row && row.ok === false) {
+          toast.error(couponAvailabilityMessage(row.reason));
+          setAppliedCoupon(null);
+          return;
+        }
+      }
+    }
+
     setAppliedCoupon(found);
     const preview = applyCouponToTotal(subtotal, found);
     if (found.type === "percentage" && found.value != null) {
@@ -707,6 +732,29 @@ const ProvaInscricao = () => {
     setErrors({});
     setSubmitError(null);
 
+    // Revalida cupom imediatamente antes de criar a inscrição
+    if (appliedCoupon?.code && event?.id) {
+      if (!couponHasDiscountConfig(appliedCoupon)) {
+        toast.error("Este cupom ainda não tem desconto configurado.");
+        setAppliedCoupon(null);
+        return;
+      }
+      const { data: avail, error: availErr } = await supabase.rpc(
+        "check_event_coupon_availability",
+        { _event_id: event.id, _code: appliedCoupon.code }
+      );
+      if (availErr) {
+        console.warn("[check_event_coupon_availability]", availErr.message);
+      } else {
+        const row = Array.isArray(avail) ? avail[0] : avail;
+        if (row && row.ok === false) {
+          toast.error(couponAvailabilityMessage(row.reason));
+          setAppliedCoupon(null);
+          return;
+        }
+      }
+    }
+
     setSubmitting(true);
 
     const birthIso = birthParsed.ok ? birthParsed.iso : "";
@@ -783,6 +831,15 @@ const ProvaInscricao = () => {
 
     if (error) {
       setSubmitting(false);
+      const limitHit =
+        /limite de utilizações/i.test(error.message || "") ||
+        error.message?.includes("P0001");
+      if (limitHit) {
+        setAppliedCoupon(null);
+        setSubmitError("Este cupom atingiu o limite de utilizações.");
+        toast.error("Este cupom atingiu o limite de utilizações.", { position: "top-center" });
+        return;
+      }
       setSubmitError(
         "Não conseguimos registrar sua inscrição agora. Seus dados foram mantidos — tente novamente em instantes."
       );
@@ -1015,12 +1072,25 @@ const ProvaInscricao = () => {
                   <div className="text-center">
                     <CheckCircle2 className="w-11 h-11 text-success mx-auto mb-2" />
                     <h1 className="font-display text-xl sm:text-2xl font-bold mb-2">Inscrição registrada! 🎉</h1>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/15 px-3 py-1 text-xs font-semibold text-warning">
-                      🟡 Aguardando pagamento
-                    </span>
-                    <p className="text-muted-foreground text-sm mt-2.5">
-                      Seu cadastro foi salvo. Agora falta realizar o pagamento e enviar o comprovante para concluir a confirmação.
-                    </p>
+                    {total > 0 ? (
+                      <>
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/15 px-3 py-1 text-xs font-semibold text-warning">
+                          🟡 Aguardando pagamento
+                        </span>
+                        <p className="text-muted-foreground text-sm mt-2.5">
+                          Seu cadastro foi salvo. Agora falta realizar o pagamento e enviar o comprovante para concluir a confirmação.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/15 px-3 py-1 text-xs font-semibold text-warning">
+                          🟡 Aguardando aprovação
+                        </span>
+                        <p className="text-muted-foreground text-sm mt-2.5">
+                          Sua inscrição foi enviada com sucesso e está aguardando aprovação do organizador.
+                        </p>
+                      </>
+                    )}
                   </div>
 
                   {/* Resumo compacto */}
@@ -1028,8 +1098,49 @@ const ProvaInscricao = () => {
                     {pName && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Participante</span><span className="font-medium text-right break-words">{pName}</span></div>}
                     <div className="flex justify-between gap-3"><span className="text-muted-foreground">Prova</span><span className="font-medium text-right break-words">{event.name}</span></div>
                     {distance && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Modalidade</span><span className="font-medium text-right">{distance}</span></div>}
-                    {total > 0 && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
+                    {appliedCoupon?.code && (
+                      <div className="flex justify-between gap-3">
+                        <span className="text-muted-foreground">Cupom aplicado</span>
+                        <span className="font-medium text-right">{appliedCoupon.code}</span>
+                      </div>
+                    )}
+                    {total === 0 && (subtotal > 0 || couponDiscount > 0) ? (
+                      <>
+                        {subtotal > 0 && (
+                          <div className="flex justify-between gap-3">
+                            <span className="text-muted-foreground">Subtotal</span>
+                            <span className="font-medium text-right">{brl(subtotal)}</span>
+                          </div>
+                        )}
+                        {couponDiscount > 0 && (
+                          <div className="flex justify-between gap-3 text-success">
+                            <span>Desconto</span>
+                            <span className="font-medium text-right">−{brl(couponDiscount)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between gap-3 border-t border-border/60 pt-1.5">
+                          <span className="text-muted-foreground">Total</span>
+                          <span className="font-bold text-brand">{brl(0)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      total > 0 && (
+                        <div className="flex justify-between gap-3">
+                          <span className="text-muted-foreground">Valor</span>
+                          <span className="font-bold text-brand">{brl(total)}</span>
+                        </div>
+                      )
+                    )}
                   </div>
+
+                  {total === 0 && (
+                    <div className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-foreground/90 space-y-1">
+                      <p className="font-medium text-success">✓ Nenhum pagamento é necessário.</p>
+                      <p className="text-muted-foreground text-xs leading-relaxed">
+                        Sua inscrição está aguardando aprovação do organizador.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Detalhes recolhíveis */}
                   <details className="group rounded-2xl border border-border bg-background/50">
@@ -1043,8 +1154,24 @@ const ProvaInscricao = () => {
                       {distance && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Modalidade</span><span className="font-medium text-right">{distance}</span></div>}
                       <div className="flex justify-between gap-3"><span className="text-muted-foreground">Categoria</span><span className="font-medium text-right">{categoryDisplay || categoryLabel}</span></div>
                       {shirtSize && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Camiseta</span><span className="font-medium text-right">{shirtSize}</span></div>}
-                      {total > 0 && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Valor</span><span className="font-bold text-brand">{brl(total)}</span></div>}
-                      <div className="flex justify-between gap-3"><span className="text-muted-foreground">Status</span><span className="font-medium text-warning">Aguardando pagamento</span></div>
+                      {appliedCoupon?.code && (
+                        <div className="flex justify-between gap-3">
+                          <span className="text-muted-foreground">Cupom</span>
+                          <span className="font-medium text-right">{appliedCoupon.code}</span>
+                        </div>
+                      )}
+                      {(subtotal > 0 || total > 0) && (
+                        <div className="flex justify-between gap-3">
+                          <span className="text-muted-foreground">Valor</span>
+                          <span className="font-bold text-brand">{brl(total)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between gap-3">
+                        <span className="text-muted-foreground">Status</span>
+                        <span className="font-medium text-warning">
+                          {total > 0 ? "Aguardando pagamento" : "Aguardando aprovação"}
+                        </span>
+                      </div>
                       {signupId && (
                         <div className="flex justify-between gap-3 border-t border-border pt-2">
                           <span className="text-muted-foreground">Nº da inscrição</span>
@@ -1054,51 +1181,55 @@ const ProvaInscricao = () => {
                     </div>
                   </details>
 
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-brand mb-2">
-                      2. Realize o pagamento
-                    </p>
-                    <PixPayment
-                      pixKey={payment.pix_key}
-                      recipient={payment.pix_recipient}
-                      city={event.city}
-                      amount={total}
-                      txid={`INSC${String(signupId || event.id).replace(/\D/g, "").slice(0, 10)}`}
-                      instructions={payment.payment_instructions}
-                      summary={{
-                        eventName: event.name,
-                        participant: pName,
-                        modality: distance,
-                        organizerName: eventPayment?.organizer_name || payment.pix_recipient,
-                        isPartner: !!eventPayment?.is_partner,
-                      }}
-                    />
-                  </div>
+                  {total > 0 && (
+                    <>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-brand mb-2">
+                          2. Realize o pagamento
+                        </p>
+                        <PixPayment
+                          pixKey={payment.pix_key}
+                          recipient={payment.pix_recipient}
+                          city={event.city}
+                          amount={total}
+                          txid={`INSC${String(signupId || event.id).replace(/\D/g, "").slice(0, 10)}`}
+                          instructions={payment.payment_instructions}
+                          summary={{
+                            eventName: event.name,
+                            participant: pName,
+                            modality: distance,
+                            organizerName: eventPayment?.organizer_name || payment.pix_recipient,
+                            isPartner: !!eventPayment?.is_partner,
+                          }}
+                        />
+                      </div>
 
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      3. Envie o comprovante
-                    </p>
-                    {proofLink ? (
-                      <>
-                        <Button asChild variant="outline" size="lg" className="w-full">
-                          <a href={proofLink} target="_blank" rel="noreferrer">
-                            <MessageCircle className="w-4 h-4" /> Enviar comprovante
-                          </a>
-                        </Button>
-                        {eventPayment?.is_partner && eventPayment.organizer_name && (
-                          <p className="text-center text-xs text-muted-foreground">
-                            O comprovante vai para {eventPayment.organizer_name}, organizador desta prova.
+                      <div className="space-y-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          3. Envie o comprovante
+                        </p>
+                        {proofLink ? (
+                          <>
+                            <Button asChild variant="outline" size="lg" className="w-full">
+                              <a href={proofLink} target="_blank" rel="noreferrer">
+                                <MessageCircle className="w-4 h-4" /> Enviar comprovante
+                              </a>
+                            </Button>
+                            {eventPayment?.is_partner && eventPayment.organizer_name && (
+                              <p className="text-center text-xs text-muted-foreground">
+                                O comprovante vai para {eventPayment.organizer_name}, organizador desta prova.
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-foreground/80">
+                            O organizador desta prova ainda não configurou um WhatsApp para receber
+                            comprovantes. Guarde o comprovante e fale com a organização.
                           </p>
                         )}
-                      </>
-                    ) : (
-                      <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-foreground/80">
-                        O organizador desta prova ainda não configurou um WhatsApp para receber
-                        comprovantes. Guarde o comprovante e fale com a organização.
-                      </p>
-                    )}
-                  </div>
+                      </div>
+                    </>
+                  )}
 
                   <Button onClick={startAnotherParticipant} variant="outline" size="lg" className="w-full">
                     + Inscrever outra pessoa nesta prova
@@ -1111,11 +1242,12 @@ const ProvaInscricao = () => {
                   )}
 
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    <Button asChild variant="ghost" size="sm"><Link to="/minha-conta">Ver minhas inscrições</Link></Button>
+                    <Button asChild variant="ghost" size="sm"><Link to="/minha-conta">Ver minha inscrição</Link></Button>
                     <Button asChild variant="ghost" size="sm"><Link to="/provas">Ver outras provas</Link></Button>
                   </div>
 
                 </div>
+
 
               ) : (
                 <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
