@@ -10,12 +10,20 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Pencil, Trash2, Plus, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { isKidsDistance } from "@/lib/eventPricing";
+import {
+  type EventCoupon,
+  toAdminCouponDraft,
+  newAdminCoupon,
+  validateCouponFields,
+} from "@/lib/eventCoupons";
 import { EventBannerConfig } from "@/components/admin/EventBannerConfig";
+import { EventKitItemsEditor } from "@/components/admin/EventKitItemsEditor";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganizerStats, brl, isMainOrg } from "@/hooks/useOrganizerStats";
 import { isOrganizerPaymentReady, maskPixKey, useOrganizerPayment } from "@/lib/eventPayment";
 import { Link, useSearchParams } from "@/lib/router-compat";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 
@@ -24,7 +32,7 @@ type AgeBracket = { min: number; max: number };
 type KitOption = { name: string; extra_price?: number; sizes?: string[]; has_shirt?: boolean; size_chart_url?: string; size_chart_info?: string };
 
 const DEFAULT_SIZES = ["PP", "P", "M", "G", "GG", "XG"];
-type Coupon = { code: string; description?: string };
+type Coupon = EventCoupon;
 type EventDocument = { label: string; url: string };
 
 const DEFAULT_BRACKETS: AgeBracket[] = [
@@ -120,6 +128,9 @@ const AdminEvents = () => {
       pix_key: r.pix_key ?? "",
       pix_recipient: r.pix_recipient ?? "",
       payment_instructions: r.payment_instructions ?? "",
+      coupons: Array.isArray(r.coupons)
+        ? r.coupons.map((c: any) => toAdminCouponDraft(c))
+        : [],
     });
   };
 
@@ -138,12 +149,56 @@ const AdminEvents = () => {
       return toast.error(`Modalidade "${kidsWithSenior.distance || "KIDS"}": não é permitido configurar valor 60+ para distâncias KIDS/Infantil.`);
     }
 
+    for (const c of (editing?.coupons ?? []) as Coupon[]) {
+      if (!String(c.code || "").trim()) continue;
+      const hasDiscountConfig =
+        c.type === "percentage" ||
+        c.type === "fixed" ||
+        (c.value != null && String(c.value) !== "" && Number(c.value) > 0);
+      // Legado sem type/value: mantém como está (não força desconto inventado).
+      if (!hasDiscountConfig) continue;
+      const err = validateCouponFields({
+        ...c,
+        type: c.type === "fixed" ? "fixed" : "percentage",
+        value: Number(c.value),
+        active: c.active !== false,
+      });
+      if (err) return toast.error(err);
+    }
+
     const payload: any = { ...editing };
     delete payload.created_at; delete payload.updated_at;
     payload.pix_key = payload.pix_key ?? "";
     payload.pix_recipient = payload.pix_recipient ?? "";
     payload.payment_instructions = payload.payment_instructions ?? "";
     if (!payload.registration_deadline) payload.registration_deadline = null;
+    payload.coupons = ((payload.coupons ?? []) as Coupon[])
+      .filter((c) => String(c.code || "").trim())
+      .map((c) => {
+        const code = String(c.code).trim();
+        const description = String(c.description || "").trim();
+        const active = c.active !== false;
+        const type = c.type === "fixed" ? "fixed" : c.type === "percentage" ? "percentage" : undefined;
+        const valueNum = c.value != null && String(c.value) !== "" ? Number(c.value) : NaN;
+        const value = Number.isFinite(valueNum) && valueNum > 0 ? valueNum : undefined;
+
+        if (type && value != null) {
+          return {
+            code,
+            type,
+            value: type === "percentage" ? Math.min(value, 100) : value,
+            ...(description ? { description } : {}),
+            active,
+          };
+        }
+
+        // Preserva formato legado se ainda não houver desconto configurado
+        return {
+          code,
+          ...(description ? { description } : {}),
+          active,
+        };
+      });
     const isNew = !payload.id;
 
     if (!isAdmin) {
@@ -664,6 +719,11 @@ const AdminEvents = () => {
                 </Section>
               )}
 
+              {/* Kit incluso na prova (exibição) — independente de kit_options */}
+              <Section title="Kit da prova">
+                <EventKitItemsEditor eventId={editing.id ?? null} />
+              </Section>
+
               {/* Kit */}
               {editing.internal_signup && (
                 <Section title="Opções de kit (camiseta, premium etc.)">
@@ -797,14 +857,91 @@ const AdminEvents = () => {
               {/* Cupons */}
               {editing.internal_signup && (
                 <Section title="Cupons aceitos">
-                  {editing.coupons.map((c: Coupon, i: number) => (
-                    <div key={i} className="flex gap-2 mb-2">
-                      <Input className="w-40" placeholder="CÓDIGO" value={c.code} onChange={(e) => updateItem("coupons", i, { code: e.target.value })} />
-                      <Input className="flex-1" placeholder="Descrição (opcional)" value={c.description ?? ""} onChange={(e) => updateItem("coupons", i, { description: e.target.value })} />
-                      <Button variant="outline" size="icon" onClick={() => removeItem("coupons", i)}><X className="w-4 h-4" /></Button>
-                    </div>
-                  ))}
-                  <Button variant="outline" size="sm" onClick={() => addItem("coupons", { code: "", description: "" })}><Plus className="w-4 h-4" /> Adicionar cupom</Button>
+                  {(editing.coupons ?? []).map((c: Coupon, i: number) => {
+                    const type = c.type === "fixed" ? "fixed" : c.type === "percentage" ? "percentage" : "";
+                    return (
+                      <div key={i} className="mb-3 rounded-xl border border-border p-3 space-y-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <div className="sm:w-40">
+                            <Label className="text-xs">Código do cupom</Label>
+                            <Input
+                              className="mt-1"
+                              placeholder="CORRE10"
+                              value={c.code}
+                              onChange={(e) => updateItem("coupons", i, { code: e.target.value })}
+                            />
+                          </div>
+                          <div className="sm:w-44">
+                            <Label className="text-xs">Tipo de desconto</Label>
+                            <Select
+                              value={type || undefined}
+                              onValueChange={(v) =>
+                                updateItem("coupons", i, {
+                                  type: v === "fixed" ? "fixed" : "percentage",
+                                  value: c.value ?? (v === "fixed" ? 20 : 10),
+                                })
+                              }
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="percentage">Porcentagem</SelectItem>
+                                <SelectItem value="fixed">Valor fixo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="sm:w-32">
+                            <Label className="text-xs">
+                              Valor {type === "percentage" ? "(%)" : type === "fixed" ? "(R$)" : ""}
+                            </Label>
+                            <Input
+                              className="mt-1"
+                              type="number"
+                              step={type === "percentage" ? "1" : "0.01"}
+                              min={0}
+                              max={type === "percentage" ? 100 : undefined}
+                              placeholder={type === "fixed" ? "20" : "10"}
+                              value={c.value ?? ""}
+                              onChange={(e) =>
+                                updateItem("coupons", i, {
+                                  value: e.target.value === "" ? undefined : parseFloat(e.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <Label className="text-xs">Descrição (opcional)</Label>
+                            <Input
+                              className="mt-1"
+                              placeholder="Cupom promocional"
+                              value={c.description ?? ""}
+                              onChange={(e) => updateItem("coupons", i, { description: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <Button variant="outline" size="icon" onClick={() => removeItem("coupons", i)}>
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Switch
+                            checked={c.active !== false}
+                            onCheckedChange={(v) => updateItem("coupons", i, { active: v })}
+                          />
+                          Ativo
+                        </label>
+                      </div>
+                    );
+                  })}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addItem("coupons", newAdminCoupon())}
+                  >
+                    <Plus className="w-4 h-4" /> Adicionar cupom
+                  </Button>
                 </Section>
               )}
 

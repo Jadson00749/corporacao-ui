@@ -46,6 +46,50 @@ export type Database = {
           },
         ]
       }
+      event_kit_items: {
+        Row: {
+          id: string
+          event_id: string
+          name: string
+          description: string | null
+          image_url: string | null
+          sort_order: number
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          name: string
+          description?: string | null
+          image_url?: string | null
+          sort_order?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          name?: string
+          description?: string | null
+          image_url?: string | null
+          sort_order?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_kit_items_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_signups: {
         Row: {
           accepted_event_terms_at: string | null

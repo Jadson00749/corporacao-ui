@@ -36,6 +36,11 @@ import {
   kidsBracketFor,
   kidsCategoryForAge,
 } from "@/lib/eventPricing";
+import {
+  type EventCoupon,
+  listApplicableCoupons,
+  applyCouponToTotal,
+} from "@/lib/eventCoupons";
 
 import { buildSignupWhatsMessage, type SignupBlock } from "@/lib/signupWhatsMessage";
 import { useEventPayment, whatsappLinkFor } from "@/lib/eventPayment";
@@ -53,7 +58,7 @@ import { Confetti } from "@/components/site/Confetti";
 type Distance = { distance: string; price?: number };
 type AgeBracket = { min: number; max: number };
 type KitOption = { name: string; extra_price?: number; sizes?: string[]; size_chart_url?: string; size_chart_info?: string };
-type Coupon = { code: string; description?: string };
+type Coupon = EventCoupon;
 
 const calcAge = (birth?: string | null) => {
   if (!birth) return null;
@@ -350,7 +355,7 @@ const ProvaInscricao = () => {
     [event]
   );
   const coupons = useMemo<Coupon[]>(
-    () => ((event?.coupons as Coupon[]) || []).filter((c) => c?.code?.trim()),
+    () => listApplicableCoupons(event?.coupons),
     [event]
   );
 
@@ -452,7 +457,9 @@ const ProvaInscricao = () => {
   const kitExtra = kitOptions
     .filter((k) => selectedKits.includes(k.name))
     .reduce((sum, k) => sum + (k.extra_price ?? 0), 0);
-  const total = distancePrice + kitExtra;
+  // Stacking preservado: lote/60+ → kits → cupom por último (nunca negativo)
+  const subtotal = distancePrice + kitExtra;
+  const { discount: couponDiscount, total } = applyCouponToTotal(subtotal, appliedCoupon);
 
   /** Gravado em event_signups.category — Kids: bateria oficial (sem sexo). */
   const categoryLabel = useMemo(() => {
@@ -609,7 +616,14 @@ const ProvaInscricao = () => {
       return;
     }
     setAppliedCoupon(found);
-    toast.success(`Cupom ${found.code} aplicado.`);
+    const preview = applyCouponToTotal(subtotal, found);
+    if (found.type === "percentage" && found.value != null) {
+      toast.success(`Cupom ${found.code} aplicado (−${found.value}%).`);
+    } else if (preview.discount > 0) {
+      toast.success(`Cupom ${found.code} aplicado (−${brl(preview.discount)}).`);
+    } else {
+      toast.success(`Cupom ${found.code} aplicado.`);
+    }
   };
 
   /** Etapa 1 -> 2: valida apenas os dados do participante. */
@@ -943,7 +957,7 @@ const ProvaInscricao = () => {
         )}
       </div>
 
-      {total > 0 && (
+      {(subtotal > 0 || couponDiscount > 0) && (
         <div className="border-t border-border pt-3 space-y-1 text-sm">
           {seniorFixed ? (
             <div className="flex justify-between text-success font-medium">
@@ -957,6 +971,17 @@ const ProvaInscricao = () => {
             </div>
           )}
           {kitExtra > 0 && <div className="flex justify-between"><span>Kit</span><span>+{brl(kitExtra)}</span></div>}
+          {appliedCoupon && couponDiscount > 0 && (
+            <div className="flex justify-between text-success font-medium">
+              <span>
+                Cupom {appliedCoupon.code} aplicado
+                {appliedCoupon.type === "percentage" && appliedCoupon.value != null
+                  ? ` (−${appliedCoupon.value}%)`
+                  : ""}
+              </span>
+              <span>−{brl(couponDiscount)}</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold text-base pt-2 border-t border-border">
             <span>Valor final</span><span className="text-brand">{brl(total)}</span>
           </div>
@@ -1566,8 +1591,19 @@ const ProvaInscricao = () => {
                                 <Button type="button" variant="outline" className="shrink-0 min-h-11" onClick={applyCoupon}>Aplicar</Button>
                               </div>
                               {appliedCoupon && (
-                                <p className="text-xs text-success mt-1 flex items-center gap-1">
-                                  <Tag className="w-3 h-3" /> Cupom {appliedCoupon.code} aplicado{appliedCoupon.description ? `: ${appliedCoupon.description}` : ""}
+                                <p className="text-xs text-success mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                                  <Tag className="w-3 h-3 shrink-0" />
+                                  <span>
+                                    Cupom {appliedCoupon.code} aplicado
+                                    {appliedCoupon.type === "percentage" && appliedCoupon.value != null
+                                      ? ` (−${appliedCoupon.value}%)`
+                                      : couponDiscount > 0
+                                        ? ` (−${brl(couponDiscount)})`
+                                        : ""}
+                                  </span>
+                                  {appliedCoupon.description ? (
+                                    <span className="text-muted-foreground">· {appliedCoupon.description}</span>
+                                  ) : null}
                                 </p>
                               )}
                             </div>

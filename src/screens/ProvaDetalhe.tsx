@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { BannerFrame } from "@/components/site/BannerFrame";
 import { bannerAspectClass } from "@/lib/bannerAspect";
 import { PublicSignupList, type PublicSignup } from "@/components/site/PublicSignupList";
+import { EventKitItemsSection } from "@/components/site/EventKitItemsSection";
 
 
 
@@ -96,6 +97,26 @@ const ProvaDetalhe = () => {
     },
   });
 
+  const { data: kitItems = [] } = useQuery({
+    queryKey: ["event_kit_items", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("event_kit_items")
+        .select("id,name,description,image_url,sort_order")
+        .eq("event_id", id!)
+        .eq("active", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) {
+        // Migration ainda não aplicada → prova antiga segue normal
+        console.warn("[event_kit_items]", error.message);
+        return [];
+      }
+      return data ?? [];
+    },
+  });
+
   if (isLoading)
     return (
       <Layout>
@@ -132,6 +153,7 @@ const ProvaDetalhe = () => {
 
   const tabs = [
     { id: "sobre", label: "Sobre" },
+    ...(kitItems.length ? [{ id: "kit-prova", label: "Kit da prova" }] : []),
     ...(kits.length || event.kit_info ? [{ id: "kit", label: "Kit" }] : []),
     ...(event.regulation_url ? [{ id: "regulamento", label: "Regulamento" }] : []),
     ...(event.registration_deadline ? [{ id: "prazos", label: "Prazos" }] : []),
@@ -228,6 +250,16 @@ const ProvaDetalhe = () => {
                       </span>
                     )}
                   </div>
+                </Block>
+              )}
+
+              {/* KIT DA PROVA (itens inclusos — event_kit_items) */}
+              {kitItems.length > 0 && (
+                <Block id="kit-prova" title="Kit da prova">
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Itens que fazem parte do kit desta prova.
+                  </p>
+                  <EventKitItemsSection items={kitItems} />
                 </Block>
               )}
 

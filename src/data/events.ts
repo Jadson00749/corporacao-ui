@@ -3,6 +3,8 @@
 // Atualize as provas e os links de inscrição livremente.
 // ============================================================
 
+import type { EventCoupon } from "@/lib/eventCoupons";
+
 export type EventStatus = "open" | "soon" | "closed";
 
 export type EventDistance = {
@@ -16,7 +18,7 @@ export type EventDistance = {
 };
 export type EventAgeBracket = { min: number; max: number };
 export type EventKitOption = { name: string; extra_price?: number };
-export type EventCoupon = { code: string; description?: string };
+export type { EventCoupon, CouponDiscountType } from "@/lib/eventCoupons";
 
 export type RaceEvent = {
   id: string;
