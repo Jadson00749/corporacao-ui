@@ -20,6 +20,108 @@ export type EventPaymentInfo = {
   is_partner: boolean;
 };
 
+/**
+ * Resolve o que exibir ao atleta.
+ * - Sem organizer_id: Corporação (fallback de site + PIX do evento).
+ * - Com organizer_id + RPC ok + parceiro com PIX completo: dados do organizer.
+ * - Com organizer_id + RPC ok + parceiro com PIX vazio: unavailable (NUNCA events/site).
+ * - Com organizer_id + RPC falhou/ausente: unavailable (NUNCA Corporação).
+ */
+export type AthletePaymentView = {
+  unavailable: boolean;
+  loading: boolean;
+  pix_key: string;
+  pix_recipient: string;
+  payment_instructions: string;
+  proofWhatsapp: string;
+  is_partner: boolean;
+  organizer_name: string;
+};
+
+const emptyUnavailable = (partial?: Partial<AthletePaymentView>): AthletePaymentView => ({
+  unavailable: true,
+  loading: false,
+  pix_key: "",
+  pix_recipient: "",
+  payment_instructions: "",
+  proofWhatsapp: "",
+  is_partner: true,
+  organizer_name: "",
+  ...partial,
+});
+
+export const resolveAthletePaymentView = (opts: {
+  eventPayment?: EventPaymentInfo | null;
+  isLoading: boolean;
+  isError: boolean;
+  isFetched: boolean;
+  eventOrganizerId?: string | null;
+  eventPixKey?: string | null;
+  eventPixRecipient?: string | null;
+  eventPaymentInstructions?: string | null;
+  siteWhatsapp?: string | null;
+}): AthletePaymentView => {
+  const linked = !!String(opts.eventOrganizerId ?? "").trim();
+
+  if (linked) {
+    if (opts.isLoading || !opts.isFetched) {
+      return {
+        unavailable: false,
+        loading: true,
+        pix_key: "",
+        pix_recipient: "",
+        payment_instructions: "",
+        proofWhatsapp: "",
+        is_partner: true,
+        organizer_name: "",
+      };
+    }
+    if (opts.isError || !opts.eventPayment) {
+      return emptyUnavailable();
+    }
+
+    const ep = opts.eventPayment;
+    const pixKey = (ep.pix_key || "").trim();
+    const pixRecipient = (ep.pix_recipient || "").trim();
+
+    // Terceiro: PIX incompleto → indisponível (nunca events.pix_* / Corporação)
+    if (ep.is_partner && (!pixKey || !pixRecipient)) {
+      return emptyUnavailable({
+        is_partner: true,
+        organizer_name: ep.organizer_name || "",
+      });
+    }
+
+    return {
+      unavailable: false,
+      loading: false,
+      pix_key: pixKey,
+      pix_recipient: pixRecipient,
+      payment_instructions: ep.payment_instructions || "",
+      // Parceiro: nunca site Corporação. Org Corporação vinculada: WA do site se vazio.
+      proofWhatsapp: ep.payment_whatsapp || (ep.is_partner ? "" : opts.siteWhatsapp || ""),
+      is_partner: !!ep.is_partner,
+      organizer_name: ep.organizer_name || "",
+    };
+  }
+
+  // Prova sem organizer_id → Corporação (comportamento atual)
+  const ep = opts.eventPayment;
+  return {
+    unavailable: false,
+    loading: !!opts.isLoading && !opts.isFetched,
+    pix_key: ep?.pix_key || opts.eventPixKey || "",
+    pix_recipient: ep?.pix_recipient || opts.eventPixRecipient || "",
+    payment_instructions: ep?.payment_instructions || opts.eventPaymentInstructions || "",
+    proofWhatsapp: ep?.payment_whatsapp || opts.siteWhatsapp || "",
+    is_partner: false,
+    organizer_name: ep?.organizer_name || "",
+  };
+};
+
+export const PAYMENT_UNAVAILABLE_MESSAGE =
+  "Os dados de pagamento desta prova estão temporariamente indisponíveis. Tente novamente em instantes.";
+
 export const useEventPayment = (eventId?: string | null) =>
   useQuery({
     queryKey: ["event_payment_info", eventId],
@@ -27,7 +129,7 @@ export const useEventPayment = (eventId?: string | null) =>
     retry: false,
     queryFn: async (): Promise<EventPaymentInfo | null> => {
       const { data, error } = await db.rpc("get_event_payment_info", { _event_id: eventId });
-      if (error) return null;
+      if (error) throw error;
       return ((data ?? [])[0] as EventPaymentInfo) ?? null;
     },
   });

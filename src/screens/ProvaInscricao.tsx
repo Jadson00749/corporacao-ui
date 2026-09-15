@@ -45,7 +45,12 @@ import {
 } from "@/lib/eventCoupons";
 
 import { buildSignupWhatsMessage, type SignupBlock } from "@/lib/signupWhatsMessage";
-import { useEventPayment, whatsappLinkFor } from "@/lib/eventPayment";
+import {
+  PAYMENT_UNAVAILABLE_MESSAGE,
+  resolveAthletePaymentView,
+  useEventPayment,
+  whatsappLinkFor,
+} from "@/lib/eventPayment";
 
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 import {
@@ -264,24 +269,31 @@ const ProvaInscricao = () => {
     },
   });
 
-  // Pagamento resolvido pelo organizador da prova. Os campos da própria prova
-  // continuam como reserva, o que mantém a tela funcionando caso a função de
-  // resolução ainda não esteja no banco.
-  const { data: eventPayment } = useEventPayment(event?.id);
+  // Pagamento resolvido pelo organizador da prova via RPC get_event_payment_info.
+  // Prova com organizer_id + falha da RPC NÃO cai no WhatsApp/PIX da Corporação.
+  const {
+    data: eventPayment,
+    isLoading: paymentLoading,
+    isError: paymentError,
+    isFetched: paymentFetched,
+  } = useEventPayment(event?.id);
+  const payView = resolveAthletePaymentView({
+    eventPayment,
+    isLoading: paymentLoading,
+    isError: paymentError,
+    isFetched: paymentFetched,
+    eventOrganizerId: (event as any)?.organizer_id,
+    eventPixKey: (event as any)?.pix_key,
+    eventPixRecipient: (event as any)?.pix_recipient,
+    eventPaymentInstructions: (event as any)?.payment_instructions,
+    siteWhatsapp: settings.contact.whatsapp,
+  });
   const payment = {
-    pix_key: eventPayment?.pix_key || (event as any)?.pix_key || "",
-    pix_recipient: eventPayment?.pix_recipient || (event as any)?.pix_recipient || "",
-    payment_instructions:
-      eventPayment?.payment_instructions || (event as any)?.payment_instructions || "",
+    pix_key: payView.pix_key,
+    pix_recipient: payView.pix_recipient,
+    payment_instructions: payView.payment_instructions,
   };
-
-  /**
-   * WhatsApp que recebe o comprovante. Prova de parceiro nunca cai para o
-   * número da Corporação: sem número do organizador, o botão é desabilitado.
-   */
-  const proofWhatsapp = eventPayment
-    ? eventPayment.payment_whatsapp || (eventPayment.is_partner ? "" : settings.contact.whatsapp)
-    : settings.contact.whatsapp;
+  const proofWhatsapp = payView.proofWhatsapp;
 
 
   // Inscrições já existentes desta pessoa nesta prova (rascunhos retomáveis)
@@ -1187,37 +1199,50 @@ const ProvaInscricao = () => {
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-brand mb-2">
                           2. Realize o pagamento
                         </p>
-                        <PixPayment
-                          pixKey={payment.pix_key}
-                          recipient={payment.pix_recipient}
-                          city={event.city}
-                          amount={total}
-                          txid={`INSC${String(signupId || event.id).replace(/\D/g, "").slice(0, 10)}`}
-                          instructions={payment.payment_instructions}
-                          summary={{
-                            eventName: event.name,
-                            participant: pName,
-                            modality: distance,
-                            organizerName: eventPayment?.organizer_name || payment.pix_recipient,
-                            isPartner: !!eventPayment?.is_partner,
-                          }}
-                        />
+                        {payView.unavailable ? (
+                          <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-foreground/90">
+                            {PAYMENT_UNAVAILABLE_MESSAGE}
+                          </p>
+                        ) : payView.loading ? (
+                          <p className="text-sm text-muted-foreground">Carregando dados de pagamento…</p>
+                        ) : (
+                          <PixPayment
+                            pixKey={payment.pix_key}
+                            recipient={payment.pix_recipient}
+                            city={event.city}
+                            amount={total}
+                            txid={`INSC${String(signupId || event.id).replace(/\D/g, "").slice(0, 10)}`}
+                            instructions={payment.payment_instructions}
+                            summary={{
+                              eventName: event.name,
+                              participant: pName,
+                              modality: distance,
+                              organizerName: payView.organizer_name || payment.pix_recipient,
+                              isPartner: payView.is_partner,
+                            }}
+                          />
+                        )}
                       </div>
 
                       <div className="space-y-2">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                           3. Envie o comprovante
                         </p>
-                        {proofLink ? (
+                        {payView.unavailable ? (
+                          <p className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+                            O envio de comprovante ficará disponível assim que os dados de pagamento
+                            forem carregados corretamente.
+                          </p>
+                        ) : payView.loading ? null : proofLink ? (
                           <>
                             <Button asChild variant="outline" size="lg" className="w-full">
                               <a href={proofLink} target="_blank" rel="noreferrer">
                                 <MessageCircle className="w-4 h-4" /> Enviar comprovante
                               </a>
                             </Button>
-                            {eventPayment?.is_partner && eventPayment.organizer_name && (
+                            {payView.is_partner && payView.organizer_name && (
                               <p className="text-center text-xs text-muted-foreground">
-                                O comprovante vai para {eventPayment.organizer_name}, organizador desta prova.
+                                O comprovante vai para {payView.organizer_name}, organizador desta prova.
                               </p>
                             )}
                           </>

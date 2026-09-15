@@ -36,7 +36,12 @@ import {
   Package,
 } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
-import { useEventPayment, whatsappLinkFor } from "@/lib/eventPayment";
+import {
+  PAYMENT_UNAVAILABLE_MESSAGE,
+  resolveAthletePaymentView,
+  useEventPayment,
+  whatsappLinkFor,
+} from "@/lib/eventPayment";
 import { WelcomeDialog } from "@/components/site/WelcomeDialog";
 import { OnboardingTour } from "@/components/site/OnboardingTour";
 import { IncompleteProfileBanner } from "@/components/site/IncompleteProfileBanner";
@@ -604,10 +609,21 @@ const SignupCard = ({
 
   // Cada inscrição manda o comprovante para o organizador da sua prova.
   const settings = useSettings();
-  const { data: eventPayment } = useEventPayment(isPending ? s.event_id : null);
-  const proofWhatsapp = eventPayment
-    ? eventPayment.payment_whatsapp || (eventPayment.is_partner ? "" : settings.contact.whatsapp)
-    : settings.contact.whatsapp;
+  const {
+    data: eventPayment,
+    isLoading: paymentLoading,
+    isError: paymentError,
+    isFetched: paymentFetched,
+  } = useEventPayment(isPending ? s.event_id : null);
+  const payView = resolveAthletePaymentView({
+    eventPayment,
+    isLoading: paymentLoading,
+    isError: paymentError,
+    isFetched: paymentFetched,
+    eventOrganizerId: s.events?.organizer_id,
+    siteWhatsapp: settings.contact.whatsapp,
+  });
+  const proofWhatsapp = payView.proofWhatsapp;
 
   const parts = (s.category || "").split("·").map((p) => p.trim()).filter(Boolean);
   const modality = parts[0] || s.events?.distance || "";
@@ -721,21 +737,27 @@ const SignupCard = ({
               <Link to={`/provas/${s.events.id}/inscricao?retomar=${s.id}`}>Pagar via PIX</Link>
             </Button>
           )}
-          {proofLink && (
-            <Button
-              asChild
-              variant="outline"
-              className="h-11 min-h-11 w-full touch-manipulation text-muted-foreground sm:w-auto sm:flex-1"
-            >
-              <a
-                href={proofLink}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Enviar comprovante no WhatsApp"
+          {payView.unavailable ? (
+            <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground/85 sm:flex-1">
+              {PAYMENT_UNAVAILABLE_MESSAGE}
+            </p>
+          ) : (
+            proofLink && (
+              <Button
+                asChild
+                variant="outline"
+                className="h-11 min-h-11 w-full touch-manipulation text-muted-foreground sm:w-auto sm:flex-1"
               >
-                <MessageCircle className="h-4 w-4" /> Enviar comprovante
-              </a>
-            </Button>
+                <a
+                  href={proofLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Enviar comprovante no WhatsApp"
+                >
+                  <MessageCircle className="h-4 w-4" /> Enviar comprovante
+                </a>
+              </Button>
+            )
           )}
         </div>
       )}

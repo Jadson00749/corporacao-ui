@@ -68,6 +68,7 @@ export type EventSignup = {
     start_time?: string | null;
     kit_delivery?: string | null;
     kit_info?: string | null;
+    organizer_id?: string | null;
   } | null;
 };
 
@@ -80,7 +81,7 @@ export const useMySignups = () => {
       const { data, error } = await supabase
         .from("event_signups")
         .select(
-          "*, events(id, name, date, city, distance, status, start_time, kit_delivery, kit_info)"
+          "*, events(id, name, date, city, distance, status, start_time, kit_delivery, kit_info, organizer_id)"
         )
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });

@@ -188,6 +188,10 @@ export type Database = {
           max_slots: number | null
           more_info: string
           name: string
+          organizer_id?: string | null
+          payment_instructions?: string
+          pix_key?: string
+          pix_recipient?: string
           registration_deadline: string | null
           registration_url: string
           regulation_url: string
@@ -222,6 +226,10 @@ export type Database = {
           max_slots?: number | null
           more_info?: string
           name: string
+          organizer_id?: string | null
+          payment_instructions?: string
+          pix_key?: string
+          pix_recipient?: string
           registration_deadline?: string | null
           registration_url?: string
           regulation_url?: string
@@ -256,6 +264,10 @@ export type Database = {
           max_slots?: number | null
           more_info?: string
           name?: string
+          organizer_id?: string | null
+          payment_instructions?: string
+          pix_key?: string
+          pix_recipient?: string
           registration_deadline?: string | null
           registration_url?: string
           regulation_url?: string
@@ -368,6 +380,45 @@ export type Database = {
           subtitle?: string
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      organizers: {
+        Row: {
+          commission_percentage: number | null
+          id: string
+          name: string
+          payment_contact_name: string
+          payment_email: string
+          payment_whatsapp: string
+          pix_key: string
+          pix_recipient: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          commission_percentage?: number | null
+          id?: string
+          name: string
+          payment_contact_name?: string
+          payment_email?: string
+          payment_whatsapp?: string
+          pix_key?: string
+          pix_recipient?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          commission_percentage?: number | null
+          id?: string
+          name?: string
+          payment_contact_name?: string
+          payment_email?: string
+          payment_whatsapp?: string
+          pix_key?: string
+          pix_recipient?: string
+          status?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -999,6 +1050,19 @@ export type Database = {
           used: number
           remaining: number
           reason: string
+        }[]
+      }
+      get_event_payment_info: {
+        Args: { _event_id: string }
+        Returns: {
+          pix_key: string
+          pix_recipient: string
+          payment_instructions: string
+          payment_whatsapp: string
+          payment_email: string
+          payment_contact_name: string
+          organizer_name: string
+          is_partner: boolean
         }[]
       }
       list_event_signups_public: {
