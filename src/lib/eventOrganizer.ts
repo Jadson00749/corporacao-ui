@@ -66,7 +66,10 @@ export const isPartnerEvent = (
   organizer?: EventOrganizerRef | null
 ): boolean => resolveOrganizationContext(organizerId, organizer) === "partner";
 
-/** Variante de CTA animado: brand (verde) | partner (azul). */
+/** Variante de CTA animado: brand (verde) | partner (azul).
+ * Preferir brand na navegação/ação da plataforma (ex.: inscrição).
+ * Partner só quando o CTA representa o organizador externo de forma explícita.
+ */
 export const organizationCtaVariant = (
   context: OrganizationContext = "main"
 ): "brand" | "partner" => (context === "partner" ? "partner" : "brand");
@@ -79,8 +82,12 @@ export const eventCtaVariant = (
   organizationCtaVariant(resolveOrganizationContext(organizerId, organizer));
 
 /**
- * Classes utilitárias de destaque contextual (texto, borda, hover).
- * Usar em badges/labels discretos — não recolorir a página inteira.
+ * Classes utilitárias de IDENTIFICAÇÃO contextual do organizador.
+ * - partner → azul (assinatura do parceiro)
+ * - main → verde (Corporação)
+ *
+ * NÃO usar para: stepper, seleção de opções, CTAs, preços ou sucesso.
+ * Esses elementos são sempre identidade da plataforma (verde / success).
  */
 export const organizationAccent = (context: OrganizationContext = "main") =>
   context === "partner"

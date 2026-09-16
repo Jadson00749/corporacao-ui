@@ -72,11 +72,9 @@ import {
 import {
   CORP_PLATFORM_NAME,
   organizationAccent,
-  organizationCtaVariant,
   parseEventOrganizerEmbed,
   partnerOrganizerPublicName,
   resolveOrganizationContext,
-  type OrganizationContext,
 } from "@/lib/eventOrganizer";
 import { cn } from "@/lib/utils";
 
@@ -143,71 +141,56 @@ const cleanDistanceLabel = (name: string) => {
 };
 
 
-const Stepper = ({
-  current,
-  onGo,
-  organizationContext = "main",
-}: {
-  current: number;
-  onGo?: (i: number) => void;
-  organizationContext?: OrganizationContext;
-}) => {
-  const isPartner = organizationContext === "partner";
-  const activeRing = isPartner
-    ? "border-partner text-partner bg-partner/10"
-    : "border-brand text-brand bg-brand/10";
-  const doneRing = isPartner
-    ? "border-partner bg-partner text-partner-foreground group-hover:scale-105 group-hover:ring-4 group-hover:ring-partner/25"
-    : "border-brand bg-brand text-brand-foreground group-hover:scale-105 group-hover:ring-4 group-hover:ring-brand/25";
-  const labelHover = isPartner ? "group-hover:text-partner" : "group-hover:text-brand";
-  const progressLine = isPartner ? "bg-partner/70" : "bg-brand/70";
-
-  return (
-    <div className="flex items-start justify-center gap-1 sm:gap-4 mb-6 sm:mb-8">
-      {STEPS.map((label, i) => {
-        const state = i < current ? "done" : i === current ? "active" : "todo";
-        const clickable = !!onGo && i < current;
-        return (
-          <div key={label} className="flex items-start">
-            <button
-              type="button"
-              disabled={!clickable}
-              onClick={() => clickable && onGo?.(i)}
-              aria-label={clickable ? `Voltar para a etapa ${label}` : label}
-              className={`flex flex-col items-center w-[72px] sm:w-28 ${clickable ? "cursor-pointer group" : "cursor-default"}`}
+/** Stepper = navegação da plataforma → sempre verde Corporação. */
+const Stepper = ({ current, onGo }: { current: number; onGo?: (i: number) => void }) => (
+  <div className="flex items-start justify-center gap-1 sm:gap-4 mb-6 sm:mb-8">
+    {STEPS.map((label, i) => {
+      const state = i < current ? "done" : i === current ? "active" : "todo";
+      const clickable = !!onGo && i < current;
+      return (
+        <div key={label} className="flex items-start">
+          <button
+            type="button"
+            disabled={!clickable}
+            onClick={() => clickable && onGo?.(i)}
+            aria-label={clickable ? `Voltar para a etapa ${label}` : label}
+            className={`flex flex-col items-center w-[72px] sm:w-28 ${clickable ? "cursor-pointer group" : "cursor-default"}`}
+          >
+            <div
+              className={cn(
+                "w-9 h-9 rounded-full grid place-items-center text-sm font-bold border-2 transition-all",
+                state === "active"
+                  ? "border-brand text-brand bg-brand/10"
+                  : state === "done"
+                    ? "border-brand bg-brand text-brand-foreground group-hover:scale-105 group-hover:ring-4 group-hover:ring-brand/25"
+                    : "border-border text-muted-foreground bg-secondary/40",
+              )}
             >
-              <div
-                className={cn(
-                  "w-9 h-9 rounded-full grid place-items-center text-sm font-bold border-2 transition-all",
-                  state === "active" ? activeRing : state === "done" ? doneRing : "border-border text-muted-foreground bg-secondary/40",
-                )}
-              >
-                {state === "done" ? <Check className="w-4 h-4" /> : i + 1}
-              </div>
-              <span
-                className={cn(
-                  "mt-2 text-[11px] leading-tight text-center sm:text-sm",
-                  state === "todo" ? "text-muted-foreground" : "font-semibold",
-                  clickable && labelHover,
-                )}
-              >
-                {label}
-              </span>
-            </button>
-            {i < STEPS.length - 1 && (
-              <div
-                className={cn(
-                  "h-[2px] w-8 sm:w-24 mt-[18px]",
-                  i < current ? progressLine : "bg-border",
-                )}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
+              {state === "done" ? <Check className="w-4 h-4" /> : i + 1}
+            </div>
+            <span
+              className={cn(
+                "mt-2 text-[11px] leading-tight text-center sm:text-sm",
+                state === "todo" ? "text-muted-foreground" : "font-semibold",
+                clickable && "group-hover:text-brand",
+              )}
+            >
+              {label}
+            </span>
+          </button>
+          {i < STEPS.length - 1 && (
+            <div
+              className={cn(
+                "h-[2px] w-8 sm:w-24 mt-[18px]",
+                i < current ? "bg-brand/70" : "bg-border",
+              )}
+            />
+          )}
+        </div>
+      );
+    })}
+  </div>
+);
 
 
 const ProvaInscricao = () => {
@@ -415,12 +398,12 @@ const ProvaInscricao = () => {
     (event as any)?.organizer_id,
     organizerRef,
   );
+  /** Azul só na assinatura do parceiro — não em navegação/seleção/CTA. */
   const orgContext = resolveOrganizationContext(
     (event as any)?.organizer_id,
     organizerRef,
   );
-  const ctaVariant = organizationCtaVariant(orgContext);
-  const accent = organizationAccent(orgContext);
+  const partnerAccent = organizationAccent(orgContext);
 
 
   // Inscrições já existentes desta pessoa nesta prova (rascunhos retomáveis)
@@ -1173,10 +1156,10 @@ const ProvaInscricao = () => {
   const summaryCard = event && (
     <div className="bg-card border border-border rounded-2xl p-5 space-y-4 lg:sticky lg:top-28">
       <div>
-        <h2 className="font-display text-lg font-bold leading-tight">{event.name}</h2>
+        <h2 className="font-display text-lg font-bold leading-tight text-foreground">{event.name}</h2>
         {partnerOrganizerName ? (
           <div className="mt-2 space-y-0.5">
-            <p className={cn("text-sm font-semibold leading-snug", accent.text)}>
+            <p className={cn("text-sm font-semibold leading-snug", partnerAccent.text)}>
               Organizado por {partnerOrganizerName}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -1186,11 +1169,11 @@ const ProvaInscricao = () => {
         ) : null}
         <div className="mt-2 space-y-1 text-sm text-muted-foreground">
           <span className="flex items-center gap-2">
-            <Calendar className={cn("w-3.5 h-3.5", accent.icon)} />
+            <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
             {new Date(event.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
           </span>
           <span className="flex items-center gap-2">
-            <MapPin className={cn("w-3.5 h-3.5", accent.icon)} />
+            <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
             {event.city}
           </span>
         </div>
@@ -1286,11 +1269,7 @@ const ProvaInscricao = () => {
             </div>
           ) : (
             <>
-              <Stepper
-                current={step}
-                onGo={done ? undefined : (i) => setStep(i)}
-                organizationContext={orgContext}
-              />
+              <Stepper current={step} onGo={done ? undefined : (i) => setStep(i)} />
 
               {done ? (
                 <div className="max-w-2xl mx-auto bg-card border border-border rounded-2xl p-4 sm:p-7 space-y-5">
@@ -1501,7 +1480,7 @@ const ProvaInscricao = () => {
                           </p>
                         </div>
                         <div className="grid grid-cols-1 sm:flex gap-2 shrink-0">
-                          <Button variant={ctaVariant} className="w-full sm:w-auto min-h-11" onClick={() => resumeSignup(pendingSignup)}>
+                          <Button variant="brand" className="w-full sm:w-auto min-h-11" onClick={() => resumeSignup(pendingSignup)}>
                             Continuar inscrição
                           </Button>
                           <Button variant="ghost" className="w-full sm:w-auto min-h-11" onClick={() => setResumeDismissed(true)}>
@@ -1569,17 +1548,21 @@ const ProvaInscricao = () => {
                                 key={key}
                                 type="button"
                                 onClick={onSelect}
-                                className={[
+                                className={cn(
                                   "text-left rounded-2xl border p-4 sm:p-5 transition-all flex items-start gap-3 min-h-[88px]",
                                   active
                                     ? "border-brand bg-brand/10 ring-1 ring-brand/40"
                                     : "border-border bg-secondary/30 hover:bg-secondary/60",
-                                ].join(" ")}
+                                )}
                               >
-                                <span className={[
-                                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                                  active ? "bg-brand text-brand-foreground" : "bg-background text-muted-foreground border border-border",
-                                ].join(" ")}>
+                                <span
+                                  className={cn(
+                                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                                    active
+                                      ? "bg-brand text-brand-foreground"
+                                      : "bg-background text-muted-foreground border border-border",
+                                  )}
+                                >
                                   <Icon className="w-5 h-5" />
                                 </span>
                                 <span className="min-w-0">
@@ -1689,7 +1672,7 @@ const ProvaInscricao = () => {
                         </div>
 
                         <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
-                          <Button onClick={goStep2} variant={ctaVariant} size="lg" className="w-full min-h-12 sm:w-auto sm:min-w-56">
+                          <Button onClick={goStep2} variant="brand" size="lg" className="w-full min-h-12 sm:w-auto sm:min-w-56">
                             Continuar
                           </Button>
                         </div>
@@ -1756,12 +1739,12 @@ const ProvaInscricao = () => {
                                       key={g}
                                       type="button"
                                       onClick={() => setGroup(g)}
-                                      className={[
+                                      className={cn(
                                         "whitespace-nowrap rounded-full px-4 py-1.5 text-sm transition-colors",
                                         group === g
                                           ? "bg-brand text-brand-foreground font-semibold"
                                           : "text-muted-foreground hover:text-foreground",
-                                      ].join(" ")}
+                                      )}
                                     >
                                       {g}
                                     </button>
@@ -1780,12 +1763,12 @@ const ProvaInscricao = () => {
                                   <button
                                     type="button"
                                     onClick={() => setDistance(d.distance)}
-                                    className={[
+                                    className={cn(
                                       "w-full min-h-[56px] text-left rounded-xl px-4 py-3 border transition-all flex items-center justify-between gap-3",
                                       active
                                         ? "border-brand bg-brand/10 ring-1 ring-brand/40"
                                         : "border-border bg-secondary/30 hover:bg-secondary/60",
-                                    ].join(" ")}
+                                    )}
                                   >
                                     <span className="min-w-0 flex-1 font-semibold break-words">{cleanDistanceLabel(d.distance)}</span>
                                     {(fixed60 ? price > 0 : base > 0) && (
@@ -1795,7 +1778,7 @@ const ProvaInscricao = () => {
                                         ) : (
                                           <span className="block text-muted-foreground text-xs">{loteOf(d)}º lote</span>
                                         )}
-                                        <span className="font-bold text-brand">{brl(price)}</span>
+                                        <span className="font-bold text-foreground">{brl(price)}</span>
                                       </span>
                                     )}
                                   </button>
@@ -1827,12 +1810,12 @@ const ProvaInscricao = () => {
                                     key={b.id}
                                     role="radio"
                                     aria-checked={active}
-                                    className={[
+                                    className={cn(
                                       "rounded-xl border px-3 py-3 text-left transition-all",
                                       active
                                         ? "border-brand bg-brand/10 ring-1 ring-brand/40"
                                         : "border-border bg-secondary/20 opacity-70",
-                                    ].join(" ")}
+                                    )}
                                   >
                                     <p className="font-semibold text-sm leading-snug">{b.title}</p>
                                     <p className="text-xs text-muted-foreground mt-1">
@@ -1881,20 +1864,24 @@ const ProvaInscricao = () => {
                                       setSelectedKits([k.name]);
                                       if (!kitHasShirt(k)) setShirtSize("");
                                     }}
-                                    className={[
+                                    className={cn(
                                       "text-left min-h-[56px] rounded-xl px-4 py-3 border transition-all flex items-start gap-3",
                                       active
                                         ? "border-brand bg-brand/10 ring-1 ring-brand/40"
                                         : "border-border bg-secondary/30 hover:bg-secondary/60",
-                                    ].join(" ")}
+                                    )}
                                   >
-                                    <div className={[
-                                      "w-5 h-5 mt-0.5 rounded-full border flex items-center justify-center shrink-0 transition-colors",
-                                      active ? "bg-brand border-brand text-brand-foreground" : "border-border bg-background",
-                                    ].join(" ")}>
+                                    <div
+                                      className={cn(
+                                        "w-5 h-5 mt-0.5 rounded-full border flex items-center justify-center shrink-0 transition-colors",
+                                        active
+                                          ? "bg-brand border-brand text-brand-foreground"
+                                          : "border-border bg-background",
+                                      )}
+                                    >
                                       {active && <Check className="w-3 h-3" />}
                                     </div>
-                                    <Shirt className={`w-4 h-4 mt-0.5 shrink-0 ${active ? "text-brand" : "text-muted-foreground"}`} />
+                                    <Shirt className={cn("w-4 h-4 mt-0.5 shrink-0", active ? "text-brand" : "text-muted-foreground")} />
                                     <span className="min-w-0 flex-1">
                                       <span className="font-medium break-words block">{k.name}</span>
                                       {desc ? (
@@ -1950,14 +1937,14 @@ const ProvaInscricao = () => {
                                           if (soldOut) return;
                                           setShirtSize(sz);
                                         }}
-                                        className={[
+                                        className={cn(
                                           "min-w-[4.5rem] min-h-[3.25rem] px-3 sm:px-4 rounded-xl border text-base font-bold transition-all shrink-0",
                                           soldOut
                                             ? "border-border/70 bg-muted/50 text-muted-foreground cursor-not-allowed opacity-60"
                                             : active
                                               ? "border-brand bg-brand text-brand-foreground"
                                               : "border-border bg-background hover:border-brand/60",
-                                        ].join(" ")}
+                                        )}
                                       >
                                         <span className="block leading-tight">{sz}</span>
                                         {soldOut && (
@@ -2052,7 +2039,7 @@ const ProvaInscricao = () => {
                             <Button variant="outline" size="lg" className="min-h-12" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
                               <ChevronLeft className="w-4 h-4" /> Voltar
                             </Button>
-                            <Button onClick={submit} disabled={submitting || !participantComplete} variant={ctaVariant} size="lg" className="min-h-12 flex-1">
+                            <Button onClick={submit} disabled={submitting || !participantComplete} variant="brand" size="lg" className="min-h-12 flex-1">
                               {submitting ? "Enviando..." : submitError ? "Tentar novamente" : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
                             </Button>
                           </div>
