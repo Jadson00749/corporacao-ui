@@ -553,7 +553,7 @@ const ProvaInscricao = () => {
           message:
             kidsAge < 2
               ? "A Corridinha Kids é para crianças a partir de 2 anos."
-              : "A idade da criança está fora das baterias Kids (2 a 13 anos).",
+              : "A idade está fora das baterias Kids (2 a 13 anos).",
           options: adultDistances.length && kidsAge >= 14 ? adultDistances : [],
         };
       }
@@ -819,7 +819,7 @@ const ProvaInscricao = () => {
     if (isKidsDistance(distance)) {
       if (!birthParsed.ok) {
         newErrors.pBirth = true;
-        missingLabels.push("Data de nascimento da criança");
+        missingLabels.push("Data de nascimento");
       } else if (!kidsCategoryForAge(kidsAge)) {
         newErrors.pBirth = true;
         missingLabels.push("Idade fora das baterias Kids (2 a 13 anos)");
@@ -898,7 +898,7 @@ const ProvaInscricao = () => {
         : categoryLabel) || "";
     if (isKidsDistance(distance) && !savedCategory) {
       setSubmitting(false);
-      toast.error("Não é possível finalizar a inscrição Kids sem nascimento válido da criança.", {
+      toast.error("Não é possível finalizar a inscrição Kids sem nascimento válido do participante.", {
         position: "top-center",
       });
       return;
@@ -1531,11 +1531,7 @@ const ProvaInscricao = () => {
 
                         <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">
                           <h2 className="font-display text-lg font-bold">
-                            {isSelf
-                              ? "Seus dados"
-                              : isKidsModality || kidsDistances.length
-                                ? "Dados da criança (participante)"
-                                : "Dados da pessoa inscrita"}
+                            {isSelf ? "Seus dados" : "Dados do participante"}
                           </h2>
                           {(isKidsModality || kidsDistances.length > 0) && profile?.full_name && (
                             <p className="text-xs text-muted-foreground rounded-xl border border-border bg-secondary/30 px-3 py-2">
@@ -1547,9 +1543,7 @@ const ProvaInscricao = () => {
                           <div className="grid sm:grid-cols-2 gap-3">
                             <div className="sm:col-span-2" data-invalid={errors.pName || undefined}>
                               <Label htmlFor="p-name">
-                                {isKidsModality || kidsDistances.length
-                                  ? "Nome completo da criança *"
-                                  : "Nome completo *"}
+                                {isSelf ? "Nome completo *" : "Nome completo do participante *"}
                               </Label>
                               <Input id="p-name" value={pName} onChange={(e) => setPName(e.target.value)} className="mt-1" maxLength={160}
                                 aria-invalid={!!errors.pName} />
@@ -1760,7 +1754,7 @@ const ProvaInscricao = () => {
                             <div>
                               <h3 className="text-sm uppercase tracking-wide text-muted-foreground">Categoria Kids</h3>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Definida pela data de nascimento da criança na data do evento. Categoria mista.
+                                Definida pela data de nascimento do participante na data do evento. Categoria mista.
                               </p>
                             </div>
                             <div className="grid gap-2 sm:grid-cols-3">
@@ -1793,7 +1787,7 @@ const ProvaInscricao = () => {
                             </div>
                             {!pBirthParsed.ok && (
                               <p className="text-sm text-destructive">
-                                Informe o nascimento da criança para definir a bateria Kids.
+                                Informe a data de nascimento do participante para definir a bateria Kids.
                               </p>
                             )}
                             {pBirthParsed.ok && !kidsBracket && (
