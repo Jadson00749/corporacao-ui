@@ -46,6 +46,10 @@ export type RaceEvent = {
   ageBrackets?: EventAgeBracket[];
   kitOptions?: EventKitOption[];
   coupons?: EventCoupon[];
+  /** events.organizer_id */
+  organizerId?: string | null;
+  /** organizers (id, name) via organizer_id */
+  organizer?: { id: string; name: string } | null;
 };
 
 export const events: RaceEvent[] = [

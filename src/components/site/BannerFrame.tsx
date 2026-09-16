@@ -7,7 +7,7 @@ type Props = {
   /** URL preferencial no mobile; se omitida, usa `src`. */
   mobileSrc?: string | null;
   alt: string;
-  /** classes de proporção do quadro, ex: "aspect-[16/9] md:aspect-[21/9]" */
+  /** classes de proporção do quadro, ex: "aspect-[16/9]" */
   className?: string;
   imgClassName?: string;
   children?: React.ReactNode;
@@ -29,9 +29,8 @@ const useIsMdUp = () => {
 };
 
 /**
- * Moldura de banner que preserva a proporção original da imagem.
- * Mobile: um único <img> + fundo sólido (sem 2ª requisição).
- * Desktop: imagem inteira (object-contain por padrão) sobre blur da própria foto.
+ * Moldura de banner que preserva a arte completa.
+ * Mesma URL: fundo blur + foreground object-contain (sem 2ª requisição).
  */
 export const BannerFrame = ({
   src,
@@ -49,18 +48,16 @@ export const BannerFrame = ({
 
   return (
     <div className={cn("relative overflow-hidden bg-[#0b0b0b]", className)}>
-      {displaySrc && (
+      {displaySrc ? (
         <>
-          {mdUp && (
-            <img
-              src={displaySrc}
-              alt=""
-              aria-hidden
-              loading={loading}
-              decoding="async"
-              className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
-            />
-          )}
+          <img
+            src={displaySrc}
+            alt=""
+            aria-hidden
+            loading={loading}
+            decoding="async"
+            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-2xl"
+          />
           <img
             key={displaySrc}
             src={displaySrc}
@@ -68,13 +65,12 @@ export const BannerFrame = ({
             loading={loading}
             decoding="async"
             className={cn(
-              "relative h-full w-full",
-              mdUp ? "object-contain" : "object-cover",
+              "relative z-[1] h-full w-full object-contain object-center",
               imgClassName
             )}
           />
         </>
-      )}
+      ) : null}
       {children}
     </div>
   );

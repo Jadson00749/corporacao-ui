@@ -36,6 +36,11 @@ import { BannerFrame } from "@/components/site/BannerFrame";
 import { bannerAspectClass } from "@/lib/bannerAspect";
 import { PublicSignupList, type PublicSignup } from "@/components/site/PublicSignupList";
 import { EventKitItemsSection } from "@/components/site/EventKitItemsSection";
+import {
+  CORP_PLATFORM_NAME,
+  parseEventOrganizerEmbed,
+  partnerOrganizerPublicName,
+} from "@/lib/eventOrganizer";
 
 
 
@@ -70,7 +75,11 @@ const ProvaDetalhe = () => {
     queryKey: ["event_detail", id],
     enabled: !!id,
     queryFn: async () => {
-      const { data, error } = await supabase.from("events").select("*").eq("id", id!).maybeSingle();
+      const { data, error } = await supabase
+        .from("events")
+        .select("*, organizers ( id, name )")
+        .eq("id", id!)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -172,6 +181,10 @@ const ProvaDetalhe = () => {
     (d) => d.url && d.label
   );
   const mapsQuery = encodeURIComponent(`${event.city}`);
+  const partnerName = partnerOrganizerPublicName(
+    (event as any).organizer_id,
+    parseEventOrganizerEmbed((event as any).organizers)
+  );
 
   const tabs = [
     { id: "sobre", label: "Sobre" },
@@ -251,6 +264,20 @@ const ProvaDetalhe = () => {
                   <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mt-1">
                     {event.distance}
                   </p>
+                  {partnerName ? (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Organização do evento
+                      </p>
+                      <p className="text-base font-semibold text-foreground leading-snug">
+                        {partnerName}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <span className="text-muted-foreground/80">Plataforma de inscrições:</span>{" "}
+                        {CORP_PLATFORM_NAME}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -395,12 +422,19 @@ const ProvaDetalhe = () => {
                     {slotsLeft !== null && (
                       <div className="rounded-xl border border-border/60 bg-card/60 p-4">
                         <div className="flex items-center gap-2 text-sm font-semibold">
-                          <CheckCircle2 className="w-4 h-4 text-brand" /> Vagas restantes
+                          <CheckCircle2 className="w-4 h-4 text-brand" />
+                          {slotsLeft <= 0
+                            ? "Inscrições esgotadas"
+                            : slotsLeft === 1
+                              ? "1 vaga disponível"
+                              : `${slotsLeft} vagas disponíveis`}
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {slotsLeft} de {capacityStatus?.max_slots ?? event.max_slots}
-                          {capacityFull ? " · Esgotadas" : ""}
-                        </p>
+                        {(capacityStatus?.max_slots ?? event.max_slots) != null && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {capacityStatus?.used ?? signupsCount} de{" "}
+                            {capacityStatus?.max_slots ?? event.max_slots} vagas ocupadas
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

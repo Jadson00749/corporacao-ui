@@ -11,6 +11,7 @@ import type { Testimonial } from "@/data/testimonials";
 import type { PhotoEvent, PhotoEventStatus } from "@/data/photoEvents";
 import { siteSettings as fallbackSettings } from "@/data/settings";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { parseEventOrganizerEmbed } from "@/lib/eventOrganizer";
 
 const orFallback = (v: string | null | undefined, fb: string) =>
   v && v.trim().length > 0 ? v : fb;
@@ -221,7 +222,7 @@ export const useEvents = () =>
     queryFn: async (): Promise<RaceEvent[]> => {
       const { data, error } = await supabase
         .from("events")
-        .select("*")
+        .select("*, organizers ( id, name )")
         .eq("active", true)
         .order("date", { ascending: true });
       if (error) throw error;
@@ -250,6 +251,8 @@ export const useEvents = () =>
         ageBrackets: (r.age_brackets ?? []) as RaceEvent["ageBrackets"],
         kitOptions: (r.kit_options ?? []) as RaceEvent["kitOptions"],
         coupons: (r.coupons ?? []) as RaceEvent["coupons"],
+        organizerId: r.organizer_id ?? null,
+        organizer: parseEventOrganizerEmbed(r.organizers),
       }));
     },
   });

@@ -6,6 +6,7 @@ import { pickEventBannerDesktop, pickEventBannerMobile } from "@/lib/eventBanner
 import { BannerFrame } from "@/components/site/BannerFrame";
 import { currentPrice, isSeniorOnlyDistance } from "@/lib/eventPricing";
 import { Button } from "@/components/ui/button";
+import { partnerOrganizerPublicName } from "@/lib/eventOrganizer";
 
 const statusStyle: Record<RaceEvent["status"], string> = {
   open: "bg-success/15 text-success border-success/30",
@@ -48,6 +49,7 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
     .map((d) => currentPrice(d))
     .filter((p) => p > 0);
   const minPrice = prices.length ? Math.min(...prices) : null;
+  const partnerName = partnerOrganizerPublicName(event.organizerId, event.organizer);
 
   return (
     <article
@@ -69,14 +71,9 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
         src={desktopBanner}
         mobileSrc={mobileBanner}
         alt={`Banner ${event.name}`}
-        className="aspect-[16/10] md:aspect-[16/9] transition-transform duration-[1200ms] ease-out"
-        imgClassName="object-cover object-center transition-transform duration-[1200ms] ease-out group-hover:scale-[1.03]"
-      >
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent md:from-black/50"
-        />
-      </BannerFrame>
+        className="aspect-[16/9] shrink-0"
+        imgClassName="transition-transform duration-[1200ms] ease-out group-hover:scale-[1.02]"
+      />
 
       {/* Conteúdo — badge abaixo da imagem, sem cobrir a arte */}
       <div className="relative z-20 flex flex-1 flex-col p-4 sm:p-5 md:p-6 md:pointer-events-none">
@@ -119,6 +116,11 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
             <MapPin className="h-3.5 w-3.5 shrink-0 text-brand" />
             <span className="break-words">{event.city}</span>
           </div>
+          {partnerName ? (
+            <p className="pt-0.5 text-xs text-muted-foreground/90">
+              Organizador: <span className="font-medium text-foreground/75">{partnerName}</span>
+            </p>
+          ) : null}
         </div>
 
         {/* Mobile: CTAs empilhados */}

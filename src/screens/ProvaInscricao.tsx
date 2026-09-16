@@ -69,6 +69,11 @@ import {
   useEventPayment,
   whatsappLinkFor,
 } from "@/lib/eventPayment";
+import {
+  CORP_PLATFORM_NAME,
+  parseEventOrganizerEmbed,
+  partnerOrganizerPublicName,
+} from "@/lib/eventOrganizer";
 
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 import {
@@ -286,7 +291,11 @@ const ProvaInscricao = () => {
     queryKey: ["event", id],
     enabled: !!id,
     queryFn: async () => {
-      const { data, error } = await supabase.from("events").select("*").eq("id", id!).maybeSingle();
+      const { data, error } = await supabase
+        .from("events")
+        .select("*, organizers ( id, name )")
+        .eq("id", id!)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -364,6 +373,11 @@ const ProvaInscricao = () => {
     payment_instructions: payView.payment_instructions,
   };
   const proofWhatsapp = payView.proofWhatsapp;
+
+  const partnerOrganizerName = partnerOrganizerPublicName(
+    (event as any)?.organizer_id,
+    parseEventOrganizerEmbed((event as any)?.organizers)
+  );
 
 
   // Inscrições já existentes desta pessoa nesta prova (rascunhos retomáveis)
@@ -1959,6 +1973,14 @@ const ProvaInscricao = () => {
                             ) : "termos e regulamento"} do evento.
                           </label>
                         </div>
+
+                        {partnerOrganizerName ? (
+                          <p className="text-xs leading-relaxed text-muted-foreground px-1">
+                            A organização e execução deste evento são de responsabilidade de{" "}
+                            <span className="font-medium text-foreground/80">{partnerOrganizerName}</span>.{" "}
+                            A {CORP_PLATFORM_NAME} atua como plataforma de inscrições e apoio administrativo.
+                          </p>
+                        ) : null}
 
                         <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
                           {submitError && (
