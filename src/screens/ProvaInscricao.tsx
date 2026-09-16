@@ -102,14 +102,6 @@ const calcAge = (birth?: string | null) => {
   return a;
 };
 
-/** Unique de CPF ativo na prova (event_signups_event_participant_cpf_uidx). */
-const isSignupCpfDuplicateError = (err: unknown) => {
-  const e = err as { code?: string; message?: string; details?: string } | null;
-  const blob = `${e?.message || ""} ${e?.details || ""} ${String(err || "")}`;
-  if (/event_signups_event_participant_cpf_uidx/i.test(blob)) return true;
-  return e?.code === "23505" && /participant_cpf/i.test(blob);
-};
-
 /** Idade esportiva: ano da prova - ano de nascimento (ignora mês/dia). */
 /** Converte profiles.gender ("feminino"/"F"/...) para o rótulo usado no evento. */
 const genderLabelFrom = (raw?: string | null, options: string[] = []) => {
@@ -947,8 +939,7 @@ const ProvaInscricao = () => {
 
       // Compatibilidade com a restrição antiga (user_id + event_id + category):
       // se colidir, reaproveita o registro pendente/cancelado existente.
-      // Não trata colisão de CPF aqui — mensagem específica no bloco de erro abaixo.
-      if (error?.code === "23505" && !isSignupCpfDuplicateError(error)) {
+      if (error?.code === "23505") {
         const { data: existing } = await supabase
           .from("event_signups")
           .select("id, status, participant_full_name")
@@ -972,13 +963,6 @@ const ProvaInscricao = () => {
 
     if (error) {
       setSubmitting(false);
-      if (isSignupCpfDuplicateError(error)) {
-        const cpfMsg = "Este CPF já possui uma inscrição ativa nesta prova.";
-        const cpfHint = "Confira sua inscrição em Minha Conta ou entre em contato com a organização.";
-        setSubmitError(`${cpfMsg} ${cpfHint}`);
-        toast.error(cpfMsg, { description: cpfHint, position: "top-center" });
-        return;
-      }
       const stockMsg = shirtStockErrorMessage(error);
       if (stockMsg) {
         // Mantém o formulário; limpa só o tamanho esgotado e atualiza disponibilidade.
