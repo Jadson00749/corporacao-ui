@@ -71,9 +71,14 @@ import {
 } from "@/lib/eventPayment";
 import {
   CORP_PLATFORM_NAME,
+  organizationAccent,
+  organizationCtaVariant,
   parseEventOrganizerEmbed,
   partnerOrganizerPublicName,
+  resolveOrganizationContext,
+  type OrganizationContext,
 } from "@/lib/eventOrganizer";
+import { cn } from "@/lib/utils";
 
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
 import {
@@ -138,40 +143,71 @@ const cleanDistanceLabel = (name: string) => {
 };
 
 
-const Stepper = ({ current, onGo }: { current: number; onGo?: (i: number) => void }) => (
-  <div className="flex items-start justify-center gap-1 sm:gap-4 mb-6 sm:mb-8">
-    {STEPS.map((label, i) => {
-      const state = i < current ? "done" : i === current ? "active" : "todo";
-      const clickable = !!onGo && i < current;
-      return (
-        <div key={label} className="flex items-start">
-          <button
-            type="button"
-            disabled={!clickable}
-            onClick={() => clickable && onGo?.(i)}
-            aria-label={clickable ? `Voltar para a etapa ${label}` : label}
-            className={`flex flex-col items-center w-[72px] sm:w-28 ${clickable ? "cursor-pointer group" : "cursor-default"}`}
-          >
-            <div
-              className={[
-                "w-9 h-9 rounded-full grid place-items-center text-sm font-bold border-2 transition-all",
-                state === "active"
-                  ? "border-brand text-brand bg-brand/10"
-                  : state === "done"
-                  ? "border-brand bg-brand text-brand-foreground group-hover:scale-105 group-hover:ring-4 group-hover:ring-brand/25"
-                  : "border-border text-muted-foreground bg-secondary/40",
-              ].join(" ")}
+const Stepper = ({
+  current,
+  onGo,
+  organizationContext = "main",
+}: {
+  current: number;
+  onGo?: (i: number) => void;
+  organizationContext?: OrganizationContext;
+}) => {
+  const isPartner = organizationContext === "partner";
+  const activeRing = isPartner
+    ? "border-partner text-partner bg-partner/10"
+    : "border-brand text-brand bg-brand/10";
+  const doneRing = isPartner
+    ? "border-partner bg-partner text-partner-foreground group-hover:scale-105 group-hover:ring-4 group-hover:ring-partner/25"
+    : "border-brand bg-brand text-brand-foreground group-hover:scale-105 group-hover:ring-4 group-hover:ring-brand/25";
+  const labelHover = isPartner ? "group-hover:text-partner" : "group-hover:text-brand";
+  const progressLine = isPartner ? "bg-partner/70" : "bg-brand/70";
+
+  return (
+    <div className="flex items-start justify-center gap-1 sm:gap-4 mb-6 sm:mb-8">
+      {STEPS.map((label, i) => {
+        const state = i < current ? "done" : i === current ? "active" : "todo";
+        const clickable = !!onGo && i < current;
+        return (
+          <div key={label} className="flex items-start">
+            <button
+              type="button"
+              disabled={!clickable}
+              onClick={() => clickable && onGo?.(i)}
+              aria-label={clickable ? `Voltar para a etapa ${label}` : label}
+              className={`flex flex-col items-center w-[72px] sm:w-28 ${clickable ? "cursor-pointer group" : "cursor-default"}`}
             >
-              {state === "done" ? <Check className="w-4 h-4" /> : i + 1}
-            </div>
-            <span className={`mt-2 text-[11px] leading-tight text-center sm:text-sm ${state === "todo" ? "text-muted-foreground" : "font-semibold"} ${clickable ? "group-hover:text-brand" : ""}`}>{label}</span>
-          </button>
-          {i < STEPS.length - 1 && <div className="h-[2px] w-8 sm:w-24 bg-border mt-[18px]" />}
-        </div>
-      );
-    })}
-  </div>
-);
+              <div
+                className={cn(
+                  "w-9 h-9 rounded-full grid place-items-center text-sm font-bold border-2 transition-all",
+                  state === "active" ? activeRing : state === "done" ? doneRing : "border-border text-muted-foreground bg-secondary/40",
+                )}
+              >
+                {state === "done" ? <Check className="w-4 h-4" /> : i + 1}
+              </div>
+              <span
+                className={cn(
+                  "mt-2 text-[11px] leading-tight text-center sm:text-sm",
+                  state === "todo" ? "text-muted-foreground" : "font-semibold",
+                  clickable && labelHover,
+                )}
+              >
+                {label}
+              </span>
+            </button>
+            {i < STEPS.length - 1 && (
+              <div
+                className={cn(
+                  "h-[2px] w-8 sm:w-24 mt-[18px]",
+                  i < current ? progressLine : "bg-border",
+                )}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 
 const ProvaInscricao = () => {
@@ -374,10 +410,17 @@ const ProvaInscricao = () => {
   };
   const proofWhatsapp = payView.proofWhatsapp;
 
+  const organizerRef = parseEventOrganizerEmbed((event as any)?.organizers);
   const partnerOrganizerName = partnerOrganizerPublicName(
     (event as any)?.organizer_id,
-    parseEventOrganizerEmbed((event as any)?.organizers)
+    organizerRef,
   );
+  const orgContext = resolveOrganizationContext(
+    (event as any)?.organizer_id,
+    organizerRef,
+  );
+  const ctaVariant = organizationCtaVariant(orgContext);
+  const accent = organizationAccent(orgContext);
 
 
   // Inscrições já existentes desta pessoa nesta prova (rascunhos retomáveis)
@@ -1131,10 +1174,25 @@ const ProvaInscricao = () => {
     <div className="bg-card border border-border rounded-2xl p-5 space-y-4 lg:sticky lg:top-28">
       <div>
         <h2 className="font-display text-lg font-bold leading-tight">{event.name}</h2>
+        {partnerOrganizerName ? (
+          <div className="mt-2 space-y-0.5">
+            <p className={cn("text-sm font-semibold leading-snug", accent.text)}>
+              Organizado por {partnerOrganizerName}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Inscrições pela {CORP_PLATFORM_NAME}
+            </p>
+          </div>
+        ) : null}
         <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-          <span className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-brand" />
-            {new Date(event.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</span>
-          <span className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-brand" />{event.city}</span>
+          <span className="flex items-center gap-2">
+            <Calendar className={cn("w-3.5 h-3.5", accent.icon)} />
+            {new Date(event.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+          </span>
+          <span className="flex items-center gap-2">
+            <MapPin className={cn("w-3.5 h-3.5", accent.icon)} />
+            {event.city}
+          </span>
         </div>
       </div>
 
@@ -1228,7 +1286,11 @@ const ProvaInscricao = () => {
             </div>
           ) : (
             <>
-              <Stepper current={step} onGo={done ? undefined : (i) => setStep(i)} />
+              <Stepper
+                current={step}
+                onGo={done ? undefined : (i) => setStep(i)}
+                organizationContext={orgContext}
+              />
 
               {done ? (
                 <div className="max-w-2xl mx-auto bg-card border border-border rounded-2xl p-4 sm:p-7 space-y-5">
@@ -1439,7 +1501,7 @@ const ProvaInscricao = () => {
                           </p>
                         </div>
                         <div className="grid grid-cols-1 sm:flex gap-2 shrink-0">
-                          <Button variant="brand" className="w-full sm:w-auto min-h-11" onClick={() => resumeSignup(pendingSignup)}>
+                          <Button variant={ctaVariant} className="w-full sm:w-auto min-h-11" onClick={() => resumeSignup(pendingSignup)}>
                             Continuar inscrição
                           </Button>
                           <Button variant="ghost" className="w-full sm:w-auto min-h-11" onClick={() => setResumeDismissed(true)}>
@@ -1627,7 +1689,7 @@ const ProvaInscricao = () => {
                         </div>
 
                         <div className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
-                          <Button onClick={goStep2} variant="brand" size="lg" className="w-full min-h-12 sm:w-auto sm:min-w-56">
+                          <Button onClick={goStep2} variant={ctaVariant} size="lg" className="w-full min-h-12 sm:w-auto sm:min-w-56">
                             Continuar
                           </Button>
                         </div>
@@ -1990,7 +2052,7 @@ const ProvaInscricao = () => {
                             <Button variant="outline" size="lg" className="min-h-12" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
                               <ChevronLeft className="w-4 h-4" /> Voltar
                             </Button>
-                            <Button onClick={submit} disabled={submitting || !participantComplete} variant="brand" size="lg" className="min-h-12 flex-1">
+                            <Button onClick={submit} disabled={submitting || !participantComplete} variant={ctaVariant} size="lg" className="min-h-12 flex-1">
                               {submitting ? "Enviando..." : submitError ? "Tentar novamente" : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
                             </Button>
                           </div>
