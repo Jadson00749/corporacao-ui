@@ -195,6 +195,7 @@ export type Database = {
           registration_deadline: string | null
           registration_url: string
           regulation_url: string
+          shirt_size_stock: Json
           sort_order: number
           start_time: string
           status: string
@@ -233,6 +234,7 @@ export type Database = {
           registration_deadline?: string | null
           registration_url?: string
           regulation_url?: string
+          shirt_size_stock?: Json
           sort_order?: number
           start_time?: string
           status?: string
@@ -271,6 +273,7 @@ export type Database = {
           registration_deadline?: string | null
           registration_url?: string
           regulation_url?: string
+          shirt_size_stock?: Json
           sort_order?: number
           start_time?: string
           status?: string
@@ -1053,6 +1056,27 @@ export type Database = {
           used: number
           remaining: number
           reason: string
+        }[]
+      }
+      get_event_shirt_size_availability: {
+        Args: { _event_id: string }
+        Returns: {
+          size: string
+          max_quantity: number
+          used: number
+          remaining: number
+          unlimited: boolean
+          available: boolean
+        }[]
+      }
+      get_event_capacity_status: {
+        Args: { _event_id: string }
+        Returns: {
+          max_slots: number | null
+          used: number
+          remaining: number | null
+          unlimited: boolean
+          is_full: boolean
         }[]
       }
       get_event_payment_info: {

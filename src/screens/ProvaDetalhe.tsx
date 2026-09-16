@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/integrations/supabase/client";
 import { activeLote, currentPrice, formatBRL, isSeniorOnlyDistance } from "@/lib/eventPricing";
 import { LoteBreakdown } from "@/components/site/LoteBreakdown";
+import { parseEventCapacityStatus, type EventCapacityStatus } from "@/lib/eventCapacity";
+import { formatKitExtraPriceLabel } from "@/lib/shirtPlanning";
 import {
   Calendar,
   MapPin,
@@ -87,6 +89,19 @@ const ProvaDetalhe = () => {
     },
   });
 
+  const { data: capacityStatus = null } = useQuery({
+    queryKey: ["event_capacity_status", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_event_capacity_status", { _event_id: id! });
+      if (error) {
+        console.warn("[get_event_capacity_status]", error.message);
+        return null as EventCapacityStatus | null;
+      }
+      return parseEventCapacityStatus(data);
+    },
+  });
+
   const { data: signups = [], isLoading: loadingSignups } = useQuery({
     queryKey: ["event_signups_public", id],
     enabled: !!id && listOpen,
@@ -135,12 +150,19 @@ const ProvaDetalhe = () => {
     );
 
   const closed = event.status === "closed";
+  const capacityFull = capacityStatus?.is_full === true;
+  const inscriptionBlocked = closed || capacityFull;
   const banner = event.banner_image || event.image;
   const mobileBanner = (event as any).banner_mobile_image || banner;
   const bannerRatio = (event as any).banner_aspect_ratio as string | undefined;
   const internal = event.internal_signup;
   const badge = statusBadge[event.status] ?? statusBadge.open;
-  const slotsLeft = event.max_slots ? Math.max(event.max_slots - signupsCount, 0) : null;
+  const slotsLeft =
+    capacityStatus && !capacityStatus.unlimited
+      ? capacityStatus.remaining
+      : event.max_slots
+        ? Math.max(event.max_slots - (capacityStatus?.used ?? signupsCount), 0)
+        : null;
 
   const kits = (Array.isArray(event.kit_options) ? (event.kit_options as any[]) : []).filter((k) => k?.name);
   const prices = (Array.isArray(event.distances) ? (event.distances as any[]) : []).filter(
@@ -171,7 +193,7 @@ const ProvaDetalhe = () => {
       />
 
 
-      <div className={cn("pt-24", closed ? "pb-16" : "pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-16")}>
+      <div className={cn("pt-24", inscriptionBlocked ? "pb-16" : "pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-16")}>
         <div className="container-page">
           {/* BREADCRUMB */}
           <nav className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
@@ -280,9 +302,9 @@ const ProvaDetalhe = () => {
                           {k.description && (
                             <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{k.description}</p>
                           )}
-                          {k.extra_price > 0 && (
+                          {formatKitExtraPriceLabel(k.extra_price) && (
                             <p className="mt-1.5 text-xs text-brand font-semibold">
-                              + {Number(k.extra_price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              {formatKitExtraPriceLabel(k.extra_price)}
                             </p>
                           )}
                         </div>
@@ -375,7 +397,10 @@ const ProvaDetalhe = () => {
                         <div className="flex items-center gap-2 text-sm font-semibold">
                           <CheckCircle2 className="w-4 h-4 text-brand" /> Vagas restantes
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">{slotsLeft} de {event.max_slots}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {slotsLeft} de {capacityStatus?.max_slots ?? event.max_slots}
+                          {capacityFull ? " · Esgotadas" : ""}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -427,17 +452,46 @@ const ProvaDetalhe = () => {
                 </dl>
 
                 <div className="mt-4 space-y-2">
-                  <Button asChild variant={closed ? "outline" : "brand"} size="lg" className="w-full" disabled={closed}>
+                  <Button
+                    asChild
+                    variant={inscriptionBlocked ? "outline" : "brand"}
+                    size="lg"
+                    className="w-full"
+                    disabled={inscriptionBlocked}
+                  >
                     {internal ? (
-                      <Link to={closed ? "#" : ctaHref} onClick={(e) => closed && e.preventDefault()}>
-                        {closed ? "Encerrado" : "Inscrever-se"} {!closed && <ArrowRight className="w-4 h-4" />}
+                      <Link
+                        to={inscriptionBlocked ? "#" : ctaHref}
+                        onClick={(e) => inscriptionBlocked && e.preventDefault()}
+                      >
+                        {closed
+                          ? "Encerrado"
+                          : capacityFull
+                            ? "Vagas esgotadas"
+                            : "Inscrever-se"}
+                        {!inscriptionBlocked && <ArrowRight className="w-4 h-4" />}
                       </Link>
                     ) : (
-                      <a href={ctaHref} target="_blank" rel="noreferrer" onClick={(e) => closed && e.preventDefault()}>
-                        {closed ? "Encerrado" : "Inscrever-se"} {!closed && <ExternalLink className="w-4 h-4" />}
+                      <a
+                        href={ctaHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => inscriptionBlocked && e.preventDefault()}
+                      >
+                        {closed
+                          ? "Encerrado"
+                          : capacityFull
+                            ? "Vagas esgotadas"
+                            : "Inscrever-se"}
+                        {!inscriptionBlocked && <ExternalLink className="w-4 h-4" />}
                       </a>
                     )}
                   </Button>
+                  {capacityFull && !closed && (
+                    <p className="text-[11px] text-center text-muted-foreground">
+                      Inscrições encerradas — limite de participantes atingido.
+                    </p>
+                  )}
                   <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
                     <Lock className="w-3 h-3" /> Pagamento seguro · Pix
                   </p>
@@ -508,7 +562,7 @@ const ProvaDetalhe = () => {
       </Dialog>
 
       {/* CTA fixo no mobile */}
-      {!closed && (
+      {!inscriptionBlocked && (
         <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           {internal ? (
             <Button asChild variant="brand" size="lg" className="w-full">
@@ -519,6 +573,13 @@ const ProvaDetalhe = () => {
               <a href={ctaHref} target="_blank" rel="noreferrer">Inscrever-se</a>
             </Button>
           )}
+        </div>
+      )}
+      {capacityFull && !closed && (
+        <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <p className="text-center text-sm text-muted-foreground py-2">
+            Inscrições encerradas — limite de participantes atingido.
+          </p>
         </div>
       )}
     </Layout>

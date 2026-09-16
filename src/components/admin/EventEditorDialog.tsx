@@ -22,12 +22,42 @@ import {
   formatCouponUsesLabel,
   validateCouponFields,
 } from "@/lib/eventCoupons";
+import {
+  normalizeShirtSize,
+  parseShirtSizeStock,
+  setShirtSizeStockLimit,
+  shirtSizeStockLimit,
+  collectKitShirtSizes,
+  type ShirtSizeAvailability,
+} from "@/lib/shirtSizeStock";
+import {
+  applyShirtPlanToStock,
+  buildShirtPlan,
+} from "@/lib/shirtPlanning";
+import {
+  type EventKitOption,
+  type KitPresetId,
+  KIT_DEFAULT_SIZES,
+  createKitFromPreset,
+  discountAmountFromExtra,
+  extraPriceFromDiscount,
+  getKitAvailability,
+  kitHasShirt,
+  kitUsesDiscountField,
+} from "@/lib/eventKits";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EventBannerConfig } from "@/components/admin/EventBannerConfig";
 import { EventKitItemsEditor } from "@/components/admin/EventKitItemsEditor";
 import { isOrganizerPaymentReady, maskPixKey } from "@/lib/eventPayment";
 import { Link } from "@/lib/router-compat";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
 
 type Distance = {
   distance: string;
@@ -39,17 +69,10 @@ type Distance = {
   price_60_plus?: number;
 };
 type AgeBracket = { min: number; max: number };
-type KitOption = {
-  name: string;
-  extra_price?: number;
-  sizes?: string[];
-  has_shirt?: boolean;
-  size_chart_url?: string;
-  size_chart_info?: string;
-};
+type KitOption = EventKitOption;
 type EventDocument = { label: string; url: string };
 
-const DEFAULT_SIZES = ["PP", "P", "M", "G", "GG", "XG"];
+const DEFAULT_SIZES = KIT_DEFAULT_SIZES;
 const DEFAULT_DISTANCE_OPTIONS = ["5K", "10K", "10,5K", "21K", "42K"];
 const DEFAULT_BRACKETS: AgeBracket[] = [
   { min: 18, max: 29 },
@@ -203,6 +226,10 @@ type Props = {
   editingIsPartner: boolean;
   editingOrg: any;
   couponUses: Record<string, number>;
+  /** Inscrições não canceladas por tamanho (uppercase). */
+  shirtSizeUses: Record<string, number>;
+  /** Total de inscrições não canceladas. */
+  activeSignupsCount: number;
   customSize: Record<number, string>;
   setCustomSize: (v: Record<number, string>) => void;
   onUploadBanner: (file: File) => void;
@@ -220,17 +247,29 @@ export const EventEditorDialog = ({
   editingIsPartner,
   editingOrg,
   couponUses,
+  shirtSizeUses,
+  activeSignupsCount,
   customSize,
   setCustomSize,
   onUploadBanner,
   onUploadMobile,
   onUploadDocument,
 }: Props) => {
+  const shirtStock = parseShirtSizeStock(editing?.shirt_size_stock);
   const isMobile = useIsMobile();
   const [tab, setTab] = useState<EditorTabId>("geral");
+  const [shirtForecast, setShirtForecast] = useState<string>("");
+  const [planAppliedHint, setPlanAppliedHint] = useState(false);
 
   useEffect(() => {
     setTab("geral");
+    setPlanAppliedHint(false);
+    const max = editing?.max_slots != null && Number(editing.max_slots) > 0 ? Number(editing.max_slots) : null;
+    if (max != null) {
+      setShirtForecast(String(Math.max(0, max - (activeSignupsCount || 0))));
+    } else {
+      setShirtForecast("");
+    }
   }, [editing?.id]);
 
   const addItem = (key: string, item: any) =>
@@ -709,134 +748,482 @@ export const EventEditorDialog = ({
                 </Section>
 
                 {editing.internal_signup && (
-                  <Section title="Opções de kit" subtitle="Adicionais na inscrição.">
-                    {editing.kit_options.map((k: KitOption, i: number) => (
-                      <div key={i} className="mb-3 rounded-lg border border-border/50 p-3 space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-[1fr_7rem_auto] gap-2">
-                          <Input placeholder="Ex: Kit camiseta" value={k.name} onChange={(e) => updateItem("kit_options", i, { name: e.target.value })} />
-                          <Input type="number" step="0.01" placeholder="Adicional R$" value={k.extra_price ?? 0} onChange={(e) => updateItem("kit_options", i, { extra_price: parseFloat(e.target.value) || 0 })} />
-                          <Button variant="outline" size="icon" onClick={() => removeItem("kit_options", i)}>
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        {(() => {
-                          const sizes: string[] = Array.isArray((k as any).sizes) ? (k as any).sizes : [];
-                          const hasShirt = sizes.length > 0 || (k as any).has_shirt === true;
-                          const allSizes = [...DEFAULT_SIZES, ...sizes.filter((x) => !DEFAULT_SIZES.includes(x))];
-                          const toggleSize = (s: string) => {
-                            const next = sizes.includes(s) ? sizes.filter((x) => x !== s) : [...sizes, s];
-                            updateItem("kit_options", i, {
-                              has_shirt: true,
-                              sizes: allSizes.filter((x) => next.includes(x)),
-                            });
-                          };
-                          return (
-                            <>
-                              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                <Switch
-                                  checked={hasShirt}
-                                  onCheckedChange={(v) =>
-                                    updateItem("kit_options", i, { has_shirt: v, sizes: v ? DEFAULT_SIZES : [] })
+                  <Section title="Kits disponíveis" subtitle="Presets rápidos. Tudo continua editável.">
+                    {editing.kit_options.map((k: KitOption, i: number) => {
+                      const sizes: string[] = Array.isArray(k.sizes) ? k.sizes : [];
+                      const hasShirt = kitHasShirt(k);
+                      const useDiscount = kitUsesDiscountField(k);
+                      const avail = getKitAvailability(k);
+                      const allSizes = [...DEFAULT_SIZES, ...sizes.filter((x) => !DEFAULT_SIZES.includes(x))];
+                      const usedOf = (s: string) => shirtSizeUses[normalizeShirtSize(s)] || 0;
+                      const toggleSize = (s: string) => {
+                        if (sizes.includes(s) && usedOf(s) > 0) {
+                          toast.error(
+                            `Não é possível remover o tamanho ${normalizeShirtSize(s)}: há ${usedOf(s)} inscrição(ões) reservando este tamanho.`
+                          );
+                          return;
+                        }
+                        const next = sizes.includes(s) ? sizes.filter((x) => x !== s) : [...sizes, s];
+                        updateItem("kit_options", i, {
+                          has_shirt: true,
+                          sizes: allSizes.filter((x) => next.includes(x)),
+                        });
+                      };
+                      const setStockQty = (s: string, raw: string) => {
+                        const trimmed = raw.trim();
+                        const next =
+                          trimmed === ""
+                            ? setShirtSizeStockLimit(shirtStock, s, null)
+                            : setShirtSizeStockLimit(shirtStock, s, Number(trimmed));
+                        setEditing({ ...editing, shirt_size_stock: next });
+                      };
+                      return (
+                        <div key={i} className="mb-3 rounded-lg border border-border/50 p-3 space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <div>
+                                <Label className="text-xs">Nome</Label>
+                                <Input
+                                  className="mt-1"
+                                  placeholder="Ex: Kit Completo"
+                                  value={k.name}
+                                  onChange={(e) => updateItem("kit_options", i, { name: e.target.value })}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Descrição</Label>
+                                <Input
+                                  className="mt-1"
+                                  placeholder="Ex: Camiseta, número de peito e medalha"
+                                  value={k.description ?? ""}
+                                  onChange={(e) => updateItem("kit_options", i, { description: e.target.value })}
+                                />
+                              </div>
+                            </div>
+                            <Button variant="outline" size="icon" className="shrink-0" onClick={() => removeItem("kit_options", i)}>
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+
+                          <div className="max-w-xs">
+                            {useDiscount ? (
+                              <>
+                                <Label className="text-xs">Valor do desconto (R$)</Label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  className="mt-1"
+                                  value={discountAmountFromExtra(k.extra_price)}
+                                  onChange={(e) => {
+                                    const n = parseFloat(e.target.value);
+                                    updateItem("kit_options", i, {
+                                      extra_price: extraPriceFromDiscount(Number.isFinite(n) ? n : 0),
+                                    });
+                                  }}
+                                />
+                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                  O valor deste kit ficará R${discountAmountFromExtra(k.extra_price) || 0} abaixo do valor vigente da inscrição.
+                                </p>
+                              </>
+                            ) : (
+                              <>
+                                <Label className="text-xs">Ajuste no preço (R$)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  className="mt-1"
+                                  value={k.extra_price ?? 0}
+                                  onChange={(e) => {
+                                    const n = parseFloat(e.target.value);
+                                    updateItem("kit_options", i, {
+                                      extra_price: Number.isFinite(n) ? n : 0,
+                                    });
+                                  }}
+                                />
+                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                  Positivo acrescenta; zero = sem ajuste.
+                                </p>
+                              </>
+                            )}
+                          </div>
+
+                          <div>
+                            <Label className="text-xs">Disponibilidade do kit</Label>
+                            <div className="mt-1.5 flex flex-col gap-1.5 text-sm">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`kit-avail-${i}`}
+                                  checked={avail === "all_lots"}
+                                  onChange={() =>
+                                    updateItem("kit_options", i, {
+                                      availability: "all_lots",
+                                      only_last_lot: undefined,
+                                    })
                                   }
                                 />
-                                Este kit possui camiseta
+                                Todos os lotes
                               </label>
-                              {hasShirt && (
-                                <div className="space-y-3 rounded-md bg-secondary/25 p-3">
-                                  <div>
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                      <Label className="text-xs">Tamanhos disponíveis</Label>
-                                      <Button
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`kit-avail-${i}`}
+                                  checked={avail === "last_lot"}
+                                  onChange={() =>
+                                    updateItem("kit_options", i, {
+                                      availability: "last_lot",
+                                      only_last_lot: undefined,
+                                    })
+                                  }
+                                />
+                                Somente no último lote
+                              </label>
+                            </div>
+                          </div>
+
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <Switch
+                              checked={hasShirt}
+                              onCheckedChange={(v) => {
+                                if (!v) {
+                                  const blocked = sizes.find((s) => usedOf(s) > 0);
+                                  if (blocked) {
+                                    toast.error(
+                                      `Não é possível desativar a camiseta: há inscrições no tamanho ${normalizeShirtSize(blocked)}.`
+                                    );
+                                    return;
+                                  }
+                                }
+                                updateItem("kit_options", i, {
+                                  has_shirt: v,
+                                  sizes: v ? DEFAULT_SIZES : [],
+                                  ...(v ? {} : { extra_price: k.extra_price ?? 0 }),
+                                });
+                              }}
+                            />
+                            Este kit possui camiseta
+                          </label>
+
+                          {hasShirt && (
+                            <div className="space-y-3 rounded-md bg-secondary/25 p-3">
+                              <div>
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <Label className="text-xs">Tamanhos disponíveis</Label>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => updateItem("kit_options", i, { sizes: DEFAULT_SIZES })}
+                                  >
+                                    Usar tamanhos padrão
+                                  </Button>
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {allSizes.map((s) => {
+                                    const on = sizes.includes(s);
+                                    return (
+                                      <button
+                                        key={s}
                                         type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-7 text-xs"
-                                        onClick={() => updateItem("kit_options", i, { sizes: DEFAULT_SIZES })}
+                                        onClick={() => toggleSize(s)}
+                                        className={
+                                          "px-3 py-1.5 rounded-md text-xs font-semibold border " +
+                                          (on
+                                            ? "bg-brand text-brand-foreground border-brand"
+                                            : "bg-background text-foreground/60 border-border")
+                                        }
                                       >
-                                        Usar tamanhos padrão
-                                      </Button>
-                                    </div>
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                      {allSizes.map((s) => {
-                                        const on = sizes.includes(s);
-                                        return (
-                                          <button
-                                            key={s}
-                                            type="button"
-                                            onClick={() => toggleSize(s)}
-                                            className={
-                                              "px-3 py-1.5 rounded-md text-xs font-semibold border " +
-                                              (on
-                                                ? "bg-brand text-brand-foreground border-brand"
-                                                : "bg-background text-foreground/60 border-border")
-                                            }
-                                          >
-                                            {on ? "☑" : "☐"} {s}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                    <div className="mt-2 flex flex-col md:flex-row gap-2">
-                                      <Input
-                                        className="h-9 md:w-40 text-xs"
-                                        placeholder="Outro tamanho (ex: XGG)"
-                                        value={customSize[i] ?? ""}
-                                        onChange={(e) => setCustomSize({ ...customSize, [i]: e.target.value })}
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            const v = (customSize[i] ?? "").trim().toUpperCase();
-                                            if (v && !sizes.includes(v)) updateItem("kit_options", i, { sizes: [...sizes, v] });
-                                            setCustomSize({ ...customSize, [i]: "" });
-                                          }
-                                        }}
-                                      />
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-9 text-xs"
-                                        onClick={() => {
-                                          const v = (customSize[i] ?? "").trim().toUpperCase();
-                                          if (v && !sizes.includes(v)) updateItem("kit_options", i, { sizes: [...sizes, v] });
-                                          setCustomSize({ ...customSize, [i]: "" });
-                                        }}
-                                      >
-                                        <Plus className="w-3 h-3" /> Adicionar outro tamanho
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                    <div>
-                                      <Label className="text-xs">Tabela de medidas — imagem (opcional)</Label>
-                                      <Input
-                                        placeholder="https://..."
-                                        value={(k as any).size_chart_url ?? ""}
-                                        onChange={(e) => updateItem("kit_options", i, { size_chart_url: e.target.value })}
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label className="text-xs">Tabela de medidas — informações (opcional)</Label>
-                                      <Textarea
-                                        rows={2}
-                                        placeholder="Ex: P — 50cm largura x 70cm altura..."
-                                        value={(k as any).size_chart_info ?? ""}
-                                        onChange={(e) => updateItem("kit_options", i, { size_chart_info: e.target.value })}
-                                      />
-                                    </div>
+                                        {on ? "☑" : "☐"} {s}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <div className="mt-2 flex flex-col md:flex-row gap-2">
+                                  <Input
+                                    className="h-9 md:w-40 text-xs"
+                                    placeholder="Outro tamanho (ex: XGG)"
+                                    value={customSize[i] ?? ""}
+                                    onChange={(e) => setCustomSize({ ...customSize, [i]: e.target.value })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const v = (customSize[i] ?? "").trim().toUpperCase();
+                                        if (v && !sizes.includes(v)) updateItem("kit_options", i, { sizes: [...sizes, v] });
+                                        setCustomSize({ ...customSize, [i]: "" });
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 text-xs"
+                                    onClick={() => {
+                                      const v = (customSize[i] ?? "").trim().toUpperCase();
+                                      if (v && !sizes.includes(v)) updateItem("kit_options", i, { sizes: [...sizes, v] });
+                                      setCustomSize({ ...customSize, [i]: "" });
+                                    }}
+                                  >
+                                    <Plus className="w-3 h-3" /> Adicionar outro tamanho
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {sizes.length > 0 && (
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Estoque por tamanho (opcional)</Label>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    Deixe em branco para não limitar.
+                                  </p>
+                                  <div className="space-y-2">
+                                    {sizes.map((s) => {
+                                      const key = normalizeShirtSize(s);
+                                      const lim = shirtSizeStockLimit(shirtStock, key);
+                                      const used = usedOf(key);
+                                      const remaining = lim == null ? null : Math.max(lim - used, 0);
+                                      return (
+                                        <div
+                                          key={key}
+                                          className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-md border border-border/40 bg-background/60 px-2.5 py-2"
+                                        >
+                                          <span className="text-xs font-semibold w-10 shrink-0">{key}</span>
+                                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                                            <span className="text-[11px] text-muted-foreground shrink-0">
+                                              Quantidade:
+                                            </span>
+                                            <Input
+                                              type="number"
+                                              min={1}
+                                              step={1}
+                                              className="h-8 w-24 text-xs"
+                                              placeholder="∞"
+                                              value={lim ?? ""}
+                                              onChange={(e) => setStockQty(key, e.target.value)}
+                                            />
+                                          </div>
+                                          <div className="text-[11px] text-muted-foreground sm:text-right sm:min-w-[10rem]">
+                                            {lim == null ? (
+                                              <span>Sem limite</span>
+                                            ) : (
+                                              <span>
+                                                Estoque: {lim}
+                                                {used > 0 ? (
+                                                  <>
+                                                    {" · "}Utilizadas: {used}
+                                                    {" · "}Disponíveis: {remaining}
+                                                  </>
+                                                ) : null}
+                                              </span>
+                                            )}
+                                            {lim == null && used > 0 ? (
+                                              <span className="block">Utilizadas: {used}</span>
+                                            ) : null}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    ))}
-                    <Button variant="outline" size="sm" onClick={() => addItem("kit_options", { name: "", extra_price: 0, sizes: [] })}>
-                      <Plus className="w-4 h-4" /> Adicionar kit
-                    </Button>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <div>
+                                  <Label className="text-xs">Tabela de medidas — imagem (opcional)</Label>
+                                  <Input
+                                    placeholder="https://..."
+                                    value={k.size_chart_url ?? ""}
+                                    onChange={(e) => updateItem("kit_options", i, { size_chart_url: e.target.value })}
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Tabela de medidas — informações (opcional)</Label>
+                                  <Textarea
+                                    rows={2}
+                                    placeholder="Ex: P — 50cm largura x 70cm altura..."
+                                    value={k.size_chart_info ?? ""}
+                                    onChange={(e) => updateItem("kit_options", i, { size_chart_info: e.target.value })}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Plus className="w-4 h-4" /> Adicionar kit
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-56">
+                        {(
+                          [
+                            { id: "completo" as KitPresetId, label: "Kit Completo", hint: "Com camiseta · todos os lotes" },
+                            { id: "economico" as KitPresetId, label: "Kit Econômico", hint: "Sem camiseta · último lote · −R$20" },
+                            { id: "personalizado" as KitPresetId, label: "Personalizado", hint: "Começar do zero" },
+                          ] as const
+                        ).map((opt) => (
+                          <DropdownMenuItem
+                            key={opt.id}
+                            className="flex flex-col items-start gap-0.5 py-2"
+                            onSelect={() => addItem("kit_options", createKitFromPreset(opt.id))}
+                          >
+                            <span className="font-medium">{opt.label}</span>
+                            <span className="text-[11px] text-muted-foreground">{opt.hint}</span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </Section>
                 )}
+
+                {editing.internal_signup && (() => {
+                  const maxSlots =
+                    editing.max_slots != null && Number(editing.max_slots) > 0
+                      ? Number(editing.max_slots)
+                      : null;
+                  const remainingSlots = maxSlots != null ? Math.max(0, maxSlots - (activeSignupsCount || 0)) : null;
+                  const forecastNum = Math.max(0, Math.floor(Number(shirtForecast) || 0));
+                  const forecastCapError =
+                    remainingSlots != null && forecastNum > remainingSlots
+                      ? `A capacidade atual permite no máximo ${remainingSlots} novas inscrições.`
+                      : null;
+                  const effectiveForecast =
+                    remainingSlots != null ? Math.min(forecastNum, remainingSlots) : forecastNum;
+
+                  const sizes = collectKitShirtSizes(editing.kit_options);
+                  const availability: ShirtSizeAvailability[] = sizes.map((size) => {
+                    const used = shirtSizeUses[size] || 0;
+                    const lim = shirtSizeStockLimit(shirtStock, size);
+                    const unlimited = lim == null;
+                    const remaining = unlimited ? null : Math.max(lim - used, 0);
+                    return {
+                      size,
+                      max_quantity: lim,
+                      used,
+                      remaining,
+                      unlimited,
+                      available: unlimited || (remaining ?? 0) > 0,
+                    };
+                  });
+                  // Inclui tamanhos só no histórico de usos
+                  for (const [size, used] of Object.entries(shirtSizeUses)) {
+                    if (sizes.includes(size)) continue;
+                    const lim = shirtSizeStockLimit(shirtStock, size);
+                    const unlimited = lim == null;
+                    availability.push({
+                      size,
+                      max_quantity: lim,
+                      used,
+                      remaining: unlimited ? null : Math.max((lim as number) - used, 0),
+                      unlimited,
+                      available: unlimited || Math.max((lim ?? 0) - used, 0) > 0,
+                    });
+                  }
+
+                  const plan = buildShirtPlan({
+                    totalActive: activeSignupsCount || 0,
+                    availability,
+                    forecast: effectiveForecast,
+                  });
+
+                  return (
+                    <Section
+                      title="Planejamento de camisetas"
+                      subtitle="Projeção simples com base nas inscrições reais."
+                    >
+                      <p className="text-sm text-muted-foreground">
+                        {activeSignupsCount || 0} inscritos
+                        {maxSlots != null ? (
+                          <>
+                            {" · "}
+                            Limite: {maxSlots}
+                            {" · "}
+                            {remainingSlots} vagas restantes
+                          </>
+                        ) : (
+                          <> · Sem limite de vagas</>
+                        )}
+                      </p>
+
+                      <div className="mt-3 max-w-xs">
+                        <Label className="text-xs">Previsão de novas inscrições</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={remainingSlots ?? undefined}
+                          className="mt-1 h-9"
+                          value={shirtForecast}
+                          onChange={(e) => {
+                            setPlanAppliedHint(false);
+                            setShirtForecast(e.target.value);
+                          }}
+                          placeholder={remainingSlots != null ? String(remainingSlots) : "Ex: 50"}
+                        />
+                        {forecastCapError && (
+                          <p className="mt-1 text-[11px] text-destructive">{forecastCapError}</p>
+                        )}
+                      </div>
+
+                      {!plan.canSuggest && plan.noHistoryMessage ? (
+                        <p className="mt-3 text-xs text-muted-foreground">{plan.noHistoryMessage}</p>
+                      ) : (
+                        <div className="mt-3 space-y-2">
+                          <p className="text-xs text-muted-foreground">
+                            Estimativa baseada no comportamento atual:{" "}
+                            {Math.round(plan.shirtRate * 100)}% dos inscritos escolheram camiseta
+                            {" → "}
+                            ~{plan.estimatedNewShirts} novas camisetas.
+                          </p>
+                          <div className="space-y-1.5">
+                            {plan.rows.map((row) => (
+                              <div
+                                key={row.size}
+                                className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs border-b border-border/40 py-1.5 last:border-0"
+                              >
+                                <span className="font-semibold w-8">{row.size}</span>
+                                <span className="text-muted-foreground">Reservadas: {row.reserved}</span>
+                                <span className="text-muted-foreground">
+                                  Estoque: {row.stockTotal == null ? "Sem limite" : row.stockTotal}
+                                </span>
+                                {row.available != null && (
+                                  <span className="text-muted-foreground">Disponíveis: {row.available}</span>
+                                )}
+                                <span className="text-foreground font-medium">
+                                  Sugestão adicional: +{row.additionalToProduce}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                            disabled={!plan.rows.some((r) => r.additionalToProduce > 0)}
+                            onClick={() => {
+                              const next = applyShirtPlanToStock(shirtStock, plan.rows);
+                              setEditing({ ...editing, shirt_size_stock: next });
+                              setPlanAppliedHint(true);
+                              toast.success("Sugestão aplicada. Revise as quantidades e clique em Salvar alterações.");
+                            }}
+                          >
+                            Aplicar sugestão ao estoque
+                          </Button>
+                          {planAppliedHint && (
+                            <p className="text-[11px] text-muted-foreground">
+                              Sugestão aplicada. Revise as quantidades e clique em Salvar alterações.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </Section>
+                  );
+                })()}
 
                 {editing.internal_signup && (
                   <Section title="Cupons aceitos" subtitle="Códigos de desconto desta prova.">

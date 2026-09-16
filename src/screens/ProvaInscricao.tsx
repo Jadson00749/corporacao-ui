@@ -43,6 +43,24 @@ import {
   couponHasDiscountConfig,
   couponAvailabilityMessage,
 } from "@/lib/eventCoupons";
+import {
+  type ShirtSizeAvailability,
+  isShirtSizeSoldOut,
+  normalizeShirtSize,
+  shirtStockErrorMessage,
+} from "@/lib/shirtSizeStock";
+import {
+  eventCapacityErrorMessage,
+  parseEventCapacityStatus,
+  type EventCapacityStatus,
+} from "@/lib/eventCapacity";
+import { formatKitExtraPriceLabel } from "@/lib/shirtPlanning";
+import {
+  type EventKitOption,
+  getKitAvailability,
+  isKitAvailableForDistance,
+  kitHasShirt,
+} from "@/lib/eventKits";
 
 import { buildSignupWhatsMessage, type SignupBlock } from "@/lib/signupWhatsMessage";
 import {
@@ -64,7 +82,7 @@ import { Confetti } from "@/components/site/Confetti";
 
 type Distance = { distance: string; price?: number };
 type AgeBracket = { min: number; max: number };
-type KitOption = { name: string; extra_price?: number; sizes?: string[]; size_chart_url?: string; size_chart_info?: string };
+type KitOption = EventKitOption;
 type Coupon = EventCoupon;
 
 const calcAge = (birth?: string | null) => {
@@ -161,6 +179,8 @@ const ProvaInscricao = () => {
 
   const [step, setStep] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  /** Aviso de race de estoque; mantém o formulário e só limpa o tamanho. */
+  const [shirtRaceHint, setShirtRaceHint] = useState<string | null>(null);
   const [distance, setDistance] = useState("");
   const [gender, setGender] = useState("");
   const [bracket, setBracket] = useState("");
@@ -216,7 +236,10 @@ const ProvaInscricao = () => {
   const setPBirth = (v: string) => patchDraft({ birth: v });
   const setPGender = (v: string) => patchDraft({ gender: v });
   const setPPhone = (v: string) => patchDraft({ phone: v });
-  const setShirtSize = (v: string) => patchDraft({ shirtSize: v });
+  const setShirtSize = (v: string) => {
+    patchDraft({ shirtSize: v });
+    if (v) setShirtRaceHint(null);
+  };
 
   const fillWithProfile = () => {
     setSelfDraft((d) => ({
@@ -268,6 +291,46 @@ const ProvaInscricao = () => {
       return data;
     },
   });
+
+  const { data: shirtAvailability = [], refetch: refetchShirtAvailability } = useQuery({
+    queryKey: ["event_shirt_size_availability", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_event_shirt_size_availability", {
+        _event_id: id!,
+      });
+      if (error) {
+        // Migration ainda não aplicada / RPC ausente → trata como ilimitado
+        console.warn("[get_event_shirt_size_availability]", error.message);
+        return [] as ShirtSizeAvailability[];
+      }
+      return (data ?? []) as ShirtSizeAvailability[];
+    },
+  });
+
+  const { data: capacityStatus = null, refetch: refetchCapacity } = useQuery({
+    queryKey: ["event_capacity_status", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_event_capacity_status", {
+        _event_id: id!,
+      });
+      if (error) {
+        console.warn("[get_event_capacity_status]", error.message);
+        return null as EventCapacityStatus | null;
+      }
+      return parseEventCapacityStatus(data);
+    },
+  });
+
+  const shirtAvailBySize = useMemo(() => {
+    const map: Record<string, ShirtSizeAvailability> = {};
+    for (const row of shirtAvailability) {
+      const key = normalizeShirtSize(row.size);
+      if (key) map[key] = row;
+    }
+    return map;
+  }, [shirtAvailability]);
 
   // Pagamento resolvido pelo organizador da prova via RPC get_event_payment_info.
   // Prova com organizer_id + falha da RPC NÃO cai no WhatsApp/PIX da Corporação.
@@ -364,10 +427,29 @@ const ProvaInscricao = () => {
     () => ((event?.age_brackets as AgeBracket[]) || []).filter((b) => b && Number.isFinite(b.min) && Number.isFinite(b.max)),
     [event]
   );
-  const kitOptions = useMemo<KitOption[]>(
+  const kitOptionsAll = useMemo<KitOption[]>(
     () => ((event?.kit_options as KitOption[]) || []).filter((k) => k?.name?.trim()),
     [event]
   );
+  const kitOptions = useMemo<KitOption[]>(() => {
+    const dist = distances.find((d) => d.distance === distance);
+    if (!dist) {
+      // Sem modalidade: só kits de todos os lotes (evita preview de last_lot)
+      return kitOptionsAll.filter((k) => getKitAvailability(k) === "all_lots");
+    }
+    return kitOptionsAll.filter((k) => isKitAvailableForDistance(k, dist));
+  }, [kitOptionsAll, distances, distance]);
+
+  // Se o kit selecionado deixar de ser elegível (ex.: mudou modalidade/lote), limpa.
+  useEffect(() => {
+    const selected = selectedKits[0];
+    if (!selected) return;
+    if (!kitOptions.some((k) => k.name === selected)) {
+      setSelectedKits([]);
+      setShirtSize("");
+    }
+  }, [kitOptions, selectedKits]);
+
   const coupons = useMemo<Coupon[]>(
     () => listApplicableCoupons(event?.coupons),
     [event]
@@ -375,20 +457,27 @@ const ProvaInscricao = () => {
 
   // Kit selecionado que possui camiseta (tamanhos configurados pelo admin)
   const shirtKit = useMemo(
-    () => kitOptions.find((k) => selectedKits.includes(k.name) && Array.isArray(k.sizes) && k.sizes.length > 0) || null,
+    () => kitOptions.find((k) => selectedKits.includes(k.name) && kitHasShirt(k)) || null,
     [kitOptions, selectedKits]
   );
   const availableSizes = shirtKit?.sizes ?? [];
   useEffect(() => {
     if (shirtSize && !availableSizes.includes(shirtSize)) setShirtSize("");
   }, [availableSizes.join("|")]);
+  useEffect(() => {
+    if (!shirtSize) return;
+    const row = shirtAvailBySize[normalizeShirtSize(shirtSize)];
+    if (isShirtSizeSoldOut(row)) setShirtSize("");
+  }, [shirtSize, shirtAvailBySize]);
   useEffect(() => { if (shirtSize && errors.shirtSize) setErrors((e) => ({ ...e, shirtSize: false })); }, [shirtSize]);
 
 
 
   // Auto-pick when there's only one option
   useEffect(() => { if (distances.length === 1) setDistance(distances[0].distance); }, [distances]);
-  useEffect(() => { if (kitOptions.length === 1) setSelectedKits([kitOptions[0].name]); }, [kitOptions]);
+  useEffect(() => {
+    if (kitOptions.length === 1) setSelectedKits([kitOptions[0].name]);
+  }, [kitOptions]);
 
   // Sexo derivado do PARTICIPANTE
   const participantGenderLabel = useMemo(() => genderLabelFrom(pGender, genders), [pGender, genders]);
@@ -568,7 +657,7 @@ const ProvaInscricao = () => {
     } catch {
       if (signup.kit_option) kits = [signup.kit_option];
     }
-    if (kits.length) setSelectedKits(kits);
+    if (kits.length) setSelectedKits([kits[0]]);
     const savedSize = (signup as any)?.shirt_size || "";
     if (signup.team_name) setTeamName(signup.team_name);
     if (signup.coupon_code) {
@@ -720,6 +809,13 @@ const ProvaInscricao = () => {
     }
     if (kitOptions.length > 0 && selectedKits.length === 0) { newErrors.kitOption = true; missingLabels.push("Kit"); }
     if (availableSizes.length > 0 && !shirtSize) { newErrors.shirtSize = true; missingLabels.push("Tamanho da camiseta"); }
+    if (
+      shirtSize &&
+      isShirtSizeSoldOut(shirtAvailBySize[normalizeShirtSize(shirtSize)])
+    ) {
+      newErrors.shirtSize = true;
+      missingLabels.push("Tamanho esgotado — escolha outro");
+    }
     if (!acceptedTerms) { newErrors.terms = true; missingLabels.push("Aceitar os termos"); }
     if (ageMismatch) {
       setErrors({ ...newErrors, distance: true });
@@ -788,7 +884,7 @@ const ProvaInscricao = () => {
       category: savedCategory,
       status: "pendente",
       notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
-      kit_option: selectedKits.length ? JSON.stringify(selectedKits) : "",
+      kit_option: selectedKits[0] ? JSON.stringify([selectedKits[0]]) : "",
       shirt_size: shirtSize || null,
       coupon_code: appliedCoupon?.code || "",
       team_name: teamName,
@@ -843,10 +939,31 @@ const ProvaInscricao = () => {
 
     if (error) {
       setSubmitting(false);
-      const limitHit =
-        /limite de utilizações/i.test(error.message || "") ||
-        error.message?.includes("P0001");
-      if (limitHit) {
+      const stockMsg = shirtStockErrorMessage(error);
+      if (stockMsg) {
+        // Mantém o formulário; limpa só o tamanho esgotado e atualiza disponibilidade.
+        setShirtSize("");
+        setShirtRaceHint(stockMsg);
+        setSubmitError(stockMsg);
+        setErrors((e) => ({ ...e, shirtSize: true }));
+        await refetchShirtAvailability();
+        toast.error(stockMsg, { position: "top-center" });
+        setTimeout(() => {
+          document
+            .querySelector<HTMLElement>("[data-shirt-size-picker]")
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 50);
+        return;
+      }
+      const capacityMsg = eventCapacityErrorMessage(error);
+      if (capacityMsg) {
+        void refetchCapacity();
+        setSubmitError(capacityMsg);
+        toast.error(capacityMsg, { position: "top-center" });
+        return;
+      }
+      const couponLimitHit = /limite de utilizações/i.test(error.message || "");
+      if (couponLimitHit) {
         setAppliedCoupon(null);
         setSubmitError("Este cupom atingiu o limite de utilizações.");
         toast.error("Este cupom atingiu o limite de utilizações.", { position: "top-center" });
@@ -1040,6 +1157,7 @@ const ProvaInscricao = () => {
             </div>
           )}
           {kitExtra > 0 && <div className="flex justify-between"><span>Kit</span><span>+{brl(kitExtra)}</span></div>}
+          {kitExtra < 0 && <div className="flex justify-between"><span>Kit</span><span>−{brl(Math.abs(kitExtra))}</span></div>}
           {appliedCoupon && couponDiscount > 0 && (
             <div className="flex justify-between text-success font-medium">
               <span>
@@ -1074,6 +1192,16 @@ const ProvaInscricao = () => {
             <Skeleton className="h-96" />
           ) : !event ? (
             <p className="text-center text-muted-foreground">Prova não encontrada.</p>
+          ) : capacityStatus?.is_full && !done && !signupId ? (
+            <div className="max-w-xl mx-auto bg-card border border-border rounded-2xl p-6 text-center space-y-3">
+              <h1 className="font-display text-xl font-bold">{event.name}</h1>
+              <p className="text-sm text-muted-foreground">
+                Inscrições encerradas — limite de participantes atingido.
+              </p>
+              <Button asChild variant="outline">
+                <Link to={`/provas/${id}`}>Voltar para a prova</Link>
+              </Button>
+            </div>
           ) : (
             <>
               <Stepper current={step} onGo={done ? undefined : (i) => setStep(i)} />
@@ -1658,30 +1786,46 @@ const ProvaInscricao = () => {
                             className={`bg-card border rounded-2xl p-4 sm:p-5 ${errors.kitOption ? "border-destructive" : "border-border"}`}
                           >
                             <h3 className="text-sm uppercase tracking-wide text-muted-foreground mb-3">Kit do atleta</h3>
-                            <div className="grid sm:grid-cols-2 gap-2">
+                            <div className="grid sm:grid-cols-2 gap-2" role="radiogroup" aria-label="Escolha do kit">
                               {kitOptions.map((k) => {
-                                const active = selectedKits.includes(k.name);
+                                const active = selectedKits[0] === k.name;
+                                const extraLabel = formatKitExtraPriceLabel(k.extra_price);
+                                const desc = String(k.description || "").trim();
                                 return (
                                   <button
                                     key={k.name}
                                     type="button"
-                                    onClick={() => setSelectedKits((prev) => active ? prev.filter((n) => n !== k.name) : [...prev, k.name])}
+                                    role="radio"
+                                    aria-checked={active}
+                                    onClick={() => {
+                                      setSelectedKits([k.name]);
+                                      if (!kitHasShirt(k)) setShirtSize("");
+                                    }}
                                     className={[
-                                      "text-left min-h-[56px] rounded-xl px-4 py-3 border transition-all flex items-center gap-3",
+                                      "text-left min-h-[56px] rounded-xl px-4 py-3 border transition-all flex items-start gap-3",
                                       active
                                         ? "border-brand bg-brand/10 ring-1 ring-brand/40"
                                         : "border-border bg-secondary/30 hover:bg-secondary/60",
                                     ].join(" ")}
                                   >
                                     <div className={[
-                                      "w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors",
+                                      "w-5 h-5 mt-0.5 rounded-full border flex items-center justify-center shrink-0 transition-colors",
                                       active ? "bg-brand border-brand text-brand-foreground" : "border-border bg-background",
                                     ].join(" ")}>
-                                      {active && <Check className="w-3.5 h-3.5" />}
+                                      {active && <Check className="w-3 h-3" />}
                                     </div>
-                                    <Shirt className={`w-4 h-4 shrink-0 ${active ? "text-brand" : "text-muted-foreground"}`} />
-                                    <span className="min-w-0 flex-1 font-medium break-words">{k.name}</span>
-                                    {k.extra_price ? <span className="shrink-0 text-sm text-brand font-semibold">+{brl(k.extra_price)}</span> : null}
+                                    <Shirt className={`w-4 h-4 mt-0.5 shrink-0 ${active ? "text-brand" : "text-muted-foreground"}`} />
+                                    <span className="min-w-0 flex-1">
+                                      <span className="font-medium break-words block">{k.name}</span>
+                                      {desc ? (
+                                        <span className="block text-xs text-muted-foreground mt-0.5 leading-snug">
+                                          {desc}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                    {extraLabel ? (
+                                      <span className="shrink-0 text-sm text-brand font-semibold">{extraLabel}</span>
+                                    ) : null}
                                   </button>
                                 );
                               })}
@@ -1689,6 +1833,7 @@ const ProvaInscricao = () => {
 
                             {availableSizes.length > 0 && (
                               <div
+                                data-shirt-size-picker
                                 data-invalid={errors.shirtSize || undefined}
                                 className={`mt-4 rounded-xl border p-4 ${errors.shirtSize ? "border-destructive" : "border-border"} bg-secondary/20`}
                               >
@@ -1706,27 +1851,50 @@ const ProvaInscricao = () => {
                                     </button>
                                   )}
                                 </div>
+                                <p className="text-[11px] text-muted-foreground mb-3">
+                                  Tamanhos sujeitos à disponibilidade.
+                                </p>
                                 <div className="flex flex-wrap gap-2">
                                   {availableSizes.map((sz) => {
                                     const active = shirtSize === sz;
+                                    const soldOut = isShirtSizeSoldOut(
+                                      shirtAvailBySize[normalizeShirtSize(sz)]
+                                    );
                                     return (
                                       <button
                                         key={sz}
                                         type="button"
-                                        onClick={() => setShirtSize(sz)}
+                                        disabled={soldOut}
+                                        aria-disabled={soldOut}
+                                        onClick={() => {
+                                          if (soldOut) return;
+                                          setShirtSize(sz);
+                                        }}
                                         className={[
-                                          "min-w-[64px] min-h-[52px] px-4 rounded-xl border text-base font-bold transition-all",
-                                          active
-                                            ? "border-brand bg-brand text-brand-foreground"
-                                            : "border-border bg-background hover:border-brand/60",
+                                          "min-w-[4.5rem] min-h-[3.25rem] px-3 sm:px-4 rounded-xl border text-base font-bold transition-all shrink-0",
+                                          soldOut
+                                            ? "border-border/70 bg-muted/50 text-muted-foreground cursor-not-allowed opacity-60"
+                                            : active
+                                              ? "border-brand bg-brand text-brand-foreground"
+                                              : "border-border bg-background hover:border-brand/60",
                                         ].join(" ")}
                                       >
-                                        {sz}
+                                        <span className="block leading-tight">{sz}</span>
+                                        {soldOut && (
+                                          <span className="block text-[10px] font-semibold leading-tight mt-0.5">
+                                            Esgotado
+                                          </span>
+                                        )}
                                       </button>
                                     );
                                   })}
                                 </div>
-                                {errors.shirtSize && (
+                                {shirtRaceHint && (
+                                  <p className="mt-2 text-xs text-destructive leading-snug">
+                                    {shirtRaceHint}
+                                  </p>
+                                )}
+                                {!shirtRaceHint && errors.shirtSize && (
                                   <p className="mt-2 text-xs text-destructive">Selecione um tamanho para continuar.</p>
                                 )}
                               </div>

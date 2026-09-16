@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { EventCoupon } from "@/lib/eventCoupons";
+import type { EventKitOption } from "@/lib/eventKits";
 
 export type EventStatus = "open" | "soon" | "closed";
 
@@ -17,7 +18,7 @@ export type EventDistance = {
   price_60_plus?: number;
 };
 export type EventAgeBracket = { min: number; max: number };
-export type EventKitOption = { name: string; extra_price?: number };
+export type { EventKitOption } from "@/lib/eventKits";
 export type { EventCoupon, CouponDiscountType } from "@/lib/eventCoupons";
 
 export type RaceEvent = {

@@ -11,6 +11,15 @@ import {
   toAdminCouponDraft,
   validateCouponFields,
 } from "@/lib/eventCoupons";
+import {
+  collectKitShirtSizes,
+  normalizeShirtSize,
+  parseShirtSizeStock,
+  shirtSizeStockLimit,
+  adminShirtStockSaveErrorMessage,
+} from "@/lib/shirtSizeStock";
+import { adminEventCapacitySaveErrorMessage } from "@/lib/eventCapacity";
+import { type EventKitOption } from "@/lib/eventKits";
 import { EventEditorDialog } from "@/components/admin/EventEditorDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganizerStats, brl, isMainOrg } from "@/hooks/useOrganizerStats";
@@ -22,7 +31,7 @@ import { cn } from "@/lib/utils";
 
 type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null; price_lote3?: number; lote3_starts_at?: string | null; price_60_plus?: number };
 type AgeBracket = { min: number; max: number };
-type KitOption = { name: string; extra_price?: number; sizes?: string[]; has_shirt?: boolean; size_chart_url?: string; size_chart_info?: string };
+type KitOption = EventKitOption;
 
 type Coupon = EventCoupon;
 type EventDocument = { label: string; url: string };
@@ -42,6 +51,7 @@ const emptyEvent = () => ({
   coupons: [] as Coupon[],
   documents: [] as EventDocument[],
   event_terms: "",
+  shirt_size_stock: {} as Record<string, number>,
 });
 
 const AdminEvents = () => {
@@ -51,6 +61,10 @@ const AdminEvents = () => {
   const [customSize, setCustomSize] = useState<Record<number, string>>({});
   /** Contagem de usos por código (uppercase) para a prova em edição. */
   const [couponUses, setCouponUses] = useState<Record<string, number>>({});
+  /** Inscrições não canceladas por tamanho de camiseta. */
+  const [shirtSizeUses, setShirtSizeUses] = useState<Record<string, number>>({});
+  /** Total de inscrições não canceladas da prova em edição. */
+  const [activeSignupsCount, setActiveSignupsCount] = useState(0);
 
   const { data: rows = [], refetch, isLoading } = useQuery({
     queryKey: ["admin_events", isAdmin ? "all" : organizerId],
@@ -115,24 +129,33 @@ const AdminEvents = () => {
       pix_key: r.pix_key ?? "",
       pix_recipient: r.pix_recipient ?? "",
       payment_instructions: r.payment_instructions ?? "",
+      shirt_size_stock: parseShirtSizeStock(r.shirt_size_stock),
       coupons: Array.isArray(r.coupons)
         ? r.coupons.map((c: any) => toAdminCouponDraft(c))
         : [],
     });
     setCouponUses({});
+    setShirtSizeUses({});
+    setActiveSignupsCount(0);
     if (r?.id) {
       const { data } = await supabase
         .from("event_signups")
-        .select("coupon_code, status")
+        .select("coupon_code, status, shirt_size")
         .eq("event_id", r.id);
       const counts: Record<string, number> = {};
+      const sizeCounts: Record<string, number> = {};
+      let active = 0;
       for (const row of data ?? []) {
-        const code = String((row as any).coupon_code || "").trim().toUpperCase();
-        if (!code) continue;
         if (String((row as any).status || "").toLowerCase() === "cancelada") continue;
-        counts[code] = (counts[code] || 0) + 1;
+        active += 1;
+        const code = String((row as any).coupon_code || "").trim().toUpperCase();
+        if (code) counts[code] = (counts[code] || 0) + 1;
+        const sz = normalizeShirtSize((row as any).shirt_size);
+        if (sz) sizeCounts[sz] = (sizeCounts[sz] || 0) + 1;
       }
       setCouponUses(counts);
+      setShirtSizeUses(sizeCounts);
+      setActiveSignupsCount(active);
     }
   };
 
@@ -168,11 +191,43 @@ const AdminEvents = () => {
       if (err) return toast.error(err);
     }
 
+    const stock = parseShirtSizeStock(editing?.shirt_size_stock);
+    for (const size of collectKitShirtSizes(editing?.kit_options)) {
+      const lim = shirtSizeStockLimit(stock, size);
+      if (lim == null) continue;
+      const used = shirtSizeUses[size] || 0;
+      if (lim < used) {
+        return toast.error(
+          `Já existem ${used} inscrições reservando o tamanho ${size}. O limite não pode ser menor que ${used}.`
+        );
+      }
+    }
+    // Também valida limites órfãos (tamanho fora dos kits atuais)
+    for (const [size, lim] of Object.entries(stock)) {
+      const used = shirtSizeUses[size] || 0;
+      if (lim < used) {
+        return toast.error(
+          `Já existem ${used} inscrições reservando o tamanho ${size}. O limite não pode ser menor que ${used}.`
+        );
+      }
+    }
+
+    const maxSlotsRaw = editing?.max_slots;
+    if (maxSlotsRaw != null && String(maxSlotsRaw) !== "") {
+      const maxSlots = Number(maxSlotsRaw);
+      if (Number.isFinite(maxSlots) && maxSlots > 0 && maxSlots < activeSignupsCount) {
+        return toast.error(
+          `Já existem ${activeSignupsCount} inscrições ativas. O limite da prova não pode ser menor que ${activeSignupsCount}.`
+        );
+      }
+    }
+
     const payload: any = { ...editing };
     delete payload.created_at; delete payload.updated_at;
     payload.pix_key = payload.pix_key ?? "";
     payload.pix_recipient = payload.pix_recipient ?? "";
     payload.payment_instructions = payload.payment_instructions ?? "";
+    payload.shirt_size_stock = stock;
     if (!payload.registration_deadline) payload.registration_deadline = null;
     payload.coupons = ((payload.coupons ?? []) as Coupon[])
       .filter((c) => String(c.code || "").trim())
@@ -227,11 +282,19 @@ const AdminEvents = () => {
 
     if (isNew) {
       const { data, error } = await supabase.from("events").insert(payload).select("id").maybeSingle();
-      if (error) return toast.error(error.message);
+      if (error) {
+        const stockMsg = adminShirtStockSaveErrorMessage(error);
+        const capMsg = adminEventCapacitySaveErrorMessage(error);
+        return toast.error(stockMsg || capMsg || error.message);
+      }
       if (!isAdmin && !data) return unauthorizedOrMissing();
     } else if (isAdmin) {
       const { error } = await supabase.from("events").update(payload).eq("id", payload.id).select("id").maybeSingle();
-      if (error) return toast.error(error.message);
+      if (error) {
+        const stockMsg = adminShirtStockSaveErrorMessage(error);
+        const capMsg = adminEventCapacitySaveErrorMessage(error);
+        return toast.error(stockMsg || capMsg || error.message);
+      }
     } else {
       const { data, error } = await supabase
         .from("events")
@@ -240,7 +303,11 @@ const AdminEvents = () => {
         .eq("organizer_id" as any, organizerId)
         .select("id")
         .maybeSingle();
-      if (error) return toast.error(error.message);
+      if (error) {
+        const stockMsg = adminShirtStockSaveErrorMessage(error);
+        const capMsg = adminEventCapacitySaveErrorMessage(error);
+        return toast.error(stockMsg || capMsg || error.message);
+      }
       if (!data) return unauthorizedOrMissing();
     }
 
@@ -475,6 +542,8 @@ const AdminEvents = () => {
           editingIsPartner={editingIsPartner}
           editingOrg={editingOrg}
           couponUses={couponUses}
+          shirtSizeUses={shirtSizeUses}
+          activeSignupsCount={activeSignupsCount}
           customSize={customSize}
           setCustomSize={setCustomSize}
           onUploadBanner={uploadBanner}
