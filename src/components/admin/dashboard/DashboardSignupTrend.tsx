@@ -4,22 +4,29 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { cn } from "@/lib/utils";
 
 export type TrendPoint = { date: string; label: string; count: number };
+export type TrendTone = "brand" | "blue";
 
 type Props = {
   points: TrendPoint[];
   /** Mini KPIs opcionais acima do gráfico */
   kpis?: { label: string; value: string }[];
+  /** Identidade visual: verde (Corporação) ou azul (parceiro). */
+  tone?: TrendTone;
   className?: string;
 };
 
-const LINE = "hsl(142 72% 45%)";
-const LINE_SOFT = "hsl(142 65% 42%)";
-
-const chartConfig = {
-  count: { label: "Inscrições", color: LINE },
+const TONES: Record<TrendTone, { line: string; soft: string }> = {
+  brand: { line: "hsl(142 72% 45%)", soft: "hsl(142 65% 42%)" },
+  blue: { line: "hsl(217 91% 60%)", soft: "hsl(217 85% 55%)" },
 };
 
-export function DashboardSignupTrend({ points, kpis, className }: Props) {
+export function DashboardSignupTrend({ points, kpis, tone = "brand", className }: Props) {
+  const LINE = TONES[tone].line;
+  const LINE_SOFT = TONES[tone].soft;
+  const gradientId = `fillSignupsDash-${tone}`;
+  const chartConfig = {
+    count: { label: "Inscrições", color: LINE },
+  };
   const total = useMemo(() => points.reduce((a, p) => a + p.count, 0), [points]);
   const peak = useMemo(() => Math.max(0, ...points.map((p) => p.count)), [points]);
 
@@ -73,7 +80,7 @@ export function DashboardSignupTrend({ points, kpis, className }: Props) {
           <ChartContainer config={chartConfig} className="aspect-auto h-[260px] w-full">
             <AreaChart data={data} margin={{ left: 4, right: 12, top: 12, bottom: 0 }}>
               <defs>
-                <linearGradient id="fillSignupsDash" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={LINE} stopOpacity={0.45} />
                   <stop offset="55%" stopColor={LINE_SOFT} stopOpacity={0.16} />
                   <stop offset="100%" stopColor={LINE_SOFT} stopOpacity={0.02} />
@@ -116,7 +123,7 @@ export function DashboardSignupTrend({ points, kpis, className }: Props) {
                 type="monotone"
                 dataKey="count"
                 stroke={LINE}
-                fill="url(#fillSignupsDash)"
+                fill={`url(#${gradientId})`}
                 strokeWidth={2.75}
                 name="Inscrições"
                 activeDot={{ r: 5, strokeWidth: 2, stroke: "hsl(0 0% 6%)", fill: LINE }}

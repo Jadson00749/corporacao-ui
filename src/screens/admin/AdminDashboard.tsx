@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "@/lib/router-compat";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { isMainOrg } from "@/hooks/useOrganizerStats";
@@ -13,13 +14,24 @@ import { statusOf } from "@/lib/rentalOrders";
 import { cn } from "@/lib/utils";
 import { Trophy } from "lucide-react";
 import { DashboardQuickActions, type QuickAction } from "@/components/admin/dashboard/DashboardQuickActions";
-import { DashboardFinancialStats } from "@/components/admin/dashboard/DashboardFinancialStats";
+import {
+  DashboardFinancialStats,
+  type PartnerFinancialView,
+} from "@/components/admin/dashboard/DashboardFinancialStats";
 import { DashboardRecentSignups, type RecentSignupRow } from "@/components/admin/dashboard/DashboardRecentSignups";
 import { DashboardSignupTrend, type TrendPoint } from "@/components/admin/dashboard/DashboardSignupTrend";
 import {
   DashboardEventPerformance,
   type EventPerformanceRow,
 } from "@/components/admin/dashboard/DashboardEventPerformance";
+import { DashboardPartnerHeader } from "@/components/admin/dashboard/DashboardPartnerHeader";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const PERIODS = [
   { key: "30", label: "30 dias" },
@@ -27,6 +39,9 @@ const PERIODS = [
   { key: "all", label: "Tudo" },
 ] as const;
 type PeriodKey = (typeof PERIODS)[number]["key"];
+
+/** Sentinela do seletor de contexto (Radix Select não aceita value=""). */
+const GENERAL_VIEW = "__general__";
 
 type AdminPricingRow = EventPricingRow & {
   organizer_id?: string | null;
@@ -42,6 +57,16 @@ type AdminPricingRow = EventPricingRow & {
 const AdminDashboard = () => {
   const { user, isAdmin, organizerId } = useAuth();
   const [period, setPeriod] = useState<PeriodKey>("30");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  /** Visão do Parceiro: só filtro de leitura via search param (?organizer=UUID). */
+  const selectedPartnerId = isAdmin ? searchParams.get("organizer") : null;
+  const selectPartner = (id: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set("organizer", id);
+    else next.delete("organizer");
+    setSearchParams(next, { replace: true });
+  };
 
   const { data: pricing = [] } = useQuery({
     queryKey: ["admin_events_pricing", isAdmin ? "all" : organizerId],
@@ -73,9 +98,14 @@ const AdminDashboard = () => {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("organizers")
-        .select("id,name,commission_percentage");
+        .select("id,name,commission_percentage,status");
       if (error) throw error;
-      return ((data ?? []) as unknown) as { id: string; name: string; commission_percentage: number | null }[];
+      return ((data ?? []) as unknown) as {
+        id: string;
+        name: string;
+        commission_percentage: number | null;
+        status: string | null;
+      }[];
     },
   });
 
@@ -187,6 +217,8 @@ const AdminDashboard = () => {
     let revenueOrganizers = 0;
     let pendingRevenueCorporate = 0;
     let pendingRevenueOrganizers = 0;
+    let confirmedCorporate = 0;
+    let confirmedPartners = 0;
     let estimatedCommission = 0;
 
     const byEvent = new Map<
@@ -200,15 +232,58 @@ const AdminDashboard = () => {
         organizerId?: string | null;
         organizerName?: string;
         isCorp?: boolean;
+        commissionPct?: number;
+        commission?: number;
       }
     >();
     const touch = (id: string, name: string) =>
-      byEvent.get(id) ?? { eventId: id, name: name || "Prova", count: 0, pending: 0, revenue: 0 };
+      byEvent.get(id) ?? {
+        eventId: id,
+        name: name || "Prova",
+        count: 0,
+        pending: 0,
+        revenue: 0,
+        commissionPct: 0,
+        commission: 0,
+      };
+
+    const byPartner = new Map<
+      string,
+      {
+        organizerId: string;
+        name: string;
+        approvedValue: number;
+        commissionPct: number;
+        commission: number;
+        confirmed: number;
+        pending: number;
+        pendingRevenue: number;
+      }
+    >();
+    const touchPartner = (orgId: string, name: string, pct: number) => {
+      const cur =
+        byPartner.get(orgId) ?? {
+          organizerId: orgId,
+          name,
+          approvedValue: 0,
+          commissionPct: pct,
+          commission: 0,
+          confirmed: 0,
+          pending: 0,
+          pendingRevenue: 0,
+        };
+      cur.name = name;
+      cur.commissionPct = pct;
+      return cur;
+    };
 
     for (const s of rows) {
       const status = (s.status || "").toLowerCase();
       const value = signupValue(s, priceMap.get(s.event_id)) ?? 0;
       const org = eventOrgInfo(s.event_id);
+      const eventOrgId = priceMap.get(s.event_id)?.organizer_id ?? null;
+      const orgData = eventOrgId ? organizerMap.get(eventOrgId) : null;
+      const commissionPct = !org.isCorp ? Number(orgData?.commission_percentage ?? 0) : 0;
 
       if (status === "cancelada") {
         canceled += 1;
@@ -217,37 +292,82 @@ const AdminDashboard = () => {
       if (status === "confirmada") {
         confirmed += 1;
         revenue += value;
-        if (org.isCorp) revenueCorporate += value;
-        else revenueOrganizers += value;
+        if (org.isCorp) {
+          revenueCorporate += value;
+          confirmedCorporate += 1;
+        } else {
+          revenueOrganizers += value;
+          confirmedPartners += 1;
+          if (commissionPct > 0) estimatedCommission += (value * commissionPct) / 100;
 
-        if (!org.isCorp) {
-          const orgId = priceMap.get(s.event_id)?.organizer_id;
-          const orgData = orgId ? organizerMap.get(orgId) : null;
-          const pct = Number(orgData?.commission_percentage ?? 0);
-          if (pct > 0) estimatedCommission += (value * pct) / 100;
+          if (eventOrgId) {
+            const existing = touchPartner(eventOrgId, org.name, commissionPct);
+            existing.approvedValue += value;
+            existing.confirmed += 1;
+            existing.commission = (existing.approvedValue * commissionPct) / 100;
+            byPartner.set(eventOrgId, existing);
+          }
         }
 
         const cur = touch(s.event_id, s.events?.name || "");
         cur.count += 1;
         cur.revenue += value;
-        cur.organizerId = priceMap.get(s.event_id)?.organizer_id;
+        cur.organizerId = eventOrgId;
         cur.organizerName = org.name;
         cur.isCorp = org.isCorp;
+        cur.commissionPct = commissionPct;
+        cur.commission = org.isCorp ? 0 : (cur.revenue * commissionPct) / 100;
         byEvent.set(s.event_id, cur);
       } else {
         pending += 1;
         pendingRevenue += value;
-        if (org.isCorp) pendingRevenueCorporate += value;
-        else pendingRevenueOrganizers += value;
+        if (org.isCorp) {
+          pendingRevenueCorporate += value;
+        } else {
+          pendingRevenueOrganizers += value;
+          if (eventOrgId) {
+            const existing = touchPartner(eventOrgId, org.name, commissionPct);
+            existing.pending += 1;
+            existing.pendingRevenue += value;
+            byPartner.set(eventOrgId, existing);
+          }
+        }
 
         const cur = touch(s.event_id, s.events?.name || "");
         cur.pending += 1;
-        cur.organizerId = priceMap.get(s.event_id)?.organizer_id;
+        cur.organizerId = eventOrgId;
         cur.organizerName = org.name;
         cur.isCorp = org.isCorp;
+        cur.commissionPct = commissionPct;
         byEvent.set(s.event_id, cur);
       }
     }
+
+    // Todo parceiro cadastrado fica selecionável, mesmo sem movimento no período.
+    for (const o of organizers) {
+      if (isMainOrg(o.name)) continue;
+      if (byPartner.has(o.id)) continue;
+      byPartner.set(o.id, {
+        organizerId: o.id,
+        name: o.name,
+        approvedValue: 0,
+        commissionPct: Number(o.commission_percentage ?? 0),
+        commission: 0,
+        confirmed: 0,
+        pending: 0,
+        pendingRevenue: 0,
+      });
+    }
+
+    const partners = Array.from(byPartner.values()).sort((a, b) => {
+      if (b.commission !== a.commission) return b.commission - a.commission;
+      if (b.approvedValue !== a.approvedValue) return b.approvedValue - a.approvedValue;
+      return a.name.localeCompare(b.name, "pt-BR");
+    });
+
+    const partnerEventsWithMovement = Array.from(byEvent.values()).filter(
+      (e) => e.isCorp === false && (e.count > 0 || e.revenue > 0)
+    ).length;
 
     const total = confirmed + pending;
     const newMembers = members.filter((m: any) => inPeriod(m.created_at)).length;
@@ -265,18 +385,109 @@ const AdminDashboard = () => {
       revenueOrganizers,
       pendingRevenueCorporate,
       pendingRevenueOrganizers,
+      confirmedCorporate,
+      confirmedPartners,
+      ticketCorporate: confirmedCorporate ? revenueCorporate / confirmedCorporate : 0,
+      partnerEventsWithMovement,
       estimatedCommission,
+      partners,
       total,
       conversion: total ? (confirmed / total) * 100 : 0,
       ticket: confirmed ? revenue / confirmed : 0,
       newMembers,
       totalMembers: members.length,
       adherence: members.length ? (buyers / members.length) * 100 : 0,
+      eventRows: Array.from(byEvent.values()),
       topEvents: Array.from(byEvent.values())
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 8),
     };
-  }, [signups, members, activePricing, activeEventIds, since, organizerMap, pricing]);
+  }, [signups, members, activePricing, activeEventIds, since, organizerMap, pricing, organizers]);
+
+  const partnerOptions = useMemo(
+    () => (isAdmin ? metrics.partners : []),
+    [isAdmin, metrics.partners]
+  );
+  const selectedPartner = useMemo(
+    () => partnerOptions.find((p) => p.organizerId === selectedPartnerId) ?? null,
+    [partnerOptions, selectedPartnerId]
+  );
+  const partnerMode = isAdmin && !!selectedPartner;
+
+  /**
+   * Escopo do parceiro = TODAS as provas do organizer_id, independente do status
+   * de publicação (open/closed/inactive). Status de publicação não apaga histórico.
+   */
+  const partnerEventIds = useMemo(
+    () =>
+      new Set(
+        (pricing as AdminPricingRow[])
+          .filter((e) => selectedPartner && e.organizer_id === selectedPartner.organizerId)
+          .map((e) => e.id)
+      ),
+    [pricing, selectedPartner]
+  );
+  const scopeEventIds = partnerMode ? partnerEventIds : activeEventIds;
+
+  /**
+   * Analytics do parceiro selecionado sobre o histórico completo (todas as provas
+   * dele no período), sem depender de active === true. Regras financeiras inalteradas:
+   * valor aprovado/comissão/confirmadas = confirmada; receita em aberto = pendente;
+   * cancelada nunca entra.
+   */
+  const partnerMetrics = useMemo(() => {
+    if (!selectedPartner) return null;
+    const priceMap = new Map((pricing as AdminPricingRow[]).map((e) => [e.id, e]));
+    const rows = signups.filter(
+      (s) => partnerEventIds.has(s.event_id) && inPeriod(s.created_at)
+    );
+
+    let approvedValue = 0;
+    let confirmed = 0;
+    let pending = 0;
+    let pendingRevenue = 0;
+    const byEvent = new Map<
+      string,
+      { eventId: string; name: string; confirmed: number; pending: number; revenue: number }
+    >();
+
+    for (const s of rows) {
+      const status = (s.status || "").toLowerCase();
+      if (status === "cancelada") continue;
+      const ev = priceMap.get(s.event_id);
+      const value = signupValue(s, ev) ?? 0;
+      const cur =
+        byEvent.get(s.event_id) ?? {
+          eventId: s.event_id,
+          name: ev?.name || s.events?.name || "Prova",
+          confirmed: 0,
+          pending: 0,
+          revenue: 0,
+        };
+      if (status === "confirmada") {
+        confirmed += 1;
+        approvedValue += value;
+        cur.confirmed += 1;
+        cur.revenue += value;
+      } else {
+        pending += 1;
+        pendingRevenue += value;
+        cur.pending += 1;
+      }
+      byEvent.set(s.event_id, cur);
+    }
+
+    const pct = selectedPartner.commissionPct;
+    return {
+      approvedValue,
+      commissionPct: pct,
+      commission: (approvedValue * pct) / 100,
+      confirmed,
+      pending,
+      pendingRevenue,
+      events: byEvent,
+    };
+  }, [selectedPartner, pricing, signups, partnerEventIds, since]);
 
   const eventsWithoutConfig = useMemo(
     () =>
@@ -370,18 +581,25 @@ const AdminDashboard = () => {
   ]);
 
   const recentRows = useMemo((): RecentSignupRow[] => {
-    const priceMap = new Map(activePricing.map((e) => [e.id, e]));
+    // Mapa de preços do conjunto COMPLETO de provas (inclui desativadas/encerradas),
+    // para que pendentes/confirmadas de provas históricas mostrem valor. Fonte única: signupValue.
+    const priceMap = new Map((pricing as AdminPricingRow[]).map((e) => [e.id, e]));
     return signups
-      .filter((s) => activeEventIds.has(s.event_id) && (s.status || "").toLowerCase() !== "cancelada")
+      .filter((s) => scopeEventIds.has(s.event_id) && (s.status || "").toLowerCase() !== "cancelada")
       .slice(0, 5)
       .map((s) => ({
         signup: s,
         value: signupValue(s, priceMap.get(s.event_id)),
       }));
-  }, [signups, activePricing, activeEventIds]);
+  }, [signups, pricing, scopeEventIds]);
 
   const trendPoints = useMemo((): TrendPoint[] => {
-    const rows = signups.filter((s) => activeEventIds.has(s.event_id) && inPeriod(s.created_at));
+    const rows = signups.filter((s) => {
+      if (!scopeEventIds.has(s.event_id) || !inPeriod(s.created_at)) return false;
+      // Visão do Parceiro: curva de inscrições ATIVAS (pendente + confirmada).
+      if (partnerMode && (s.status || "").toLowerCase() === "cancelada") return false;
+      return true;
+    });
     const byDay = new Map<string, number>();
 
     for (const s of rows) {
@@ -415,21 +633,78 @@ const AdminDashboard = () => {
         count: byDay.get(date) || 0,
       };
     });
-  }, [signups, since, period, activeEventIds]);
+  }, [signups, since, period, scopeEventIds, partnerMode]);
 
-  const performanceRows = useMemo(
+  // Visão Geral: foco nas provas da Corporação (parceiros ficam na visão do parceiro).
+  const overviewPerformanceRows = useMemo(
     (): EventPerformanceRow[] =>
-      metrics.topEvents.map((e) => ({
-        eventId: e.eventId,
-        name: e.name,
-        organizerName: e.organizerName,
-        isCorp: e.isCorp,
-        confirmed: e.count,
-        pending: e.pending,
-        revenue: e.revenue,
-      })),
+      metrics.topEvents
+        .filter((e) => e.isCorp !== false)
+        .map((e) => ({
+          eventId: e.eventId,
+          name: e.name,
+          organizerName: e.organizerName,
+          isCorp: e.isCorp,
+          confirmed: e.count,
+          pending: e.pending,
+          revenue: e.revenue,
+          commissionPct: e.commissionPct,
+          commission: e.commission,
+        })),
     [metrics.topEvents]
   );
+
+  /**
+   * Visão do Parceiro lista as provas dele com histórico no período (mesmo
+   * desativadas/encerradas) e as ativas sem movimento. Badge de status quando aplicável.
+   */
+  const partnerPerformanceRows = useMemo((): EventPerformanceRow[] => {
+    if (!selectedPartner || !partnerMetrics) return [];
+    const pct = selectedPartner.commissionPct;
+    const statBadge = (e: AdminPricingRow): string | undefined => {
+      if (e.active === false) return "Desativada";
+      if ((e.status || "").toLowerCase() === "closed") return "Encerrada";
+      return undefined;
+    };
+    return (pricing as AdminPricingRow[])
+      .filter((e) => e.organizer_id === selectedPartner.organizerId)
+      .map((e) => {
+        const st = partnerMetrics.events.get(e.id);
+        const revenue = st?.revenue ?? 0;
+        const confirmed = st?.confirmed ?? 0;
+        const pending = st?.pending ?? 0;
+        // Mantém provas com movimento no período ou ainda ativas; oculta antigas sem nada.
+        const keep = confirmed > 0 || pending > 0 || e.active === true;
+        if (!keep) return null;
+        return {
+          eventId: e.id,
+          name: e.name || "Prova",
+          isCorp: false,
+          confirmed,
+          pending,
+          revenue,
+          commissionPct: pct,
+          commission: (revenue * pct) / 100,
+          statusBadge: statBadge(e),
+        } as EventPerformanceRow;
+      })
+      .filter((r): r is EventPerformanceRow => r !== null)
+      .sort((a, b) => b.revenue - a.revenue || b.confirmed - a.confirmed);
+  }, [selectedPartner, partnerMetrics, pricing]);
+
+  const performanceRows = partnerMode ? partnerPerformanceRows : overviewPerformanceRows;
+
+  const partnerView = useMemo((): PartnerFinancialView | undefined => {
+    if (!selectedPartner || !partnerMetrics) return undefined;
+    return {
+      approvedValue: partnerMetrics.approvedValue,
+      commissionPct: partnerMetrics.commissionPct,
+      commission: partnerMetrics.commission,
+      confirmed: partnerMetrics.confirmed,
+      pendingRevenue: partnerMetrics.pendingRevenue,
+      pending: partnerMetrics.pending,
+    };
+  }, [selectedPartner, partnerMetrics]);
 
   const quickActions = useMemo((): QuickAction[] => {
     if (isAdmin) {
@@ -453,24 +728,74 @@ const AdminDashboard = () => {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">Olá, {firstName} 👋</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">Resumo da operação hoje.</p>
+          {partnerMode && selectedPartner ? (
+            <DashboardPartnerHeader
+              name={selectedPartner.name}
+              commissionPct={selectedPartner.commissionPct}
+            />
+          ) : (
+            <>
+              <h1 className="font-display text-2xl font-bold sm:text-3xl">Olá, {firstName} 👋</h1>
+              <p className="mt-0.5 text-sm text-muted-foreground">Resumo da operação hoje.</p>
+            </>
+          )}
           <DashboardQuickActions actions={quickActions} className="mt-2.5" />
         </div>
-        <div className="flex shrink-0 gap-1 rounded-lg bg-secondary p-1">
-          {PERIODS.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => setPeriod(p.key)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
-                period === p.key ? "bg-brand text-brand-foreground" : "text-foreground/70 hover:bg-background/60"
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
+
+        <div className="flex flex-col items-end gap-2">
+          {isAdmin && partnerOptions.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Visão
+              </span>
+              <Select
+                value={selectedPartnerId ?? GENERAL_VIEW}
+                onValueChange={(v) => selectPartner(v === GENERAL_VIEW ? null : v)}
+              >
+                <SelectTrigger
+                  className={cn(
+                    "h-9 w-48 sm:w-56",
+                    partnerMode && "border-blue-500/50 text-blue-600 dark:text-blue-400"
+                  )}
+                >
+                  <SelectValue placeholder="Visão Geral" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={GENERAL_VIEW}>Visão Geral</SelectItem>
+                  {partnerOptions.map((p) => {
+                    const inactive =
+                      (organizerMap.get(p.organizerId)?.status || "").toLowerCase() === "inactive";
+                    return (
+                      <SelectItem key={p.organizerId} value={p.organizerId}>
+                        {p.name}
+                        {inactive ? " · Inativo" : ""}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="flex shrink-0 gap-1 rounded-lg bg-secondary p-1">
+            {PERIODS.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                onClick={() => setPeriod(p.key)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                  period === p.key
+                    ? partnerMode
+                      ? "bg-blue-500 text-white"
+                      : "bg-brand text-brand-foreground"
+                    : "text-foreground/70 hover:bg-background/60"
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -509,15 +834,39 @@ const AdminDashboard = () => {
         </div>
       ) : (
         <>
-          <DashboardFinancialStats metrics={metrics} isAdmin={isAdmin} className="mt-3" />
+          <DashboardFinancialStats
+            metrics={metrics}
+            isAdmin={isAdmin}
+            partnerView={partnerMode ? partnerView : undefined}
+            onOpenPartners={
+              isAdmin && !partnerMode && partnerOptions.length > 0
+                ? () => selectPartner(partnerOptions[0].organizerId)
+                : undefined
+            }
+            className="mt-3"
+          />
 
           <div className="mt-3 grid items-stretch gap-3 lg:grid-cols-12">
             <DashboardRecentSignups rows={recentRows} className="lg:col-span-4" />
             <DashboardSignupTrend
               points={trendPoints}
               className="lg:col-span-8"
+              tone={partnerMode ? "blue" : "brand"}
               kpis={
-                isAdmin
+                partnerMode && partnerMetrics
+                  ? [
+                      { label: "Confirmadas", value: String(partnerMetrics.confirmed) },
+                      { label: "Pendentes", value: String(partnerMetrics.pending) },
+                      {
+                        label: "Comissão",
+                        value: partnerMetrics.commission.toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                          maximumFractionDigits: 0,
+                        }),
+                      },
+                    ]
+                  : isAdmin
                   ? [
                       { label: "Vendidas", value: String(metrics.confirmed) },
                       { label: "Novos cadastros", value: String(metrics.newMembers) },
@@ -532,20 +881,25 @@ const AdminDashboard = () => {
             />
           </div>
 
-          {performanceRows.length === 0 && !isAdmin ? (
+          {performanceRows.length === 0 && (!isAdmin || partnerMode) ? (
             <div className="mt-3.5">
               <EmptyState
                 icon={Trophy}
-                title="Nenhuma inscrição no período"
-                description="Quando houver inscrições nas suas provas ativas, o desempenho aparece aqui."
-                actionLabel="Ver minhas provas"
+                title={partnerMode ? "Nenhuma prova ativa deste parceiro" : "Nenhuma inscrição no período"}
+                description={
+                  partnerMode
+                    ? "Quando este parceiro tiver provas ativas, o desempenho aparece aqui."
+                    : "Quando houver inscrições nas suas provas ativas, o desempenho aparece aqui."
+                }
+                actionLabel={partnerMode ? "Ver provas" : "Ver minhas provas"}
                 actionTo="/admin/events"
               />
             </div>
           ) : (
             <DashboardEventPerformance
               rows={performanceRows}
-              showOrganizer={isAdmin}
+              showOrganizer={isAdmin && !partnerMode}
+              partnerScoped={partnerMode}
               className="mt-3.5"
             />
           )}
