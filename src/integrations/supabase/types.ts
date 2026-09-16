@@ -394,6 +394,7 @@ export type Database = {
           pix_key: string
           pix_recipient: string
           status: string
+          updated_at?: string
           user_id: string
         }
         Insert: {
@@ -406,6 +407,7 @@ export type Database = {
           pix_key?: string
           pix_recipient?: string
           status?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -418,6 +420,7 @@ export type Database = {
           pix_key?: string
           pix_recipient?: string
           status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1063,6 +1066,24 @@ export type Database = {
           payment_contact_name: string
           organizer_name: string
           is_partner: boolean
+        }[]
+      }
+      update_organizer_payment_settings: {
+        Args: {
+          _pix_key: string
+          _pix_recipient: string
+          _payment_whatsapp: string
+          _payment_email: string
+          _payment_contact_name: string
+        }
+        Returns: {
+          id: string
+          pix_key: string
+          pix_recipient: string
+          payment_whatsapp: string
+          payment_email: string
+          payment_contact_name: string
+          updated_at: string
         }[]
       }
       list_event_signups_public: {

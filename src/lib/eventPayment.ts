@@ -196,19 +196,32 @@ export const useSaveOrganizerPayment = (organizerId?: string | null) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: OrganizerPaymentInput) => {
-      if (!organizerId) throw new Error("Organização não encontrada.");
-      const payload = {
-        pix_key: input.pix_key.trim(),
-        pix_recipient: input.pix_recipient.trim(),
-        payment_whatsapp: input.payment_whatsapp.replace(/\D/g, ""),
-        payment_email: input.payment_email.trim(),
-        payment_contact_name: input.payment_contact_name.trim(),
-      };
-      const { error } = await db.from("organizers").update(payload).eq("id", organizerId);
+      const { data, error } = await db.rpc("update_organizer_payment_settings", {
+        _pix_key: input.pix_key.trim(),
+        _pix_recipient: input.pix_recipient.trim(),
+        _payment_whatsapp: input.payment_whatsapp.replace(/\D/g, ""),
+        _payment_email: input.payment_email.trim(),
+        _payment_contact_name: input.payment_contact_name.trim(),
+      });
       if (error) throw error;
+      const row = (Array.isArray(data) ? data[0] : data) as OrganizerPayment | null;
+      if (!row?.id) {
+        throw new Error("Não foi possível confirmar o salvamento dos dados de pagamento.");
+      }
+      return row;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["organizer_payment", organizerId] });
+    onSuccess: (row) => {
+      const id = organizerId || row.id;
+      qc.setQueryData(["organizer_payment", id], (prev: OrganizerPayment | null | undefined) => ({
+        id: row.id,
+        name: prev?.name ?? null,
+        pix_key: row.pix_key ?? "",
+        pix_recipient: row.pix_recipient ?? "",
+        payment_whatsapp: row.payment_whatsapp ?? "",
+        payment_email: row.payment_email ?? "",
+        payment_contact_name: row.payment_contact_name ?? "",
+      }));
+      qc.invalidateQueries({ queryKey: ["organizer_payment", id] });
       qc.invalidateQueries({ queryKey: ["event_payment_info"] });
     },
   });

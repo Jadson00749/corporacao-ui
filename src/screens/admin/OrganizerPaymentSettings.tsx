@@ -65,7 +65,15 @@ const OrganizerPaymentSettings = () => {
       return toast.error("Informe o WhatsApp para comprovantes.");
     }
     try {
-      await save.mutateAsync(draft);
+      const saved = await save.mutateAsync(draft);
+      if (!saved?.id) {
+        return toast.error("Não foi possível confirmar o salvamento dos dados de pagamento.");
+      }
+      setPixKey(saved.pix_key ?? "");
+      setPixRecipient(saved.pix_recipient ?? "");
+      setPaymentWhatsapp(saved.payment_whatsapp ?? "");
+      setPaymentEmail(saved.payment_email ?? "");
+      setPaymentContactName(saved.payment_contact_name ?? "");
       toast.success("Dados de pagamento salvos!");
     } catch (e: any) {
       toast.error(e?.message || "Não foi possível salvar.");
