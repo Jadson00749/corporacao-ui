@@ -312,8 +312,12 @@ const AdminEvents = () => {
     }
 
     toast.success(isNew ? "Criado!" : "Atualizado!");
+    const savedEventId = payload?.id as string | undefined;
     setEditing(null);
     qc.invalidateQueries({ queryKey: ["events"] });
+    if (savedEventId) {
+      qc.invalidateQueries({ queryKey: ["event_shirt_size_availability", savedEventId] });
+    }
     refetch();
   };
 

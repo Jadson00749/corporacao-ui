@@ -295,6 +295,13 @@ const ProvaInscricao = () => {
   const { data: shirtAvailability = [], refetch: refetchShirtAvailability } = useQuery({
     queryKey: ["event_shirt_size_availability", id],
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
+    // Mantém tamanhos na tela durante refetch silencioso (sem piscar / loading).
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_event_shirt_size_availability", {
         _event_id: id!,
@@ -467,7 +474,10 @@ const ProvaInscricao = () => {
   useEffect(() => {
     if (!shirtSize) return;
     const row = shirtAvailBySize[normalizeShirtSize(shirtSize)];
-    if (isShirtSizeSoldOut(row)) setShirtSize("");
+    if (!isShirtSizeSoldOut(row)) return;
+    // Polling/refetch detectou esgotamento: limpa só o tamanho, mantém o restante do formulário.
+    setShirtSize("");
+    setShirtRaceHint("Esse tamanho acabou de esgotar. Escolha outro tamanho disponível.");
   }, [shirtSize, shirtAvailBySize]);
   useEffect(() => { if (shirtSize && errors.shirtSize) setErrors((e) => ({ ...e, shirtSize: false })); }, [shirtSize]);
 
