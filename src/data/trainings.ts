@@ -1,3 +1,5 @@
+import type { OrganizationContext } from "@/lib/eventOrganizer";
+
 // ============================================================
 // PRÓXIMOS TREINOS
 // Para adicionar novos treinos, copie um item e edite os dados.
@@ -14,6 +16,12 @@ export type Training = {
   level: "Iniciante" | "Intermediário" | "Avançado" | "Todos os níveis";
   capacity?: number | null; // null/undefined = sem limite de vagas
   image?: string;     // banner do treino (foto vertical, padrão 9:16)
+  /**
+   * Contexto visual (verde Corporação / azul parceiro).
+   * Hoje trainings NÃO tem organizer_id no banco → default "main".
+   * Quando organizer_id existir, resolver via resolveOrganizationContext.
+   */
+  organizationContext?: OrganizationContext;
 };
 
 export const trainings: Training[] = [

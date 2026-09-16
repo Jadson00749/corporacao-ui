@@ -5,6 +5,7 @@ import { getEventBannerFallback } from "@/lib/eventBannerFallback";
 import { eventStatusLabel, type RaceEvent } from "@/data/events";
 import { cn } from "@/lib/utils";
 import { BannerFrame } from "@/components/site/BannerFrame";
+import { partnerOrganizerPublicName, organizationAccent, resolveOrganizationContext } from "@/lib/eventOrganizer";
 
 
 const formatDate = (iso: string) =>
@@ -27,13 +28,17 @@ const RaceCard = ({ event }: { event: RaceEvent }) => {
     .map((d: any) => d?.label ?? d?.distance ?? d?.name)
     .filter(Boolean)
     .slice(0, 4) as string[];
+  const partnerName = partnerOrganizerPublicName(event.organizerId, event.organizer);
+  const orgContext = resolveOrganizationContext(event.organizerId, event.organizer);
+  const accent = organizationAccent(orgContext);
 
   return (
     <Link
       to={closed ? "#" : `/provas/${event.id}`}
       onClick={(e) => closed && e.preventDefault()}
       className={cn(
-        "group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl transition-all duration-500 hover:border-brand/40 hover:-translate-y-1",
+        "group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl transition-all duration-500 hover:-translate-y-1",
+        accent.borderHover,
         closed && "opacity-70 pointer-events-none"
       )}
     >
@@ -45,26 +50,37 @@ const RaceCard = ({ event }: { event: RaceEvent }) => {
             statusStyle[event.status]
           )}
         >
-          {event.status === "open" && <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />}
+          {event.status === "open" && (
+            <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse", orgContext === "partner" ? "bg-partner" : "bg-brand")} />
+          )}
           {eventStatusLabel[event.status]}
         </span>
       </BannerFrame>
 
-
       <div className="flex flex-1 flex-col p-5">
-        <h3 className="font-display text-[1.05rem] sm:text-xl font-semibold leading-snug text-white line-clamp-2 group-hover:text-brand transition-colors">
+        <h3
+          className={cn(
+            "font-display text-[1.05rem] sm:text-xl font-semibold leading-snug text-white line-clamp-2 transition-colors",
+            accent.groupHoverText
+          )}
+        >
           {event.name}
         </h3>
 
         <div className="mt-3 space-y-1.5 text-[12.5px] text-white/65">
           <div className="flex items-center gap-2 min-w-0">
-            <Calendar className="w-3.5 h-3.5 shrink-0 text-brand" />
+            <Calendar className={cn("w-3.5 h-3.5 shrink-0", accent.icon)} />
             <span className="truncate">{formatDate(event.date)}</span>
           </div>
           <div className="flex items-center gap-2 min-w-0">
-            <MapPin className="w-3.5 h-3.5 shrink-0 text-brand" />
+            <MapPin className={cn("w-3.5 h-3.5 shrink-0", accent.icon)} />
             <span className="truncate">{event.city}</span>
           </div>
+          {partnerName ? (
+            <p className="text-[11px] text-white/55">
+              Organizador: <span className={cn("font-medium", accent.text)}>{partnerName}</span>
+            </p>
+          ) : null}
         </div>
 
         {(distances.length > 0 || event.distance) && (
@@ -81,7 +97,7 @@ const RaceCard = ({ event }: { event: RaceEvent }) => {
         )}
 
         <div className="mt-auto pt-5">
-          <span className="inline-flex items-center gap-2 text-[11.5px] font-semibold uppercase tracking-[0.16em] text-brand">
+          <span className={cn("inline-flex items-center gap-2 text-[11.5px] font-semibold uppercase tracking-[0.16em]", accent.text)}>
             {closed ? "Inscrições encerradas" : event.status === "open" ? "Inscreva-se" : "Ver prova"}
             {!closed && <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />}
           </span>

@@ -6,7 +6,12 @@ import { pickEventBannerDesktop, pickEventBannerMobile } from "@/lib/eventBanner
 import { BannerFrame } from "@/components/site/BannerFrame";
 import { currentPrice, isSeniorOnlyDistance } from "@/lib/eventPricing";
 import { Button } from "@/components/ui/button";
-import { partnerOrganizerPublicName } from "@/lib/eventOrganizer";
+import {
+  organizationAccent,
+  organizationCtaVariant,
+  partnerOrganizerPublicName,
+  resolveOrganizationContext,
+} from "@/lib/eventOrganizer";
 
 const statusStyle: Record<RaceEvent["status"], string> = {
   open: "bg-success/15 text-success border-success/30",
@@ -49,16 +54,20 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
     .map((d) => currentPrice(d))
     .filter((p) => p > 0);
   const minPrice = prices.length ? Math.min(...prices) : null;
+
+  const orgContext = resolveOrganizationContext(event.organizerId, event.organizer);
   const partnerName = partnerOrganizerPublicName(event.organizerId, event.organizer);
+  const ctaVariant = organizationCtaVariant(orgContext);
+  const accent = organizationAccent(orgContext);
 
   return (
     <article
       className={cn(
-        "group relative flex flex-col rounded-2xl border border-border/60 bg-card overflow-hidden transition-all duration-500 hover:border-brand/40 hover:-translate-y-1",
+        "group relative flex flex-col rounded-2xl border border-border/60 bg-card overflow-hidden transition-all duration-500 hover:-translate-y-1",
+        accent.borderHover,
         closed && "opacity-70"
       )}
     >
-      {/* Desktop: card inteiro clicável (comportamento anterior) */}
       {!closed && (
         <Link
           to={detailsHref}
@@ -75,7 +84,6 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
         imgClassName="transition-transform duration-[1200ms] ease-out group-hover:scale-[1.02]"
       />
 
-      {/* Conteúdo — badge abaixo da imagem, sem cobrir a arte */}
       <div className="relative z-20 flex flex-1 flex-col p-4 sm:p-5 md:p-6 md:pointer-events-none">
         <span
           className={cn(
@@ -90,44 +98,53 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
         </span>
 
         <div className="mb-2 flex items-start justify-between gap-3">
-          <p className="text-[10px] font-semibold uppercase leading-snug tracking-[0.28em] text-brand">
+          <p
+            className={cn(
+              "text-[10px] font-semibold uppercase leading-snug tracking-[0.28em]",
+              accent.text
+            )}
+          >
             {modalities}
           </p>
           {minPrice != null && (
             <span className="inline-flex shrink-0 items-baseline gap-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/70">
               A partir de
-              <strong className="text-sm font-semibold normal-case tracking-normal text-brand">
+              <strong className={cn("text-sm font-semibold normal-case tracking-normal", accent.text)}>
                 {minPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </strong>
             </span>
           )}
         </div>
 
-        <h3 className="font-display text-lg font-semibold leading-snug text-foreground transition-colors group-hover:text-brand sm:text-xl md:line-clamp-2">
+        <h3
+          className={cn(
+            "font-display text-lg font-semibold leading-snug text-foreground transition-colors sm:text-xl md:line-clamp-2",
+            accent.groupHoverText
+          )}
+        >
           {event.name}
         </h3>
 
         <div className="mt-3 space-y-1.5 text-sm text-muted-foreground md:mt-4">
           <div className="flex min-w-0 items-center gap-2">
-            <Calendar className="h-3.5 w-3.5 shrink-0 text-brand" />
+            <Calendar className={cn("h-3.5 w-3.5 shrink-0", accent.icon)} />
             <span>{formatDate(event.date)}</span>
           </div>
           <div className="flex min-w-0 items-center gap-2">
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-brand" />
+            <MapPin className={cn("h-3.5 w-3.5 shrink-0", accent.icon)} />
             <span className="break-words">{event.city}</span>
           </div>
           {partnerName ? (
             <p className="pt-0.5 text-xs text-muted-foreground/90">
-              Organizador: <span className="font-medium text-foreground/75">{partnerName}</span>
+              Organizador: <span className={cn("font-medium", accent.text)}>{partnerName}</span>
             </p>
           ) : null}
         </div>
 
-        {/* Mobile: CTAs empilhados */}
         <div className="mt-auto flex flex-col gap-2 pt-4 md:hidden">
           {!closed ? (
             <>
-              <Button asChild variant="brand" className="w-full">
+              <Button asChild variant={ctaVariant} className="w-full">
                 {signupExternal ? (
                   <a href={signupHref} target="_blank" rel="noreferrer">
                     Inscrever-se
@@ -147,12 +164,16 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
           )}
         </div>
 
-        {/* Desktop: CTA textual */}
         <div className="mt-5 hidden items-center gap-2 text-xs font-semibold uppercase tracking-wide text-foreground md:inline-flex">
           {closed ? "Inscrições encerradas" : "Ver detalhes"}
           {!closed && (
             <>
-              <span className="h-px w-5 bg-foreground/40 transition-all duration-300 group-hover:w-10 group-hover:bg-brand" />
+              <span
+                className={cn(
+                  "h-px w-5 bg-foreground/40 transition-all duration-300 group-hover:w-10",
+                  accent.groupHoverBorder
+                )}
+              />
               <ArrowRight className="h-3.5 w-3.5 -translate-x-1 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" />
             </>
           )}

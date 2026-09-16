@@ -3,6 +3,13 @@ import { isMainOrg } from "@/hooks/useOrganizerStats";
 /** Nome público da plataforma (sempre fixo na UI de inscrição/parceiro). */
 export const CORP_PLATFORM_NAME = "Corporação Assessoria Esportiva";
 
+/**
+ * Contexto visual oficial da plataforma.
+ * - main    → Corporação (verde)
+ * - partner → organizador externo (azul)
+ */
+export type OrganizationContext = "main" | "partner";
+
 export type EventOrganizerRef = {
   id: string;
   name: string;
@@ -42,3 +49,58 @@ export const partnerOrganizerPublicName = (
   if (isMainOrg(name)) return null;
   return name;
 };
+
+/**
+ * Resolve o contexto visual a partir do relacionamento real organizer_id.
+ * Sem organizer_id ou organizador principal → main (Corporação / verde).
+ */
+export const resolveOrganizationContext = (
+  organizerId?: string | null,
+  organizer?: EventOrganizerRef | null
+): OrganizationContext =>
+  partnerOrganizerPublicName(organizerId, organizer) ? "partner" : "main";
+
+/** True quando o conteúdo é de organizador externo (não Corporação). */
+export const isPartnerEvent = (
+  organizerId?: string | null,
+  organizer?: EventOrganizerRef | null
+): boolean => resolveOrganizationContext(organizerId, organizer) === "partner";
+
+/** Variante de CTA animado: brand (verde) | partner (azul). */
+export const organizationCtaVariant = (
+  context: OrganizationContext = "main"
+): "brand" | "partner" => (context === "partner" ? "partner" : "brand");
+
+/** @deprecated Preferir organizationCtaVariant(resolveOrganizationContext(...)) */
+export const eventCtaVariant = (
+  organizerId?: string | null,
+  organizer?: EventOrganizerRef | null
+): "brand" | "partner" =>
+  organizationCtaVariant(resolveOrganizationContext(organizerId, organizer));
+
+/**
+ * Classes utilitárias de destaque contextual (texto, borda, hover).
+ * Usar em badges/labels discretos — não recolorir a página inteira.
+ */
+export const organizationAccent = (context: OrganizationContext = "main") =>
+  context === "partner"
+    ? {
+        text: "text-partner",
+        textMuted: "text-partner/90",
+        border: "border-partner/35",
+        borderHover: "hover:border-partner/40",
+        bgSoft: "bg-partner/10",
+        icon: "text-partner",
+        groupHoverText: "group-hover:text-partner",
+        groupHoverBorder: "group-hover:bg-partner",
+      }
+    : {
+        text: "text-brand",
+        textMuted: "text-brand/90",
+        border: "border-brand/35",
+        borderHover: "hover:border-brand/40",
+        bgSoft: "bg-brand/10",
+        icon: "text-brand",
+        groupHoverText: "group-hover:text-brand",
+        groupHoverBorder: "group-hover:bg-brand",
+      };

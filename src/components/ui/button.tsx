@@ -4,6 +4,8 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+const FILL_VARIANTS = new Set(["brand", "partner", "hero"]);
+
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-[color,background-color,box-shadow,transform,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.98] active:opacity-90",
   {
@@ -15,8 +17,14 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline active:scale-100 active:opacity-80",
-        brand: "bg-brand text-brand-foreground hover:bg-brand/90 hover:shadow-[0_0_24px_hsl(var(--accent-brand)/0.55)] shadow-brand",
-        hero: "bg-brand text-brand-foreground hover:bg-brand-glow hover:shadow-[0_0_28px_hsl(var(--accent-brand)/0.6)] shadow-brand hover:scale-[1.02]",
+        /** CTA Corporação — idle discreto; verde só no hover (fill L→R). */
+        brand:
+          "relative isolate overflow-hidden border border-brand/45 bg-white/[0.04] text-foreground shadow-none btn-fill-hover btn-fill-brand hover:border-brand/80 hover:shadow-none",
+        /** CTA parceiro — idle discreto; azul só no hover (fill L→R). */
+        partner:
+          "relative isolate overflow-hidden border border-partner/45 bg-white/[0.04] text-foreground shadow-none btn-fill-hover btn-fill-partner hover:border-partner/80 hover:shadow-none",
+        hero:
+          "relative isolate overflow-hidden border border-brand/45 bg-white/[0.04] text-foreground shadow-none btn-fill-hover btn-fill-brand hover:border-brand/80 hover:shadow-none hover:scale-[1.01]",
         outlineLight: "border-2 border-brand/70 text-white bg-white/5 backdrop-blur-sm hover:bg-brand hover:text-brand-foreground hover:border-brand",
         whatsapp: "bg-success text-white hover:bg-success/90 shadow-card",
       },
@@ -41,10 +49,41 @@ export interface ButtonProps
   asChild?: boolean;
 }
 
+/** Mantém label+ícone acima do ::before (nós de texto sozinhos não recebem z-index). */
+const FillLabel = ({ children }: { children: React.ReactNode }) => (
+  <span className="relative z-10 inline-flex items-center justify-center gap-2 text-current [&_svg]:text-current">
+    {children}
+  </span>
+);
+
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button";
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+  ({ className, variant, size, asChild = false, children, ...props }, ref) => {
+    const useFill = FILL_VARIANTS.has(variant ?? "");
+
+    if (asChild) {
+      const child = React.Children.only(children) as React.ReactElement<{
+        children?: React.ReactNode;
+      }>;
+      return (
+        <Slot
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          {...props}
+        >
+          {useFill
+            ? React.cloneElement(child, {
+                children: <FillLabel>{child.props.children}</FillLabel>,
+              })
+            : child}
+        </Slot>
+      );
+    }
+
+    return (
+      <button className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>
+        {useFill ? <FillLabel>{children}</FillLabel> : children}
+      </button>
+    );
   },
 );
 Button.displayName = "Button";

@@ -31,6 +31,11 @@ export default {
           foreground: "hsl(var(--accent-brand-foreground))",
           glow: "hsl(var(--accent-glow))",
         },
+        partner: {
+          DEFAULT: "hsl(var(--partner))",
+          foreground: "hsl(var(--partner-foreground))",
+          glow: "hsl(var(--partner-glow))",
+        },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",

@@ -38,8 +38,11 @@ import { PublicSignupList, type PublicSignup } from "@/components/site/PublicSig
 import { EventKitItemsSection } from "@/components/site/EventKitItemsSection";
 import {
   CORP_PLATFORM_NAME,
+  organizationAccent,
+  organizationCtaVariant,
   parseEventOrganizerEmbed,
   partnerOrganizerPublicName,
+  resolveOrganizationContext,
 } from "@/lib/eventOrganizer";
 
 
@@ -181,10 +184,11 @@ const ProvaDetalhe = () => {
     (d) => d.url && d.label
   );
   const mapsQuery = encodeURIComponent(`${event.city}`);
-  const partnerName = partnerOrganizerPublicName(
-    (event as any).organizer_id,
-    parseEventOrganizerEmbed((event as any).organizers)
-  );
+  const organizerRef = parseEventOrganizerEmbed((event as any).organizers);
+  const partnerName = partnerOrganizerPublicName((event as any).organizer_id, organizerRef);
+  const orgContext = resolveOrganizationContext((event as any).organizer_id, organizerRef);
+  const ctaVariant = organizationCtaVariant(orgContext);
+  const accent = organizationAccent(orgContext);
 
   const tabs = [
     { id: "sobre", label: "Sobre" },
@@ -265,11 +269,11 @@ const ProvaDetalhe = () => {
                     {event.distance}
                   </p>
                   {partnerName ? (
-                    <div className="mt-4 space-y-2">
+                    <div className={cn("mt-4 space-y-2 rounded-xl border px-3.5 py-3", accent.border, accent.bgSoft)}>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         Organização do evento
                       </p>
-                      <p className="text-base font-semibold text-foreground leading-snug">
+                      <p className={cn("text-base font-semibold leading-snug", accent.text)}>
                         {partnerName}
                       </p>
                       <p className="text-sm text-muted-foreground">
@@ -488,7 +492,7 @@ const ProvaDetalhe = () => {
                 <div className="mt-4 space-y-2">
                   <Button
                     asChild
-                    variant={inscriptionBlocked ? "outline" : "brand"}
+                    variant={inscriptionBlocked ? "outline" : ctaVariant}
                     size="lg"
                     className="w-full"
                     disabled={inscriptionBlocked}
@@ -599,11 +603,11 @@ const ProvaDetalhe = () => {
       {!inscriptionBlocked && (
         <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           {internal ? (
-            <Button asChild variant="brand" size="lg" className="w-full">
+            <Button asChild variant={ctaVariant} size="lg" className="w-full">
               <Link to={ctaHref}>Inscrever-se</Link>
             </Button>
           ) : (
-            <Button asChild variant="brand" size="lg" className="w-full">
+            <Button asChild variant={ctaVariant} size="lg" className="w-full">
               <a href={ctaHref} target="_blank" rel="noreferrer">Inscrever-se</a>
             </Button>
           )}

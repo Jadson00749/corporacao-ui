@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,12 @@ type Props = {
   /** If set, shows an inline toggle for this boolean column on each row (e.g. "active") */
   inlineToggleKey?: string;
   inlineToggleLabel?: string;
+  /** Optional subtitle under the title (replaces the default date/time line when provided). */
+  renderSubtitle?: (row: any) => ReactNode;
+  /** Optional actions rendered before Edit/Delete. */
+  extraActions?: (row: any) => ReactNode;
+  /** Called after rows are loaded (create/update/delete/toggle included). */
+  onRowsLoaded?: (rows: any[]) => void;
 };
 
 const emptyFor = (fields: FieldDef[]) => {
@@ -48,7 +54,19 @@ const emptyFor = (fields: FieldDef[]) => {
   return o;
 };
 
-export const CrudTable = ({ table, queryKey, title, fields, displayKey, orderBy, inlineToggleKey, inlineToggleLabel = "Ativo" }: Props) => {
+export const CrudTable = ({
+  table,
+  queryKey,
+  title,
+  fields,
+  displayKey,
+  orderBy,
+  inlineToggleKey,
+  inlineToggleLabel = "Ativo",
+  renderSubtitle,
+  extraActions,
+  onRowsLoaded,
+}: Props) => {
   const qc = useQueryClient();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,8 +78,10 @@ export const CrudTable = ({ table, queryKey, title, fields, displayKey, orderBy,
     if (orderBy) q = q.order(orderBy.column, { ascending: orderBy.ascending ?? true });
     const { data, error } = await q;
     if (error) toast.error(error.message);
-    setRows(data ?? []);
+    const next = data ?? [];
+    setRows(next);
     setLoading(false);
+    onRowsLoaded?.(next);
   };
 
   useEffect(() => { load(); }, [table]);
@@ -136,16 +156,20 @@ export const CrudTable = ({ table, queryKey, title, fields, displayKey, orderBy,
         {loading && <div className="p-6 text-muted-foreground">Carregando...</div>}
         {!loading && rows.length === 0 && <div className="p-6 text-muted-foreground">Nenhum item ainda.</div>}
         {rows.map((r) => (
-          <div key={r.id} className="p-4 flex items-center justify-between gap-4">
+          <div key={r.id} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               {r.image && <img src={r.image} alt="" className="w-12 h-12 rounded object-cover" />}
               {r.src && <img src={r.src} alt="" className="w-12 h-12 rounded object-cover" />}
               <div className="min-w-0">
                 <div className="font-medium truncate">{r[displayKey]}</div>
-                {r.date && <div className="text-xs text-muted-foreground">{r.date} {r.time ?? ""}</div>}
+                {renderSubtitle ? (
+                  renderSubtitle(r)
+                ) : (
+                  r.date && <div className="text-xs text-muted-foreground">{r.date} {r.time ?? ""}</div>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-3 shrink-0 flex-wrap">
               {inlineToggleKey && (
                 <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
                   <Switch
@@ -155,7 +179,8 @@ export const CrudTable = ({ table, queryKey, title, fields, displayKey, orderBy,
                   <span className="hidden sm:inline">{inlineToggleLabel}</span>
                 </label>
               )}
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                {extraActions?.(r)}
                 <Button onClick={() => setEditing(r)} variant="outline" size="sm"><Pencil className="w-4 h-4" /></Button>
                 <Button onClick={() => remove(r.id)} variant="outline" size="sm"><Trash2 className="w-4 h-4" /></Button>
               </div>

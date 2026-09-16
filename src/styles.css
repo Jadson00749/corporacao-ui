@@ -56,6 +56,11 @@
     --success: 121 100% 30%;
     --warning: 38 92% 45%;
 
+    /* Parceiro — detalhe contextual (não substitui a identidade verde) */
+    --partner: 217 91% 48%;
+    --partner-foreground: 0 0% 100%;
+    --partner-glow: 217 91% 58%;
+
     --border: 0 0% 86%;
     --input: 0 0% 86%;
     --ring: 121 100% 35%;
@@ -104,6 +109,10 @@
     --accent-foreground: 0 0% 100%;
 
     --success: 121 100% 59%;
+
+    --partner: 217 91% 60%;
+    --partner-foreground: 0 0% 4%;
+    --partner-glow: 217 91% 70%;
 
     --border: 0 0% 16%;
     --input: 0 0% 16%;
@@ -286,6 +295,81 @@
   from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes presence-check-pop {
+  0% { transform: scale(0.55); opacity: 0; }
+  55% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-presence-check-pop {
+  animation: presence-check-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-presence-check-pop {
+    animation: none !important;
+  }
+}
+
+/* CTA principal: idle clean; cor forte só no fill L→R (hover real) */
+.btn-fill-hover {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease;
+}
+.btn-fill-hover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  border-radius: inherit;
+}
+/* Label/ícone: sempre acima do fill (FillLabel no Button) */
+.btn-fill-brand::before {
+  background: hsl(var(--accent-brand));
+}
+.btn-fill-partner::before {
+  background: hsl(var(--partner));
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-fill-hover:hover::before {
+    transform: scaleX(1);
+  }
+  /* Contraste no fill completo: texto/ícone escuros */
+  .btn-fill-brand:hover {
+    color: hsl(0 0% 4%);
+    box-shadow: 0 0 0 1px hsl(var(--accent-brand) / 0.12);
+  }
+  .btn-fill-partner:hover {
+    color: hsl(0 0% 4%);
+    box-shadow: 0 0 0 1px hsl(var(--partner) / 0.12);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-fill-hover::before {
+    transition: none !important;
+    transform: none !important;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-fill-brand:hover {
+      background: hsl(var(--accent-brand));
+      color: hsl(0 0% 4%);
+    }
+    .btn-fill-partner:hover {
+      background: hsl(var(--partner));
+      color: hsl(0 0% 4%);
+    }
+  }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

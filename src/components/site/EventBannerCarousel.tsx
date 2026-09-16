@@ -7,7 +7,10 @@ import type { RaceEvent } from "@/data/events";
 import { getEventBannerFallback } from "@/lib/eventBannerFallback";
 import {
   CORP_PLATFORM_NAME,
+  organizationAccent,
+  organizationCtaVariant,
   partnerOrganizerPublicName,
+  resolveOrganizationContext,
 } from "@/lib/eventOrganizer";
 
 const formatDate = (iso: string) =>
@@ -94,9 +97,12 @@ export const EventBannerCarousel = ({ events }: Props) => {
     current.organizerId,
     current.organizer
   );
+  const orgContext = resolveOrganizationContext(current.organizerId, current.organizer);
+  const ctaVariant = organizationCtaVariant(orgContext);
+  const accent = organizationAccent(orgContext);
 
   const renderSignup = () => (
-    <Button asChild variant="brand" className="w-full md:w-auto">
+    <Button asChild variant={ctaVariant} className="w-full md:w-auto">
       {signupExternal ? (
         <a href={signupHref} target="_blank" rel="noreferrer">
           Inscrever-se
@@ -125,13 +131,13 @@ export const EventBannerCarousel = ({ events }: Props) => {
 
       {partnerName ? (
         <div className="space-y-1.5">
-          <div className="inline-flex max-w-full items-start gap-2.5 rounded-xl border border-border/70 bg-secondary/35 px-3 py-2.5">
-            <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
+          <div className={cn("inline-flex max-w-full items-start gap-2.5 rounded-xl border px-3 py-2.5", accent.border, accent.bgSoft)}>
+            <Building2 className={cn("mt-0.5 h-4 w-4 shrink-0", accent.icon)} aria-hidden />
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Organizador
               </p>
-              <p className="text-sm font-semibold leading-snug text-foreground break-words">
+              <p className={cn("text-sm font-semibold leading-snug break-words", accent.text)}>
                 {partnerName}
               </p>
             </div>
@@ -143,7 +149,9 @@ export const EventBannerCarousel = ({ events }: Props) => {
       ) : null}
 
       {modalities ? (
-        <p className="text-sm font-medium leading-snug text-brand">{modalities}</p>
+        <p className={cn("text-sm font-medium leading-snug", accent.text)}>
+          {modalities}
+        </p>
       ) : null}
 
       <div className="space-y-1.5 text-sm text-muted-foreground">

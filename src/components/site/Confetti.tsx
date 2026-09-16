@@ -1,15 +1,27 @@
 import { useEffect, useRef } from "react";
 
+type ConfettiProps = {
+  fire: boolean;
+  /** Duração do burst em ms (padrão 1800 — usado em provas). */
+  durationMs?: number;
+  /** `subtle` = menos partículas (microcelebração). */
+  density?: "default" | "subtle";
+};
+
 /**
  * Confete leve e discreto — roda uma única vez, respeita prefers-reduced-motion
  * e usa menos partículas no mobile.
  */
-export const Confetti = ({ fire }: { fire: boolean }) => {
+export const Confetti = ({ fire, durationMs = 1800, density = "default" }: ConfettiProps) => {
   const ref = useRef<HTMLCanvasElement>(null);
   const played = useRef(false);
 
   useEffect(() => {
-    if (!fire || played.current) return;
+    if (!fire) {
+      played.current = false;
+      return;
+    }
+    if (played.current) return;
     if (typeof window === "undefined") return;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
     const canvas = ref.current;
@@ -25,21 +37,23 @@ export const Confetti = ({ fire }: { fire: boolean }) => {
     canvas.style.height = "100%";
 
     const isMobile = window.innerWidth < 640;
-    const count = isMobile ? 45 : 90;
+    const base = density === "subtle" ? (isMobile ? 22 : 36) : isMobile ? 45 : 90;
+    const count = base;
     const colors = ["#4ade80", "#22c55e", "#a3e635", "#ffffff", "#facc15"];
+    const spread = density === "subtle" ? 0.28 : 0.5;
     const parts = Array.from({ length: count }, () => ({
-      x: w / 2 + (Math.random() - 0.5) * w * 0.5,
-      y: h * 0.25 + Math.random() * 40,
-      vx: (Math.random() - 0.5) * 6 * dpr,
-      vy: (Math.random() * -6 - 2) * dpr,
-      size: (Math.random() * 5 + 3) * dpr,
+      x: w / 2 + (Math.random() - 0.5) * w * spread,
+      y: h * 0.28 + Math.random() * 40,
+      vx: (Math.random() - 0.5) * (density === "subtle" ? 4 : 6) * dpr,
+      vy: (Math.random() * -5 - 2) * dpr,
+      size: (Math.random() * (density === "subtle" ? 4 : 5) + 2.5) * dpr,
       rot: Math.random() * Math.PI,
       vr: (Math.random() - 0.5) * 0.2,
       color: colors[Math.floor(Math.random() * colors.length)],
     }));
 
     const start = performance.now();
-    const duration = 1800;
+    const duration = Math.max(400, durationMs);
     let raf = 0;
 
     const tick = (now: number) => {
@@ -67,7 +81,7 @@ export const Confetti = ({ fire }: { fire: boolean }) => {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [fire]);
+  }, [fire, durationMs, density]);
 
   if (!fire) return null;
   return (
