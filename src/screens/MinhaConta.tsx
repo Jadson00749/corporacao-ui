@@ -48,6 +48,9 @@ import { IncompleteProfileBanner } from "@/components/site/IncompleteProfileBann
 import type { EventSignup } from "@/hooks/useProfile";
 import { ParticipantsPanel } from "@/components/account/ParticipantsPanel";
 import { CompleteParticipantCard } from "@/components/account/CompleteParticipantCard";
+import { AccountEventStoreOrders } from "@/components/account/AccountEventStoreOrders";
+import { useMyEventStoreOrders } from "@/lib/eventStore";
+import { isEventStorePublicEnabled } from "@/lib/eventStoreDev";
 import { TabsCoachmark } from "@/components/site/TabsCoachmark";
 import { AttentionNeeded, type AttentionItem } from "@/components/site/AttentionNeeded";
 import { EmptyState } from "@/components/site/EmptyState";
@@ -66,27 +69,45 @@ const formatDate = (d: string) =>
 const formatDateShort = (d: string) =>
   dateFromYMD(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 
+type AccountTab = "signups" | "compras" | "participants" | "data";
+
 const MinhaConta = () => {
   const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: signups = [], isLoading: signupsLoading, refetch: refetchSignups } = useMySignups();
+  const { data: storeOrders = [] } = useMyEventStoreOrders({
+    standaloneOnly: true,
+    enabled: !!user,
+  });
+  const showComprasTab =
+    isEventStorePublicEnabled() || storeOrders.length > 0;
   const { data: trainings = [], isLoading: trainingsLoading } = useTrainings();
   const { data: events = [], isLoading: eventsLoading } = useEvents();
   const qc = useQueryClient();
   const signupsRef = useRef<HTMLDivElement>(null);
   const cadastroRef = useRef<HTMLDivElement>(null);
   const tabSignupsRef = useRef<HTMLButtonElement>(null);
+  const tabComprasRef = useRef<HTMLButtonElement>(null);
   const tabParticipantsRef = useRef<HTMLButtonElement>(null);
   const tabDataRef = useRef<HTMLButtonElement>(null);
   const [tabsMounted, setTabsMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"signups" | "participants" | "data">("signups");
+  const [activeTab, setActiveTab] = useState<AccountTab>("signups");
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "confirmed">("all");
 
   useEffect(() => {
     setTabsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "compras" && showComprasTab) setActiveTab("compras");
+    else if (tab === "participants") setActiveTab("participants");
+    else if (tab === "data") setActiveTab("data");
+    else if (tab === "signups") setActiveTab("signups");
+  }, [showComprasTab]);
 
 
 
@@ -432,6 +453,23 @@ const MinhaConta = () => {
               >
                 Minhas inscrições
               </button>
+              {showComprasTab ? (
+                <button
+                  type="button"
+                  ref={tabComprasRef}
+                  role="tab"
+                  aria-selected={activeTab === "compras"}
+                  onClick={() => setActiveTab("compras")}
+                  className={cn(
+                    "px-5 py-3.5 text-sm font-semibold whitespace-nowrap cursor-pointer transition-all duration-200 border-b-2 -mb-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-brand/40 rounded-t-lg",
+                    activeTab === "compras"
+                      ? "text-brand border-brand bg-accent-brand/5"
+                      : "text-muted-foreground border-transparent hover:text-foreground hover:border-border hover:bg-muted/40"
+                  )}
+                >
+                  Compras da prova
+                </button>
+              ) : null}
               <button
                 type="button"
                 ref={tabParticipantsRef}
@@ -472,6 +510,15 @@ const MinhaConta = () => {
                   title: "Suas provas ficam aqui",
                   text: "Acompanhe inscrições, pagamentos e confirmações.",
                 },
+                ...(showComprasTab
+                  ? [
+                      {
+                        el: tabsMounted ? tabComprasRef.current : null,
+                        title: "Compras da prova",
+                        text: "Produtos comprados avulsamente, separados das inscrições.",
+                      },
+                    ]
+                  : []),
                 {
                   el: tabsMounted ? tabParticipantsRef.current : null,
                   title: "Inscreva sua turma mais rápido",
@@ -559,6 +606,10 @@ const MinhaConta = () => {
 
                 </div>
               )}
+
+              {activeTab === "compras" && showComprasTab ? (
+                <AccountEventStoreOrders />
+              ) : null}
 
               {activeTab === "participants" && <ParticipantsPanel />}
 

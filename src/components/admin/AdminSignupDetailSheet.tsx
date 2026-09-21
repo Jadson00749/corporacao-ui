@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Pencil } from "lucide-react";
+import { AlertCircle, Clock, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ import {
   buildKidsParticipantPatch,
   needsParticipantData,
 } from "@/lib/participantCompletion";
+import { getSignupStatusInfo } from "@/lib/signupOperationalStatus";
+import { cn } from "@/lib/utils";
 import {
   ageAtEvent,
   isKidsCategory,
@@ -92,14 +94,6 @@ const formatKit = (value: string) => {
     /* texto simples */
   }
   return value;
-};
-
-const statusLabel = (s: string) => {
-  const v = (s || "").toLowerCase();
-  if (v === "confirmada") return "Aprovada";
-  if (v === "pendente") return "Em andamento";
-  if (v === "cancelada") return "Cancelada";
-  return s || "—";
 };
 
 const Field = ({ label, value }: { label: string; value: string }) => (
@@ -550,7 +544,34 @@ export const AdminSignupDetailSheet = ({ signup, open, onOpenChange, onSaved }: 
                   </h3>
                   <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-border bg-secondary/20 p-3">
                     <Field label="Prova" value={dash(row.events?.name)} />
-                    <Field label="Status" value={statusLabel(row.status)} />
+                    <div className="min-w-0 sm:col-span-1">
+                      <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Status
+                      </dt>
+                      <dd className="mt-1 space-y-1">
+                        {(() => {
+                          const op = getSignupStatusInfo(row);
+                          return (
+                            <>
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
+                                  op.badgeClassName,
+                                )}
+                              >
+                                {op.overdue ? <Clock className="w-3.5 h-3.5" /> : null}
+                                {op.label}
+                              </span>
+                              {op.overdueHint ? (
+                                <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-snug">
+                                  {op.overdueHint}
+                                </p>
+                              ) : null}
+                            </>
+                          );
+                        })()}
+                      </dd>
+                    </div>
                     <Field
                       label="Data da inscrição"
                       value={new Date(row.created_at).toLocaleString("pt-BR")}

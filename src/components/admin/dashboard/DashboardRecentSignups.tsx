@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { athleteName } from "@/lib/exportSignupsXlsx";
 import type { ExportSignup } from "@/lib/exportSignupsXlsx";
 import { brl, formatSignupWhen, statusLabel } from "./dashboardUtils";
+import { getSignupStatusInfo } from "@/lib/signupOperationalStatus";
 
 export type RecentSignupRow = {
   signup: ExportSignup;
@@ -36,7 +37,7 @@ export function DashboardRecentSignups({ rows, className }: Props) {
         <ul className="divide-y divide-border/70">
           {rows.map(({ signup: s, value }) => {
             const name = athleteName(s) || "Participante";
-            const status = (s.status || "").toLowerCase();
+            const op = getSignupStatusInfo(s);
             return (
               <li key={s.id} className="px-3 py-2">
                 <div className="flex items-start justify-between gap-2">
@@ -54,9 +55,10 @@ export function DashboardRecentSignups({ rows, className }: Props) {
                     <div
                       className={cn(
                         "mt-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                        status === "confirmada" && "text-brand",
-                        status === "cancelada" && "text-muted-foreground",
-                        status !== "confirmada" && status !== "cancelada" && "text-warning"
+                        op.dbStatus === "confirmada" && "text-brand",
+                        op.dbStatus === "cancelada" && "text-muted-foreground",
+                        op.dbStatus === "pendente" && "text-warning",
+                        op.dbStatus === "pagamento_atrasado" && "text-amber-600 dark:text-amber-400",
                       )}
                     >
                       {statusLabel(s.status)}

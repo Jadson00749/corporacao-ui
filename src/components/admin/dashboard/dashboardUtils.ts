@@ -1,3 +1,5 @@
+import { signupStatusLabel } from "@/lib/signupOperationalStatus";
+
 export const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
 
@@ -23,9 +25,4 @@ export const formatSignupWhen = (iso?: string | null) => {
   return `${d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}, ${time}`;
 };
 
-export const statusLabel = (status?: string | null) => {
-  const s = (status || "").toLowerCase();
-  if (s === "confirmada") return "Confirmada";
-  if (s === "cancelada") return "Cancelada";
-  return "Pendente";
-};
+export const statusLabel = (status?: string | null) => signupStatusLabel(status);

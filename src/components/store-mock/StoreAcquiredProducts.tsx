@@ -106,22 +106,24 @@ export function StoreOrderFinancialSummary({
         </p>
       ) : null}
       <div className="space-y-1.5 text-sm">
-        <div className="flex justify-between gap-3">
-          <span className="text-muted-foreground min-w-0">
-            {summary.registration_label || "Inscrição"}
-          </span>
-          <span className="tabular-nums font-medium shrink-0">
-            {brl(summary.registration_amount)}
-          </span>
-        </div>
+        {summary.registration_amount > 0 ? (
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground min-w-0">
+              {summary.registration_label || "Inscrição"}
+            </span>
+            <span className="tabular-nums font-medium shrink-0">
+              {brl(summary.registration_amount)}
+            </span>
+          </div>
+        ) : null}
         <div className="flex justify-between gap-3">
           <span className="text-muted-foreground">Produtos</span>
           <span className="tabular-nums font-medium shrink-0">
             {brl(summary.products_amount)}
           </span>
         </div>
-        <div className="flex justify-between gap-3 border-t border-border/50 pt-2 font-semibold">
-          <span>Total</span>
+        <div className="flex justify-between gap-3 border-t border-border/50 pt-2 font-semibold text-base">
+          <span>Total a pagar</span>
           <span className="text-brand tabular-nums shrink-0">
             {brl(summary.total_amount)}
           </span>
@@ -136,6 +138,8 @@ type PanelProps = {
   summary: StoreOrderSummary;
   /** "payment" = Seu pedido + única transação; "account" = Produtos adquiridos + Resumo da compra */
   variant?: "payment" | "account";
+  /** Compra avulsa (sem inscrição) — copy sem menção a inscrição. */
+  standalone?: boolean;
   isPartner?: boolean;
   partnerName?: string | null;
   className?: string;
@@ -151,6 +155,7 @@ export function StoreAcquiredOrderPanel({
   items,
   summary,
   variant = "payment",
+  standalone = false,
   isPartner,
   partnerName,
   className,
@@ -186,7 +191,7 @@ export function StoreAcquiredOrderPanel({
       </div>
 
       <div className="space-y-1.5">
-        {isPayment ? (
+        {isPayment && !standalone ? (
           <p className="text-xs text-foreground/90 leading-relaxed">
             Inscrição e produtos serão pagos em uma única transação.
             {isPartner && partnerName
@@ -194,11 +199,21 @@ export function StoreAcquiredOrderPanel({
               : ""}
           </p>
         ) : null}
+        {isPayment && standalone && isPartner && partnerName ? (
+          <p className="text-xs text-foreground/90 leading-relaxed">
+            Pagamento destinado a {partnerName}, organizador responsável pela
+            prova.
+          </p>
+        ) : null}
         <p className="text-xs text-muted-foreground leading-relaxed">
           {isPayment ? (
             <>
-              <span className="font-medium text-foreground/80">Retirada dos produtos:</span>{" "}
-              {STORE_ACQUIRED_FULFILLMENT_DEFAULT}.
+              <span className="font-medium text-foreground/80">
+                {standalone ? "Retirada:" : "Retirada dos produtos:"}
+              </span>{" "}
+              {standalone
+                ? "entrega dos kits da prova."
+                : `${STORE_ACQUIRED_FULFILLMENT_DEFAULT}.`}
             </>
           ) : (
             <>

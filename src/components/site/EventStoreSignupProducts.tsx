@@ -36,13 +36,20 @@ type Props = {
   eventId: string;
   cart: EventStoreCartLine[];
   onCartChange: (cart: EventStoreCartLine[]) => void;
+  /**
+   * signup = inscrição (header + grid 2 cols).
+   * standalone = produtos da prova (header externo + cards compactos).
+   */
+  mode?: "signup" | "standalone";
 };
 
 export function EventStoreSignupProducts({
   eventId,
   cart,
   onCartChange,
+  mode = "signup",
 }: Props) {
+  const compact = mode === "standalone";
   const { data: catalog = [], isLoading } = useEventStoreSignupCatalog(eventId);
   const [sizePick, setSizePick] = useState<EventStoreCatalogProduct | null>(
     null,
@@ -135,19 +142,28 @@ export function EventStoreSignupProducts({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">
-          Produtos da prova · opcional
-        </p>
-        <h2 className="font-display text-xl sm:text-2xl font-bold">
-          Adicione produtos ao seu carrinho
-        </h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Itens opcionais da prova para retirar junto com o kit antes da prova.
-        </p>
-      </div>
+      {!compact ? (
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">
+            Produtos da prova · opcional
+          </p>
+          <h2 className="font-display text-xl sm:text-2xl font-bold">
+            Adicione produtos ao seu carrinho
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Itens opcionais da prova para retirar junto com o kit antes da prova.
+          </p>
+        </div>
+      ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div
+        className={cn(
+          "grid gap-3",
+          compact
+            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 sm:justify-items-start"
+            : "sm:grid-cols-2",
+        )}
+      >
         {catalog.map((p) => {
           const lines = cart.filter((l) => l.productId === p.id);
           const added = lines.length > 0;
@@ -191,23 +207,38 @@ export function EventStoreSignupProducts({
               key={p.id}
               className={cn(
                 "overflow-hidden rounded-2xl border border-border/50 bg-card/30",
+                compact && "w-full sm:max-w-[320px]",
                 !purchasable && !added && "opacity-80",
               )}
             >
-              <EventStoreProductCarousel
-                urls={
-                  p.image_urls?.length
-                    ? p.image_urls
-                    : p.image_url
-                      ? [p.image_url]
-                      : []
-                }
-                alt={p.name}
-              />
-              <div className="p-3.5 space-y-2.5">
+              <div className={cn(compact && "max-w-full")}>
+                <EventStoreProductCarousel
+                  urls={
+                    p.image_urls?.length
+                      ? p.image_urls
+                      : p.image_url
+                        ? [p.image_url]
+                        : []
+                  }
+                  alt={p.name}
+                />
+              </div>
+              <div className={cn("space-y-2", compact ? "p-3" : "p-3.5 space-y-2.5")}>
                 <div>
-                  <p className="font-medium text-sm leading-snug">{p.name}</p>
-                  <p className="mt-1 text-sm font-semibold text-brand">
+                  <p
+                    className={cn(
+                      "font-medium leading-snug",
+                      compact ? "text-[13px]" : "text-sm",
+                    )}
+                  >
+                    {p.name}
+                  </p>
+                  <p
+                    className={cn(
+                      "font-semibold text-brand",
+                      compact ? "mt-0.5 text-base" : "mt-1 text-sm",
+                    )}
+                  >
                     {brl(
                       primaryVariant?.unit_price ??
                         p.variants[0]?.unit_price ??
@@ -253,14 +284,15 @@ export function EventStoreSignupProducts({
                   purchasable ? (
                     <Button
                       type="button"
-                      variant="outline"
+                      variant={compact ? "brand" : "outline"}
                       size="sm"
                       className="w-full min-h-10"
                       onClick={() =>
                         p.has_variants ? openVariants(p) : addSimple(p)
                       }
                     >
-                      <Plus className="w-4 h-4" /> Adicionar ao carrinho
+                      <Plus className="w-4 h-4" />{" "}
+                      {compact ? "Adicionar ao pedido" : "Adicionar ao carrinho"}
                     </Button>
                   ) : (
                     <Button
@@ -280,7 +312,8 @@ export function EventStoreSignupProducts({
                 ) : (
                   <div className="space-y-2">
                     <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
-                      <Check className="w-3.5 h-3.5" /> No carrinho
+                      <Check className="w-3.5 h-3.5" />{" "}
+                      {compact ? "No pedido" : "No carrinho"}
                       {p.has_variants && primaryVariant
                         ? ` · ${primaryVariant.name}`
                         : ""}
@@ -344,12 +377,12 @@ export function EventStoreSignupProducts({
         })}
       </div>
 
-      {cart.length > 0 && (
+      {cart.length > 0 && !compact ? (
         <p className="text-xs text-muted-foreground leading-relaxed">
           {brl(productsAmount)} em produtos no carrinho · prévia visual · retirada
           junto à entrega do kit, antes da prova.
         </p>
-      )}
+      ) : null}
 
       <Dialog open={!!sizePick} onOpenChange={(o) => !o && setSizePick(null)}>
         <DialogContent className="max-w-sm">
@@ -410,7 +443,7 @@ export function EventStoreSignupProducts({
                 disabled={!pickedSize}
                 onClick={confirmVariant}
               >
-                Adicionar ao carrinho
+                {compact ? "Adicionar ao pedido" : "Adicionar ao carrinho"}
               </Button>
             </div>
           )}
@@ -420,10 +453,12 @@ export function EventStoreSignupProducts({
   );
 }
 
-/** Prévia visual no resumo — não altera PixPayment.amount */
+/** "Seu pedido" no pagamento — totais podem vir da RPC (autoridade) ou prévia. */
 export function EventStoreCheckoutPreview({
   eventId,
   registrationAmount,
+  productsAmount: productsAmountProp,
+  totalAmount: totalAmountProp,
   modality,
   cart,
   isPartner,
@@ -431,6 +466,9 @@ export function EventStoreCheckoutPreview({
 }: {
   eventId: string;
   registrationAmount: number;
+  /** Quando definido (pós-RPC), substitui o cálculo do carrinho. */
+  productsAmount?: number;
+  totalAmount?: number;
   modality?: string | null;
   cart: EventStoreCartLine[];
   isPartner?: boolean;
@@ -441,9 +479,14 @@ export function EventStoreCheckoutPreview({
     () => eventStoreCartToAcquiredItems(catalog, cart),
     [catalog, cart],
   );
-  const productsAmount = eventStoreCartProductsAmount(catalog, cart);
+  const cartProducts = eventStoreCartProductsAmount(catalog, cart);
+  const productsAmount =
+    productsAmountProp != null ? productsAmountProp : cartProducts;
   const visualTotal =
-    Math.round((Math.max(0, registrationAmount) + productsAmount) * 100) / 100;
+    totalAmountProp != null
+      ? totalAmountProp
+      : Math.round((Math.max(0, registrationAmount) + productsAmount) * 100) /
+        100;
 
   if (cart.length === 0 || items.length === 0) return null;
 
@@ -463,7 +506,6 @@ export function EventStoreCheckoutPreview({
       }}
       isPartner={isPartner}
       partnerName={partnerName}
-      showMockPixHint
     />
   );
 }

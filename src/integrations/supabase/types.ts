@@ -222,6 +222,155 @@ export type Database = {
           },
         ]
       }
+      event_store_orders: {
+        Row: {
+          id: string
+          event_id: string
+          organizer_id: string | null
+          user_id: string
+          signup_id: string | null
+          status: string
+          products_amount: number
+          total_amount: number
+          fulfillment_type: string
+          fulfillment_note: string
+          created_at: string
+          updated_at: string
+          order_type: string
+          buyer_name_snapshot: string | null
+          buyer_email_snapshot: string | null
+          buyer_phone_snapshot: string | null
+          pickup_terms_accepted_at: string | null
+          pickup_terms_snapshot: string | null
+          pickup_terms_version: string | null
+          fulfillment_status: string
+          fulfilled_at: string | null
+          commission_percentage_snapshot: number | null
+          commission_base_amount: number | null
+          commission_amount: number | null
+          organizer_net_amount: number | null
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          organizer_id?: string | null
+          user_id: string
+          signup_id?: string | null
+          status?: string
+          products_amount?: number
+          total_amount?: number
+          fulfillment_type?: string
+          fulfillment_note?: string
+          created_at?: string
+          updated_at?: string
+          order_type?: string
+          buyer_name_snapshot?: string | null
+          buyer_email_snapshot?: string | null
+          buyer_phone_snapshot?: string | null
+          pickup_terms_accepted_at?: string | null
+          pickup_terms_snapshot?: string | null
+          pickup_terms_version?: string | null
+          fulfillment_status?: string
+          fulfilled_at?: string | null
+          commission_percentage_snapshot?: number | null
+          commission_base_amount?: number | null
+          commission_amount?: number | null
+          organizer_net_amount?: number | null
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          organizer_id?: string | null
+          user_id?: string
+          signup_id?: string | null
+          status?: string
+          products_amount?: number
+          total_amount?: number
+          fulfillment_type?: string
+          fulfillment_note?: string
+          created_at?: string
+          updated_at?: string
+          order_type?: string
+          buyer_name_snapshot?: string | null
+          buyer_email_snapshot?: string | null
+          buyer_phone_snapshot?: string | null
+          pickup_terms_accepted_at?: string | null
+          pickup_terms_snapshot?: string | null
+          pickup_terms_version?: string | null
+          fulfillment_status?: string
+          fulfilled_at?: string | null
+          commission_percentage_snapshot?: number | null
+          commission_base_amount?: number | null
+          commission_amount?: number | null
+          organizer_net_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_store_orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_store_orders_signup_id_fkey"
+            columns: ["signup_id"]
+            isOneToOne: false
+            referencedRelation: "event_signups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_store_order_items: {
+        Row: {
+          id: string
+          order_id: string
+          product_id: string | null
+          variant_id: string | null
+          product_name_snapshot: string
+          variant_name_snapshot: string
+          image_url_snapshot: string | null
+          unit_price: number
+          quantity: number
+          line_total: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          product_id?: string | null
+          variant_id?: string | null
+          product_name_snapshot: string
+          variant_name_snapshot?: string
+          image_url_snapshot?: string | null
+          unit_price: number
+          quantity: number
+          line_total: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          product_id?: string | null
+          variant_id?: string | null
+          product_name_snapshot?: string
+          variant_name_snapshot?: string
+          image_url_snapshot?: string | null
+          unit_price?: number
+          quantity?: number
+          line_total?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_store_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "event_store_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_signups: {
         Row: {
           accepted_event_terms_at: string | null
@@ -1239,6 +1388,84 @@ export type Database = {
           active: boolean
           sale_starts_at: string | null
           sale_ends_at: string | null
+        }[]
+      }
+      create_event_signup_with_store: {
+        Args: {
+          _event_id: string
+          _distance: string
+          _category: string
+          _kit_names?: Json
+          _shirt_size?: string | null
+          _coupon_code?: string | null
+          _team_name?: string
+          _notes?: string
+          _participant_full_name?: string
+          _participant_cpf?: string | null
+          _participant_birth_date?: string | null
+          _participant_gender?: string | null
+          _participant_phone?: string | null
+          _accepted_event_terms_at?: string
+          _store_items?: Json
+        }
+        Returns: {
+          signup_id: string
+          order_id: string | null
+          registration_base_amount: number
+          kit_adjustment_amount: number
+          discount_amount: number
+          registration_amount: number
+          products_amount: number
+          total_amount: number
+          commission_percentage_snapshot: number
+          commission_base_amount: number
+          commission_amount: number
+          organizer_net_amount: number
+          pricing_snapshot: Json
+        }[]
+      }
+      create_event_store_standalone_order: {
+        Args: {
+          _event_id: string
+          _buyer_name: string
+          _buyer_email: string
+          _buyer_phone: string
+          _pickup_terms_accepted_at: string
+          _store_items?: Json
+        }
+        Returns: {
+          order_id: string
+          products_amount: number
+          total_amount: number
+          commission_percentage_snapshot: number
+          commission_base_amount: number
+          commission_amount: number
+          organizer_net_amount: number
+          status: string
+          fulfillment_status: string
+        }[]
+      }
+      update_event_store_order_fulfillment: {
+        Args: {
+          _order_id: string
+          _fulfillment_status: string
+        }
+        Returns: {
+          order_id: string
+          fulfillment_status: string
+          fulfilled_at: string | null
+          status: string
+        }[]
+      }
+      update_event_store_standalone_payment_status: {
+        Args: {
+          _order_id: string
+          _status: string
+        }
+        Returns: {
+          order_id: string
+          status: string
+          fulfillment_status: string
         }[]
       }
       update_organizer_payment_settings: {

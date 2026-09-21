@@ -5,10 +5,9 @@
  *   Sempre habilitado na UI do editor de provas.
  *   Segurança real = auth + roles + RLS (não esconder UI).
  *
- * PÚBLICO (inscrição):
+ * PÚBLICO (inscrição + Produtos da prova + checkout standalone):
  *   Somente localhost/DEV + VITE_ENABLE_EVENT_STORE_DEV=true.
- *   Produção NÃO mostra carrinho/produtos na inscrição ainda
- *   (PixPayment ainda não inclui produtos).
+ *   Produção NÃO mostra carrinho/produtos na inscrição nem compra avulsa.
  */
 
 export const EVENT_STORE_DEV_ENV = "VITE_ENABLE_EVENT_STORE_DEV";

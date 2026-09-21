@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "@/lib/router-compat";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/site/Layout";
@@ -37,6 +37,10 @@ import { bannerAspectClass } from "@/lib/bannerAspect";
 import { PublicSignupList, type PublicSignup } from "@/components/site/PublicSignupList";
 import { EventKitItemsSection } from "@/components/site/EventKitItemsSection";
 import {
+  EventStoreStandaloneSection,
+  useShowEventStoreProductsTab,
+} from "@/components/site/EventStoreStandaloneSection";
+import {
   CORP_PLATFORM_NAME,
   organizationAccent,
   organizationCtaVariant,
@@ -44,6 +48,7 @@ import {
   partnerOrganizerPublicName,
   resolveOrganizationContext,
 } from "@/lib/eventOrganizer";
+import { useSettings } from "@/contexts/SettingsContext";
 
 
 
@@ -72,7 +77,12 @@ const statusBadge: Record<string, { label: string; className: string }> = {
 const ProvaDetalhe = () => {
   const { id } = useParams();
   const [listOpen, setListOpen] = useState(false);
-  
+  const settings = useSettings();
+  const { show: showStoreProductsTab } = useShowEventStoreProductsTab(id);
+  const autoOpenStoreCheckout = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("checkout") === "store";
+  }, []);
 
   const { data: event, isLoading } = useQuery({
     queryKey: ["event_detail", id],
@@ -194,6 +204,9 @@ const ProvaDetalhe = () => {
     { id: "sobre", label: "Sobre" },
     ...(kitItems.length ? [{ id: "kit-prova", label: "Kit da prova" }] : []),
     ...(kits.length || event.kit_info ? [{ id: "kit", label: "Kit" }] : []),
+    ...(showStoreProductsTab
+      ? [{ id: "produtos-prova", label: "Produtos da prova" }]
+      : []),
     ...(event.regulation_url ? [{ id: "regulamento", label: "Regulamento" }] : []),
     ...(event.registration_deadline ? [{ id: "prazos", label: "Prazos" }] : []),
     { id: "local", label: "Localização" },
@@ -351,6 +364,24 @@ const ProvaDetalhe = () => {
                   )}
                 </Block>
               )}
+
+              {/* PRODUTOS DA PROVA (compra avulsa — DEV) */}
+              {showStoreProductsTab && id ? (
+                <Block id="produtos-prova" title="Produtos da prova">
+                  <EventStoreStandaloneSection
+                    eventId={id}
+                    eventName={event.name}
+                    eventCity={event.city}
+                    eventOrganizerId={(event as any).organizer_id}
+                    eventPixKey={(event as any).pix_key}
+                    eventPixRecipient={(event as any).pix_recipient}
+                    eventPaymentInstructions={(event as any).payment_instructions}
+                    siteWhatsapp={settings.contact.whatsapp}
+                    partnerName={partnerName}
+                    autoOpenCheckout={autoOpenStoreCheckout}
+                  />
+                </Block>
+              ) : null}
 
               {/* VALORES */}
               {prices.some((d) => (d.price && d.price > 0) || (d.price_lote2 && d.price_lote2 > 0) || (d.price_lote3 && d.price_lote3 > 0)) && (
@@ -626,6 +657,8 @@ const ProvaDetalhe = () => {
 
 const SectionTabs = ({ tabs }: { tabs: { id: string; label: string }[] }) => {
   const [active, setActive] = useState(tabs[0]?.id);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
 
   useEffect(() => {
     const onScroll = () => {
@@ -641,6 +674,15 @@ const SectionTabs = ({ tabs }: { tabs: { id: string; label: string }[] }) => {
     return () => window.removeEventListener("scroll", onScroll);
   }, [tabs]);
 
+  useEffect(() => {
+    if (!active) return;
+    const el = tabRefs.current[active];
+    const scroller = scrollerRef.current;
+    if (!el || !scroller) return;
+    const left = el.offsetLeft - 16;
+    scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [active]);
+
   const go = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     const el = document.getElementById(id);
@@ -653,11 +695,14 @@ const SectionTabs = ({ tabs }: { tabs: { id: string; label: string }[] }) => {
 
   return (
     <div className="sticky top-[86px] z-30 -mx-4 px-4 mt-5 bg-background/95 backdrop-blur-md border-b border-border/60">
-      <div className="overflow-x-auto no-scrollbar">
-        <div className="flex items-center gap-7 min-w-max">
+      <div ref={scrollerRef} className="overflow-x-auto no-scrollbar overscroll-x-contain">
+        <div className="flex items-center gap-5 sm:gap-7 min-w-max pr-4">
           {tabs.map((t) => (
             <a
               key={t.id}
+              ref={(node) => {
+                tabRefs.current[t.id] = node;
+              }}
               href={`#${t.id}`}
               onClick={(e) => go(e, t.id)}
               className={cn(

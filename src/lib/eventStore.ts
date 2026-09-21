@@ -1,9 +1,10 @@
 /**
- * Loja por prova — helpers de catálogo (Supabase real).
- * Sem seed automático. Sem criação de pedidos nesta fase.
+ * Loja por prova — catálogo, checkout RPC (DEV) e pedidos admin.
+ * Sem seed automático. Preços/totais: autoridade no banco.
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { isEventStoreAdminEnabled, isEventStorePublicEnabled } from "@/lib/eventStoreDev";
 
 export type EventStoreVariant = {
@@ -721,4 +722,677 @@ export function eventStoreCartToAcquiredItems(
     });
   }
   return items;
+}
+
+// ─── Checkout RPC (DEV / localhost) ─────────────────────────────────────────
+
+export type EventStoreCheckoutResult = {
+  signup_id: string;
+  order_id: string | null;
+  registration_amount: number;
+  products_amount: number;
+  total_amount: number;
+  commission_amount: number;
+  organizer_net_amount: number;
+  pricing_snapshot: unknown;
+};
+
+export function mapEventStoreCheckoutError(err: {
+  message?: string;
+  details?: string;
+  hint?: string;
+  code?: string;
+}): string | null {
+  const blob = `${err.message ?? ""} ${err.details ?? ""} ${err.hint ?? ""}`;
+  const isCpfActiveDup =
+    /event_signups_event_participant_cpf_uidx/i.test(blob) ||
+    (String(err.code ?? "") === "23505" &&
+      /participant_cpf|event_signups_event_participant/i.test(blob));
+  if (isCpfActiveDup) {
+    return [
+      "Este participante já possui uma inscrição ativa nesta prova.",
+      "Se precisar fazer uma nova inscrição, cancele a inscrição anterior primeiro.",
+    ].join(" ");
+  }
+  if (/STORE_OUT_OF_STOCK/i.test(blob)) {
+    return "Um dos produtos selecionados acabou de esgotar. Atualize sua seleção.";
+  }
+  if (/STORE_PRODUCT_NOT_STARTED/i.test(blob)) {
+    return "Este produto ainda não está disponível para compra.";
+  }
+  if (/STORE_PRODUCT_SALES_ENDED/i.test(blob)) {
+    return "As vendas deste produto já foram encerradas.";
+  }
+  if (/STORE_VARIANT_INACTIVE/i.test(blob)) {
+    return "Esta opção não está mais disponível.";
+  }
+  if (/STORE_PRODUCT_WRONG_EVENT/i.test(blob)) {
+    return "Não foi possível concluir a compra destes produtos. Tente novamente.";
+  }
+  if (/STORE_CLIENT_PRICE_FORBIDDEN/i.test(blob)) {
+    return "Não foi possível validar os preços. Atualize a página e tente novamente.";
+  }
+  if (/STORE_INVALID_ITEM/i.test(blob)) {
+    return "Há um item inválido no carrinho. Remova e adicione novamente.";
+  }
+  if (/PICKUP_TERMS_REQUIRED/i.test(blob)) {
+    return "Aceite as condições de retirada para concluir a compra.";
+  }
+  if (/BUYER_NAME_REQUIRED|BUYER_EMAIL_REQUIRED|BUYER_PHONE_REQUIRED/i.test(blob)) {
+    return "Preencha nome, e-mail e telefone para concluir a compra.";
+  }
+  if (/STORE_ITEMS_REQUIRED/i.test(blob)) {
+    return "Adicione pelo menos um produto ao pedido.";
+  }
+  if (/NOT_AUTHENTICATED/i.test(blob)) {
+    return "Faça login para finalizar a compra.";
+  }
+  return null;
+}
+
+export async function createEventSignupWithStore(args: {
+  eventId: string;
+  distance: string;
+  category: string;
+  kitNames: string[];
+  shirtSize: string | null;
+  couponCode: string | null;
+  teamName: string;
+  notes: string;
+  participantFullName: string;
+  participantCpf: string | null;
+  participantBirthDate: string | null;
+  participantGender: string | null;
+  participantPhone: string | null;
+  acceptedEventTermsAt: string;
+  storeItems: { variant_id: string; quantity: number }[];
+}): Promise<EventStoreCheckoutResult> {
+  const { data, error } = await supabase.rpc("create_event_signup_with_store", {
+    _event_id: args.eventId,
+    _distance: args.distance,
+    _category: args.category,
+    _kit_names: args.kitNames as unknown as Json,
+    _shirt_size: args.shirtSize,
+    _coupon_code: args.couponCode,
+    _team_name: args.teamName,
+    _notes: args.notes,
+    _participant_full_name: args.participantFullName,
+    _participant_cpf: args.participantCpf,
+    _participant_birth_date: args.participantBirthDate,
+    _participant_gender: args.participantGender,
+    _participant_phone: args.participantPhone,
+    _accepted_event_terms_at: args.acceptedEventTermsAt,
+    _store_items: args.storeItems as unknown as Json,
+  });
+
+  if (error) throw error;
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.signup_id) {
+    throw new Error("Resposta inválida do checkout da loja.");
+  }
+
+  return {
+    signup_id: row.signup_id,
+    order_id: row.order_id ?? null,
+    registration_amount: Number(row.registration_amount) || 0,
+    products_amount: Number(row.products_amount) || 0,
+    total_amount: Number(row.total_amount) || 0,
+    commission_amount: Number(row.commission_amount) || 0,
+    organizer_net_amount: Number(row.organizer_net_amount) || 0,
+    pricing_snapshot: row.pricing_snapshot,
+  };
+}
+
+// ─── Compra avulsa (standalone) ─────────────────────────────────────────────
+
+export const EVENT_STORE_PICKUP_TERMS_VERSION = "event-store-pickup-v1";
+
+export const EVENT_STORE_PICKUP_TERMS_TEXT =
+  "Retirada exclusivamente no período e local de entrega dos kits da prova. " +
+  "Não há envio ou entrega posterior pela plataforma. " +
+  "Produtos não retirados dentro do período informado ficarão sujeitos " +
+  "às regras previstas no regulamento do evento.";
+
+export type EventStoreOrderType = "signup_bundle" | "standalone";
+export type EventStoreFulfillmentStatus =
+  | "aguardando_retirada"
+  | "retirado"
+  | "nao_retirado";
+
+export type EventStoreStandaloneCheckoutResult = {
+  order_id: string;
+  products_amount: number;
+  total_amount: number;
+  commission_percentage_snapshot: number;
+  commission_base_amount: number;
+  commission_amount: number;
+  organizer_net_amount: number;
+  status: string;
+  fulfillment_status: string;
+};
+
+const standaloneCartKey = (eventId: string) =>
+  `event-store-standalone-cart:${eventId}`;
+
+export function loadStandaloneStoreCart(eventId: string): EventStoreCartLine[] {
+  if (typeof sessionStorage === "undefined") return [];
+  try {
+    const raw = sessionStorage.getItem(standaloneCartKey(eventId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as EventStoreCartLine[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (l) =>
+        l &&
+        typeof l.productId === "string" &&
+        typeof l.variantId === "string" &&
+        Number(l.quantity) > 0,
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function saveStandaloneStoreCart(
+  eventId: string,
+  cart: EventStoreCartLine[],
+): void {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    if (cart.length === 0) {
+      sessionStorage.removeItem(standaloneCartKey(eventId));
+      return;
+    }
+    sessionStorage.setItem(standaloneCartKey(eventId), JSON.stringify(cart));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+export async function createEventStoreStandaloneOrder(args: {
+  eventId: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string;
+  pickupTermsAcceptedAt: string;
+  storeItems: { variant_id: string; quantity: number }[];
+}): Promise<EventStoreStandaloneCheckoutResult> {
+  const { data, error } = await supabase.rpc(
+    "create_event_store_standalone_order",
+    {
+      _event_id: args.eventId,
+      _buyer_name: args.buyerName,
+      _buyer_email: args.buyerEmail,
+      _buyer_phone: args.buyerPhone,
+      _pickup_terms_accepted_at: args.pickupTermsAcceptedAt,
+      _store_items: args.storeItems as unknown as Json,
+    },
+  );
+
+  if (error) throw error;
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.order_id) {
+    throw new Error("Resposta inválida do checkout avulso.");
+  }
+
+  return {
+    order_id: row.order_id,
+    products_amount: Number(row.products_amount) || 0,
+    total_amount: Number(row.total_amount) || 0,
+    commission_percentage_snapshot:
+      Number(row.commission_percentage_snapshot) || 0,
+    commission_base_amount: Number(row.commission_base_amount) || 0,
+    commission_amount: Number(row.commission_amount) || 0,
+    organizer_net_amount: Number(row.organizer_net_amount) || 0,
+    status: String(row.status || "pendente"),
+    fulfillment_status: String(
+      row.fulfillment_status || "aguardando_retirada",
+    ),
+  };
+}
+
+export function eventStoreOrderOriginLabel(
+  orderType: string | null | undefined,
+): "Inscrição" | "Compra avulsa" {
+  return orderType === "standalone" ? "Compra avulsa" : "Inscrição";
+}
+
+export function eventStoreFulfillmentLabel(
+  status: string | null | undefined,
+): string {
+  switch (status) {
+    case "retirado":
+      return "Retirado";
+    case "nao_retirado":
+      return "Não retirado";
+    default:
+      return "Aguardando retirada";
+  }
+}
+
+export async function updateEventStoreOrderFulfillment(args: {
+  orderId: string;
+  fulfillmentStatus: EventStoreFulfillmentStatus;
+}): Promise<void> {
+  const { error } = await supabase.rpc("update_event_store_order_fulfillment", {
+    _order_id: args.orderId,
+    _fulfillment_status: args.fulfillmentStatus,
+  });
+  if (error) throw error;
+}
+
+export async function updateEventStoreStandalonePaymentStatus(args: {
+  orderId: string;
+  status: "confirmada" | "cancelada";
+}): Promise<void> {
+  const { error } = await supabase.rpc(
+    "update_event_store_standalone_payment_status",
+    {
+      _order_id: args.orderId,
+      _status: args.status,
+    },
+  );
+  if (error) throw error;
+}
+
+export function mapEventStoreAdminOrderError(err: {
+  message?: string;
+  details?: string;
+  hint?: string;
+  code?: string;
+}): string | null {
+  const blob = `${err.message ?? ""} ${err.details ?? ""} ${err.hint ?? ""}`;
+  if (/FORBIDDEN/i.test(blob)) {
+    return "Você não tem permissão para alterar este pedido.";
+  }
+  if (/STANDALONE_ONLY/i.test(blob)) {
+    return "Esta ação só vale para compra avulsa. Pedidos da inscrição seguem o status da inscrição.";
+  }
+  if (/CANCELLED_ORDER_IMMUTABLE/i.test(blob)) {
+    return "Pedido cancelado não pode ser reativado.";
+  }
+  if (/PAYMENT_TRANSITION_FORBIDDEN|PAYMENT_STATUS_INVALID/i.test(blob)) {
+    return "Transição de pagamento não permitida para este status.";
+  }
+  if (/FULFILLMENT_REQUIRES_CONFIRMED/i.test(blob)) {
+    return "Retirada só pode ser alterada após o pagamento confirmado.";
+  }
+  if (/ORDER_CANCELLED_FULFILLMENT_FORBIDDEN/i.test(blob)) {
+    return "Pedido cancelado não pode ser marcado como retirado.";
+  }
+  if (/FULFILLMENT_STATUS_INVALID/i.test(blob)) {
+    return "Status de retirada inválido.";
+  }
+  if (/ORDER_NOT_FOUND/i.test(blob)) {
+    return "Pedido não encontrado.";
+  }
+  return null;
+}
+
+// ─── Pedidos admin ──────────────────────────────────────────────────────────
+
+export type EventStoreOrderItemRow = {
+  id: string;
+  order_id: string;
+  product_id: string | null;
+  variant_id: string | null;
+  product_name_snapshot: string;
+  variant_name_snapshot: string;
+  image_url_snapshot: string | null;
+  unit_price: number;
+  quantity: number;
+  line_total: number;
+  created_at: string;
+};
+
+export type EventStoreOrderRow = {
+  id: string;
+  event_id: string;
+  signup_id: string | null;
+  status: string;
+  products_amount: number;
+  total_amount: number;
+  fulfillment_note: string;
+  created_at: string;
+  order_type: EventStoreOrderType | string;
+  buyer_name_snapshot: string | null;
+  buyer_email_snapshot: string | null;
+  buyer_phone_snapshot: string | null;
+  fulfillment_status: EventStoreFulfillmentStatus | string;
+  fulfilled_at: string | null;
+  event_store_order_items: EventStoreOrderItemRow[];
+  event_signups: {
+    participant_full_name: string | null;
+    participant_phone: string | null;
+    status: string | null;
+    category: string | null;
+    created_at: string | null;
+  } | null;
+};
+
+const ORDERS_SELECT_FULL = `
+  id, event_id, signup_id, status, products_amount, total_amount,
+  fulfillment_note, created_at,
+  order_type, buyer_name_snapshot, buyer_email_snapshot, buyer_phone_snapshot,
+  fulfillment_status, fulfilled_at,
+  event_store_order_items (
+    id, order_id, product_id, variant_id,
+    product_name_snapshot, variant_name_snapshot, image_url_snapshot,
+    unit_price, quantity, line_total, created_at
+  ),
+  event_signups (
+    participant_full_name, participant_phone, status, category, created_at
+  )
+`;
+
+const ORDERS_SELECT_LEGACY = `
+  id, event_id, signup_id, status, products_amount, total_amount,
+  fulfillment_note, created_at,
+  event_store_order_items (
+    id, order_id, product_id, variant_id,
+    product_name_snapshot, variant_name_snapshot, image_url_snapshot,
+    unit_price, quantity, line_total, created_at
+  ),
+  event_signups (
+    participant_full_name, participant_phone, status, category, created_at
+  )
+`;
+
+function normalizeOrderRow(row: any): EventStoreOrderRow {
+  return {
+    id: row.id,
+    event_id: row.event_id,
+    signup_id: row.signup_id ?? null,
+    status: row.status,
+    products_amount: Number(row.products_amount) || 0,
+    total_amount: Number(row.total_amount) || 0,
+    fulfillment_note: row.fulfillment_note ?? "",
+    created_at: row.created_at,
+    order_type: row.order_type ?? "signup_bundle",
+    buyer_name_snapshot: row.buyer_name_snapshot ?? null,
+    buyer_email_snapshot: row.buyer_email_snapshot ?? null,
+    buyer_phone_snapshot: row.buyer_phone_snapshot ?? null,
+    fulfillment_status: row.fulfillment_status ?? "aguardando_retirada",
+    fulfilled_at: row.fulfilled_at ?? null,
+    event_store_order_items: row.event_store_order_items ?? [],
+    event_signups: row.event_signups ?? null,
+  };
+}
+
+export async function fetchEventStoreOrders(
+  eventId: string,
+): Promise<EventStoreOrderRow[]> {
+  const withNew = await supabase
+    .from("event_store_orders")
+    .select(ORDERS_SELECT_FULL)
+    .eq("event_id", eventId)
+    .order("created_at", { ascending: false });
+
+  const needsLegacy =
+    !!withNew.error &&
+    /order_type|buyer_name_snapshot|fulfillment_status|column/i.test(
+      withNew.error.message,
+    );
+
+  const result = needsLegacy
+    ? await supabase
+        .from("event_store_orders")
+        .select(ORDERS_SELECT_LEGACY)
+        .eq("event_id", eventId)
+        .order("created_at", { ascending: false })
+    : withNew;
+
+  if (result.error) throw result.error;
+  return (result.data ?? []).map(normalizeOrderRow);
+}
+
+export function useEventStoreOrders(eventId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["admin_event_store_orders", eventId],
+    enabled: !!eventId && isEventStoreAdminEnabled(),
+    queryFn: () => fetchEventStoreOrders(eventId!),
+  });
+}
+
+export type EventStoreOrderKpis = {
+  confirmedOrders: number;
+  pendingOrders: number;
+  overdueOrders: number;
+  confirmedUnits: number;
+  confirmedRevenue: number;
+};
+
+export function computeEventStoreOrderKpis(
+  orders: EventStoreOrderRow[],
+): EventStoreOrderKpis {
+  let confirmedOrders = 0;
+  let pendingOrders = 0;
+  let overdueOrders = 0;
+  let confirmedUnits = 0;
+  let confirmedRevenue = 0;
+  for (const o of orders) {
+    if (o.status === "confirmada") {
+      confirmedOrders += 1;
+      for (const i of o.event_store_order_items ?? []) {
+        confirmedUnits += i.quantity;
+        confirmedRevenue += Number(i.line_total) || 0;
+      }
+    } else if (o.status === "pagamento_atrasado") {
+      overdueOrders += 1;
+      pendingOrders += 1; // ainda reserva estoque
+    } else if (o.status === "pendente") {
+      pendingOrders += 1;
+    }
+  }
+  return {
+    confirmedOrders,
+    pendingOrders,
+    overdueOrders,
+    confirmedUnits,
+    confirmedRevenue: Math.round(confirmedRevenue * 100) / 100,
+  };
+}
+
+export type EventStoreSeparationRow = {
+  product: string;
+  variant: string;
+  confirmed: number;
+  pending: number;
+};
+
+export function computeEventStoreSeparation(
+  orders: EventStoreOrderRow[],
+): EventStoreSeparationRow[] {
+  const map = new Map<string, EventStoreSeparationRow>();
+  for (const o of orders) {
+    for (const i of o.event_store_order_items ?? []) {
+      const product = i.product_name_snapshot || "Produto";
+      const variant = i.variant_name_snapshot?.trim() || "Padrão";
+      const key = `${product}||${variant}`;
+      const row = map.get(key) ?? {
+        product,
+        variant,
+        confirmed: 0,
+        pending: 0,
+      };
+      if (o.status === "confirmada") row.confirmed += i.quantity;
+      else if (o.status === "pendente" || o.status === "pagamento_atrasado") {
+        row.pending += i.quantity;
+      }
+      map.set(key, row);
+    }
+  }
+  return [...map.values()].sort(
+    (a, b) =>
+      a.product.localeCompare(b.product, "pt-BR") ||
+      a.variant.localeCompare(b.variant, "pt-BR"),
+  );
+}
+
+/** Comprador exibido (standalone snapshot ou inscrição). */
+export function eventStoreOrderBuyerName(order: EventStoreOrderRow): string {
+  if (order.order_type === "standalone") {
+    return order.buyer_name_snapshot?.trim() || "Comprador";
+  }
+  return order.event_signups?.participant_full_name?.trim() || "—";
+}
+
+export function eventStoreOrderBuyerPhone(order: EventStoreOrderRow): string {
+  if (order.order_type === "standalone") {
+    return order.buyer_phone_snapshot?.trim() || "";
+  }
+  return order.event_signups?.participant_phone?.trim() || "";
+}
+
+export function eventStoreOrderBuyerEmail(order: EventStoreOrderRow): string {
+  if (order.order_type === "standalone") {
+    return order.buyer_email_snapshot?.trim() || "";
+  }
+  return "";
+}
+
+export function eventStorePaymentStatusLabel(
+  status: string | null | undefined,
+): string {
+  switch (status) {
+    case "confirmada":
+      return "Pagamento confirmado";
+    case "pagamento_atrasado":
+      return "Em atraso";
+    case "cancelada":
+      return "Cancelado";
+    case "pendente":
+    default:
+      return "Aguardando pagamento";
+  }
+}
+
+export type MyEventStoreOrderRow = EventStoreOrderRow & {
+  events?: {
+    id: string;
+    name: string;
+    date: string;
+    city: string;
+  } | null;
+};
+
+const MY_ORDERS_SELECT = `
+  id, event_id, signup_id, status, products_amount, total_amount,
+  fulfillment_note, created_at,
+  order_type, buyer_name_snapshot, buyer_email_snapshot, buyer_phone_snapshot,
+  fulfillment_status, fulfilled_at,
+  event_store_order_items (
+    id, order_id, product_id, variant_id,
+    product_name_snapshot, variant_name_snapshot, image_url_snapshot,
+    unit_price, quantity, line_total, created_at
+  ),
+  events ( id, name, date, city )
+`;
+
+export async function fetchMyEventStoreOrders(opts?: {
+  eventId?: string;
+  standaloneOnly?: boolean;
+}): Promise<MyEventStoreOrderRow[]> {
+  let q = supabase
+    .from("event_store_orders")
+    .select(MY_ORDERS_SELECT)
+    .order("created_at", { ascending: false });
+
+  if (opts?.eventId) q = q.eq("event_id", opts.eventId);
+  if (opts?.standaloneOnly) q = q.eq("order_type", "standalone");
+
+  const { data, error } = await q;
+  if (error) {
+    // Migration 23 ainda não aplicada → sem order_type
+    if (/order_type|column/i.test(error.message)) {
+      return [];
+    }
+    throw error;
+  }
+
+  return (data ?? []).map((row: any) => ({
+    ...normalizeOrderRow(row),
+    events: row.events ?? null,
+  }));
+}
+
+export function useMyEventStoreOrders(opts?: {
+  eventId?: string | null;
+  standaloneOnly?: boolean;
+  enabled?: boolean;
+}) {
+  const enabled = opts?.enabled !== false;
+  return useQuery({
+    queryKey: [
+      "my_event_store_orders",
+      opts?.eventId ?? null,
+      opts?.standaloneOnly ?? false,
+    ],
+    enabled,
+    queryFn: () =>
+      fetchMyEventStoreOrders({
+        eventId: opts?.eventId ?? undefined,
+        standaloneOnly: opts?.standaloneOnly,
+      }),
+  });
+}
+
+/** Pedidos standalone não cancelados (já ordenados created_at DESC no fetch). */
+export function listStandaloneOrders(
+  orders: MyEventStoreOrderRow[],
+): MyEventStoreOrderRow[] {
+  return orders.filter(
+    (o) =>
+      (o.order_type === "standalone" || !o.signup_id) &&
+      o.status !== "cancelada",
+  );
+}
+
+/** Mais recente aguardando pagamento (pendente / em atraso). */
+export function pickAwaitingPaymentStandaloneOrder(
+  orders: MyEventStoreOrderRow[],
+): MyEventStoreOrderRow | null {
+  return (
+    listStandaloneOrders(orders).find(
+      (o) => o.status === "pendente" || o.status === "pagamento_atrasado",
+    ) ?? null
+  );
+}
+
+/** Mais recente não cancelado (destaque na prova; não bloqueia nova compra). */
+export function pickLatestStandaloneOrder(
+  orders: MyEventStoreOrderRow[],
+): MyEventStoreOrderRow | null {
+  return listStandaloneOrders(orders)[0] ?? null;
+}
+
+/** @deprecated Use pickAwaitingPaymentStandaloneOrder / pickLatestStandaloneOrder */
+export function pickActiveStandaloneOrder(
+  orders: MyEventStoreOrderRow[],
+): MyEventStoreOrderRow | null {
+  return (
+    pickAwaitingPaymentStandaloneOrder(orders) ??
+    pickLatestStandaloneOrder(orders)
+  );
+}
+
+export function orderItemsToAcquired(
+  order: EventStoreOrderRow,
+): ReturnType<typeof eventStoreCartToAcquiredItems> {
+  return (order.event_store_order_items ?? []).map((item) => ({
+    id: item.id,
+    name: item.product_name_snapshot || "Produto",
+    variant_name:
+      item.variant_name_snapshot?.trim().toLowerCase() === "padrão"
+        ? null
+        : item.variant_name_snapshot?.trim() || null,
+    quantity: item.quantity,
+    unit_price: Number(item.unit_price) || 0,
+    line_total: Number(item.line_total) || 0,
+    image: item.image_url_snapshot,
+    fulfillment_type: "kit_pickup",
+    fulfillment_note: "junto à entrega do kit, antes da prova",
+  }));
 }

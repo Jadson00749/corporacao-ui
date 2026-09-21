@@ -30,6 +30,7 @@ import {
   type EventStoreProduct,
   type EventStoreVariant,
 } from "@/lib/eventStore";
+import { EventStoreOrdersPanel } from "@/components/admin/EventStoreOrdersPanel";
 
 const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -149,9 +150,18 @@ function variantToDraft(v: EventStoreVariant): DraftVariant {
 
 type Props = {
   eventId: string | null | undefined;
+  eventName?: string | null;
+  /** Reusa o salvamento do editor (sem duplicar validação). */
+  onSaveEvent?: () => void;
 };
 
-export function EventStoreAdminPanel({ eventId }: Props) {
+type StoreSubTab = "produtos" | "pedidos";
+
+export function EventStoreAdminPanel({
+  eventId,
+  eventName,
+  onSaveEvent,
+}: Props) {
   const qc = useQueryClient();
   const { data: products = [], isLoading, refetch } = useEventStoreProducts(
     eventId,
@@ -159,6 +169,7 @@ export function EventStoreAdminPanel({ eventId }: Props) {
   const [editing, setEditing] = useState<DraftProduct | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [subTab, setSubTab] = useState<StoreSubTab>("produtos");
 
   const sorted = useMemo(
     () => [...products].sort((a, b) => a.sort_order - b.sort_order),
@@ -273,9 +284,29 @@ export function EventStoreAdminPanel({ eventId }: Props) {
 
   if (!eventId) {
     return (
-      <div className="rounded-xl border border-border/60 bg-card/40 px-4 py-5 text-sm text-muted-foreground leading-relaxed">
-        Salve a prova primeiro para cadastrar produtos da loja. Os itens ficam
-        vinculados ao <span className="text-foreground/80">event_id</span> real.
+      <div className="rounded-xl border border-border/60 bg-card/40 px-4 py-6 space-y-3">
+        <div className="space-y-1.5">
+          <h3 className="font-display text-base font-semibold text-foreground">
+            Configure a loja da sua prova
+          </h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Salve a prova primeiro para começar a cadastrar produtos, fotos,
+            preços e estoque.
+          </p>
+        </div>
+        {onSaveEvent ? (
+          <Button type="button" variant="brand" size="sm" onClick={onSaveEvent}>
+            Salvar prova e configurar loja
+          </Button>
+        ) : (
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Use o botão{" "}
+            <span className="font-medium text-foreground/80">
+              Salvar alterações
+            </span>{" "}
+            do formulário e volte a esta aba em seguida.
+          </p>
+        )}
       </div>
     );
   }
@@ -284,13 +315,43 @@ export function EventStoreAdminPanel({ eventId }: Props) {
     <div className="space-y-5">
       <div className="rounded-xl border border-border/60 bg-card/40 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed">
         <span className="font-semibold text-foreground">Loja da prova</span>
-        {" · "}produtos oficiais vinculados a este evento. Alterações gravam no
-        banco. Organizadores só gerenciam as próprias provas (RLS).
+        {" · "}cadastre produtos oficiais desta prova. Somente você e a equipe
+        autorizada gerenciam estes itens.
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            { id: "produtos" as const, label: "Produtos" },
+            { id: "pedidos" as const, label: "Pedidos e separação" },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setSubTab(t.id)}
+            className={cn(
+              "text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors",
+              subTab === t.id
+                ? "border-brand bg-brand/15 text-brand"
+                : "border-border text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {subTab === "pedidos" ? (
+        <EventStoreOrdersPanel
+          eventId={eventId}
+          eventName={eventName?.trim() || "prova"}
+        />
+      ) : (
+        <>
       <div className="space-y-1">
         <h3 className="font-display text-base font-semibold text-foreground">
-          Loja da prova
+          Produtos
         </h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
           Venda produtos oficiais junto com a inscrição.
@@ -400,6 +461,8 @@ export function EventStoreAdminPanel({ eventId }: Props) {
         onChange={setEditing}
         onSave={save}
       />
+        </>
+      )}
     </div>
   );
 }

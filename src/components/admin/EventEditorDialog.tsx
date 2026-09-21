@@ -1366,7 +1366,11 @@ export const EventEditorDialog = ({
 
             {eventStoreAdmin && show("loja") && (
               <Panel isMobile={isMobile} title="Loja" status={health.loja.health}>
-                <EventStoreAdminPanel eventId={editing.id ?? null} />
+                <EventStoreAdminPanel
+                  eventId={editing.id ?? null}
+                  eventName={editing.name}
+                  onSaveEvent={onSave}
+                />
               </Panel>
             )}
 

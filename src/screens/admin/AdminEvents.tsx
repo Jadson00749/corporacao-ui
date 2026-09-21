@@ -3,6 +3,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { isKidsDistance } from "@/lib/eventPricing";
@@ -58,6 +68,8 @@ const AdminEvents = () => {
   const qc = useQueryClient();
   const { isAdmin, organizerId } = useAuth();
   const [editing, setEditing] = useState<any | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [customSize, setCustomSize] = useState<Record<number, string>>({});
   /** Contagem de usos por código (uppercase) para a prova em edição. */
   const [couponUses, setCouponUses] = useState<Record<string, number>>({});
@@ -322,27 +334,32 @@ const AdminEvents = () => {
   };
 
   const remove = async (id: string) => {
-    if (!confirm("Excluir prova?")) return;
     const row = (rows as any[]).find((r) => r.id === id);
     if (!canManageEvent(row)) return unauthorizedOrMissing();
 
-    if (isAdmin) {
-      const { error } = await supabase.from("events").delete().eq("id", id);
-      if (error) return toast.error(error.message);
-    } else {
-      const { data, error } = await supabase
-        .from("events")
-        .delete()
-        .eq("id", id)
-        .eq("organizer_id" as any, organizerId)
-        .select("id")
-        .maybeSingle();
-      if (error) return toast.error(error.message);
-      if (!data) return unauthorizedOrMissing();
-    }
+    setDeleting(true);
+    try {
+      if (isAdmin) {
+        const { error } = await supabase.from("events").delete().eq("id", id);
+        if (error) return toast.error(error.message);
+      } else {
+        const { data, error } = await supabase
+          .from("events")
+          .delete()
+          .eq("id", id)
+          .eq("organizer_id" as any, organizerId)
+          .select("id")
+          .maybeSingle();
+        if (error) return toast.error(error.message);
+        if (!data) return unauthorizedOrMissing();
+      }
 
-    toast.success("Excluída");
-    refetch();
+      toast.success("Excluída");
+      setPendingDelete(null);
+      refetch();
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const toggleActive = async (row: any, v: boolean) => {
@@ -527,13 +544,57 @@ const AdminEvents = () => {
                 <span className="hidden sm:inline">{r.active ? "Ativa" : "Inativa"}</span>
               </label>
               <Button variant="outline" size="sm" onClick={() => openEdit(r)}><Pencil className="w-4 h-4" /></Button>
-              <Button variant="outline" size="sm" onClick={() => remove(r.id)}><Trash2 className="w-4 h-4" /></Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setPendingDelete({
+                    id: r.id,
+                    name: String(r.name || "esta prova").trim() || "esta prova",
+                  })
+                }
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
             </div>
           </div>
           );
         })}
 
       </div>
+
+      <AlertDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => {
+          if (!o && !deleting) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir prova?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir{" "}
+              <span className="font-medium text-foreground">
+                {pendingDelete?.name}
+              </span>
+              ? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting || !pendingDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                if (pendingDelete) void remove(pendingDelete.id);
+              }}
+            >
+              {deleting ? "Excluindo…" : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {editing && (
         <EventEditorDialog

@@ -92,10 +92,12 @@ import {
   EventStoreCheckoutPreview,
   EventStoreSignupProducts,
 } from "@/components/site/EventStoreSignupProducts";
-import type { EventStoreCartLine } from "@/lib/eventStore";
+import type { EventStoreCartLine, EventStoreCheckoutResult } from "@/lib/eventStore";
 import {
+  createEventSignupWithStore,
   eventStoreCartProductsAmount,
   eventStoreCartToAcquiredItems,
+  mapEventStoreCheckoutError,
   useEventStoreSignupCatalog,
 } from "@/lib/eventStore";
 import { StoreAcquiredOrderPanel } from "@/components/store-mock/StoreAcquiredProducts";
@@ -235,6 +237,8 @@ const ProvaInscricao = () => {
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const eventStorePublic = useEventStorePublicEnabled();
   const [storeCart, setStoreCart] = useState<EventStoreCartLine[]>([]);
+  const [checkoutResult, setCheckoutResult] =
+    useState<EventStoreCheckoutResult | null>(null);
   const { data: storeCatalog = [] } = useEventStoreSignupCatalog(
     eventStorePublic ? id : null,
   );
@@ -638,6 +642,19 @@ const ProvaInscricao = () => {
   const subtotal = distancePrice + kitExtra;
   const { discount: couponDiscount, total } = applyCouponToTotal(subtotal, appliedCoupon);
 
+  /** Prévia (antes da RPC) ou autoridade do banco (depois). */
+  const payablePreview = eventStorePublic
+    ? Math.round((total + storeProductsAmount) * 100) / 100
+    : total;
+  const payableAmount =
+    checkoutResult != null ? checkoutResult.total_amount : payablePreview;
+  const registrationPaidAmount =
+    checkoutResult != null ? checkoutResult.registration_amount : total;
+  const productsPaidAmount =
+    checkoutResult != null
+      ? checkoutResult.products_amount
+      : storeProductsAmount;
+
   /** Gravado em event_signups.category — Kids: bateria oficial (sem sexo). */
   const categoryLabel = useMemo(() => {
     if (isKidsModality) return kidsCategoryForAge(kidsAge) || "";
@@ -687,7 +704,7 @@ const ProvaInscricao = () => {
         category: categoryForMessage,
         kits: selectedKits,
         shirtSize,
-        value: total,
+        value: payableAmount,
       });
     }
 
@@ -696,7 +713,7 @@ const ProvaInscricao = () => {
       eventName: event?.name || "",
       blocks,
     });
-  }, [doneParticipants, profile?.full_name, event?.name, pName, distance, categoryForMessage, selectedKits, shirtSize, total]);
+  }, [doneParticipants, profile?.full_name, event?.name, pName, distance, categoryForMessage, selectedKits, shirtSize, payableAmount]);
 
   const proofLink = whatsappLinkFor(proofWhatsapp, whatsMessage);
 
@@ -914,6 +931,8 @@ const ProvaInscricao = () => {
     setErrors({});
     setSubmitError(null);
 
+    if (submitting) return;
+
     // Revalida cupom imediatamente antes de criar a inscrição
     if (appliedCoupon?.code && event?.id) {
       if (!couponHasDiscountConfig(appliedCoupon)) {
@@ -954,68 +973,112 @@ const ProvaInscricao = () => {
       return;
     }
 
-    const payload = {
-      category: savedCategory,
-      status: "pendente",
-      notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
-      kit_option: selectedKits[0] ? JSON.stringify([selectedKits[0]]) : "",
-      shirt_size: shirtSize || null,
-      coupon_code: appliedCoupon?.code || "",
-      team_name: teamName,
-      accepted_event_terms_at: new Date().toISOString(),
-      participant_full_name: pName.trim(),
-      participant_cpf: pCpf.trim(),
-      participant_birth_date: birthIso,
-      participant_gender: pGender,
-      participant_phone: pPhone.trim() || null,
+    const finishSuccess = async (createdId: string, paidValue: number) => {
+      let persisted: { id: string; status: string } | null = null;
+      const { data: check } = await supabase
+        .from("event_signups")
+        .select("id, status")
+        .eq("id", createdId)
+        .maybeSingle();
+      persisted = (check as any) ?? null;
+
+      setSubmitting(false);
+
+      if (!persisted?.id) {
+        setSubmitError(
+          "Não conseguimos confirmar o registro da sua inscrição. Nada foi perdido — revise os dados e tente novamente."
+        );
+        toast.error("Inscrição não confirmada", {
+          description: "Tente novamente. Se persistir, fale com a organização pelo WhatsApp.",
+          position: "top-center",
+        });
+        return;
+      }
+
+      setSignupId(persisted.id);
+      setSubmitError(null);
+      setDoneParticipants((prev) => {
+        const entry: DoneParticipant = {
+          name: pName.trim(),
+          birth: birthIso,
+          self: isSelf,
+          modality: cleanDistanceLabel(distance),
+          category: categoryForMessage,
+          kits: [...selectedKits],
+          shirtSize,
+          value: paidValue,
+        };
+        const at = prev.findIndex(
+          (p) => p.name.trim().toLowerCase() === entry.name.toLowerCase() && p.birth === entry.birth
+        );
+        if (at === -1) return [...prev, entry];
+        const next = [...prev];
+        next[at] = entry;
+        return next;
+      });
+
+      if (!isSelf && selectedParticipantId === null && saveToParticipants) {
+        const dup = findExistingParticipant(savedParticipants, {
+          full_name: pName.trim(),
+          cpf: pCpf,
+          birth_date: birthIso,
+        });
+        if (dup) {
+          toast.info("Este participante já está salvo em Meus participantes.");
+        } else {
+          try {
+            await createParticipant.mutateAsync({
+              full_name: pName.trim(),
+              cpf: pCpf.trim() || null,
+              birth_date: birthIso || null,
+              gender: pGender || null,
+              phone: pPhone.trim() || null,
+            });
+            toast.success("Participante salvo para as próximas provas.");
+          } catch {
+            toast.error("Inscrição registrada, mas não conseguimos salvar o participante.");
+          }
+        }
+        setSaveToParticipants(false);
+      }
+
+      qc.invalidateQueries({ queryKey: ["my_signups"] });
+      qc.invalidateQueries({ queryKey: ["event_signup_existing", id, user.id] });
+      if (eventStorePublic) {
+        qc.invalidateQueries({ queryKey: ["event_store_signup_catalog", id] });
+        qc.invalidateQueries({ queryKey: ["event_store_availability", id] });
+      }
+      try {
+        sessionStorage.setItem("corporacao:last_signup_id", persisted.id);
+      } catch {}
+      setDone(true);
+      setStep(2);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
-    let error = null as { code?: string; message: string } | null;
-    let createdId: string | null = null;
-
-    if (signupId) {
-      // Retomando um rascunho pendente já existente
-      const res = await supabase.from("event_signups").update(payload as any).eq("id", signupId);
-      error = res.error;
-      createdId = signupId;
-    } else {
-      const res = await supabase
-        .from("event_signups")
-        .insert({ user_id: user.id, event_id: event.id, ...payload } as any)
-        .select("id")
-        .maybeSingle();
-      error = res.error;
-      createdId = res.data?.id ?? null;
-
-      // Compatibilidade com a restrição antiga (user_id + event_id + category):
-      // se colidir, reaproveita o registro pendente/cancelado existente.
-      if (error?.code === "23505") {
-        const { data: existing } = await supabase
-          .from("event_signups")
-          .select("id, status, participant_full_name")
-          .eq("user_id", user.id)
-          .eq("event_id", event.id)
-          .eq("category", savedCategory)
-          .maybeSingle();
-        if (existing && existing.status !== "confirmada") {
-          const res2 = await supabase.from("event_signups").update(payload as any).eq("id", existing.id);
-          error = res2.error;
-          createdId = existing.id;
-        } else {
-          setSubmitting(false);
-          toast.error(
-            "Já existe uma inscrição confirmada nesta categoria por esta conta. Fale com a organização para incluir outro participante nesta mesma categoria."
-          );
-          return;
-        }
-      }
-    }
-
-    if (error) {
+    const handleSignupError = async (error: { code?: string; message: string; details?: string; hint?: string }) => {
       setSubmitting(false);
+      const storeMsg = mapEventStoreCheckoutError(error);
+      if (storeMsg) {
+        setSubmitError(storeMsg);
+        const cpfDupTitle =
+          "Este participante já possui uma inscrição ativa nesta prova.";
+        if (storeMsg.startsWith(cpfDupTitle)) {
+          toast.error(cpfDupTitle, {
+            description:
+              "Se precisar fazer uma nova inscrição, cancele a inscrição anterior primeiro.",
+            position: "top-center",
+          });
+        } else {
+          toast.error(storeMsg, { position: "top-center" });
+        }
+        if (eventStorePublic && id) {
+          qc.invalidateQueries({ queryKey: ["event_store_signup_catalog", id] });
+        }
+        return;
+      }
       const stockMsg = shirtStockErrorMessage(error);
       if (stockMsg) {
-        // Mantém o formulário; limpa só o tamanho esgotado e atualiza disponibilidade.
         setShirtSize("");
         setShirtRaceHint(stockMsg);
         setSubmitError(stockMsg);
@@ -1050,97 +1113,124 @@ const ProvaInscricao = () => {
         description: error.message,
         position: "top-center",
       });
+    };
+
+    // ── DEV/localhost: RPC única (inscrição + loja). Sem insert legado. ──
+    if (eventStorePublic) {
+      try {
+        const result = await createEventSignupWithStore({
+          eventId: event.id,
+          distance,
+          category: savedCategory,
+          kitNames: selectedKits,
+          shirtSize: shirtSize || null,
+          couponCode: appliedCoupon?.code || null,
+          teamName,
+          notes: seniorApplied(distanceObj)
+            ? [notes, `[Benefício 60+ aplicado]`].filter(Boolean).join(" ")
+            : notes,
+          participantFullName: pName.trim(),
+          participantCpf: pCpf.trim() || null,
+          participantBirthDate: birthIso || null,
+          participantGender: pGender || null,
+          participantPhone: pPhone.trim() || null,
+          acceptedEventTermsAt: new Date().toISOString(),
+          storeItems: storeCart.map((l) => ({
+            variant_id: l.variantId,
+            quantity: l.quantity,
+          })),
+        });
+        setCheckoutResult(result);
+        await finishSuccess(result.signup_id, result.total_amount);
+      } catch (e: any) {
+        await handleSignupError({
+          code: e?.code,
+          message: String(e?.message || e || ""),
+          details: e?.details,
+          hint: e?.hint,
+        });
+      }
       return;
     }
 
-    // Confirmação real: só seguimos para a tela de sucesso se a linha existir no banco.
-    let persisted: { id: string; status: string } | null = null;
-    if (createdId) {
-      const { data: check } = await supabase
+    // ── Fluxo legado (produção pública / loja desligada) ──
+    const payload = {
+      category: savedCategory,
+      status: "pendente",
+      notes: seniorApplied(distanceObj) ? [notes, `[Benefício 60+ aplicado: ${brl(distancePrice)}]`].filter(Boolean).join(" ") : notes,
+      kit_option: selectedKits[0] ? JSON.stringify([selectedKits[0]]) : "",
+      shirt_size: shirtSize || null,
+      coupon_code: appliedCoupon?.code || "",
+      team_name: teamName,
+      accepted_event_terms_at: new Date().toISOString(),
+      participant_full_name: pName.trim(),
+      participant_cpf: pCpf.trim(),
+      participant_birth_date: birthIso,
+      participant_gender: pGender,
+      participant_phone: pPhone.trim() || null,
+    };
+
+    let error = null as { code?: string; message: string } | null;
+    let createdId: string | null = null;
+
+    if (signupId) {
+      const res = await supabase.from("event_signups").update(payload as any).eq("id", signupId);
+      error = res.error;
+      createdId = signupId;
+    } else {
+      const res = await supabase
         .from("event_signups")
-        .select("id, status")
-        .eq("id", createdId)
+        .insert({ user_id: user.id, event_id: event.id, ...payload } as any)
+        .select("id")
         .maybeSingle();
-      persisted = (check as any) ?? null;
+      error = res.error;
+      createdId = res.data?.id ?? null;
+
+      if (error?.code === "23505") {
+        const { data: existing } = await supabase
+          .from("event_signups")
+          .select("id, status, participant_full_name")
+          .eq("user_id", user.id)
+          .eq("event_id", event.id)
+          .eq("category", savedCategory)
+          .maybeSingle();
+        if (existing && existing.status !== "confirmada") {
+          const res2 = await supabase.from("event_signups").update(payload as any).eq("id", existing.id);
+          error = res2.error;
+          createdId = existing.id;
+        } else {
+          setSubmitting(false);
+          toast.error(
+            "Já existe uma inscrição confirmada nesta categoria por esta conta. Fale com a organização para incluir outro participante nesta mesma categoria."
+          );
+          return;
+        }
+      }
     }
 
-    setSubmitting(false);
+    if (error) {
+      await handleSignupError(error);
+      return;
+    }
 
-    if (!persisted?.id) {
+    if (!createdId) {
+      setSubmitting(false);
       setSubmitError(
         "Não conseguimos confirmar o registro da sua inscrição. Nada foi perdido — revise os dados e tente novamente."
       );
-      toast.error("Inscrição não confirmada", {
-        description: "Tente novamente. Se persistir, fale com a organização pelo WhatsApp.",
-        position: "top-center",
-      });
       return;
     }
 
-    setSignupId(persisted.id);
-    setSubmitError(null);
-    // Cada participante guarda o que foi escolhido para ele; retomar um rascunho
-    // atualiza a entrada existente em vez de duplicá-la (evitaria total errado).
-    setDoneParticipants((prev) => {
-      const entry: DoneParticipant = {
-        name: pName.trim(),
-        birth: birthIso,
-        self: isSelf,
-        modality: cleanDistanceLabel(distance),
-        category: categoryForMessage,
-        kits: [...selectedKits],
-        shirtSize,
-        value: total,
-      };
-      const at = prev.findIndex(
-        (p) => p.name.trim().toLowerCase() === entry.name.toLowerCase() && p.birth === entry.birth
-      );
-      if (at === -1) return [...prev, entry];
-      const next = [...prev];
-      next[at] = entry;
-      return next;
-    });
-
-    // Opcional: salvar essa pessoa em "Meus participantes" (não altera a inscrição).
-    if (!isSelf && selectedParticipantId === null && saveToParticipants) {
-      const dup = findExistingParticipant(savedParticipants, {
-        full_name: pName.trim(),
-        cpf: pCpf,
-        birth_date: birthIso,
-      });
-      if (dup) {
-        toast.info("Este participante já está salvo em Meus participantes.");
-      } else {
-        try {
-          await createParticipant.mutateAsync({
-            full_name: pName.trim(),
-            cpf: pCpf.trim() || null,
-            birth_date: birthIso || null,
-            gender: pGender || null,
-            phone: pPhone.trim() || null,
-          });
-          toast.success("Participante salvo para as próximas provas.");
-        } catch (e: any) {
-          toast.error("Inscrição registrada, mas não conseguimos salvar o participante.");
-        }
-      }
-      setSaveToParticipants(false);
-    }
-
-    qc.invalidateQueries({ queryKey: ["my_signups"] });
-    qc.invalidateQueries({ queryKey: ["event_signup_existing", id, user.id] });
-    try {
-      sessionStorage.setItem("corporacao:last_signup_id", persisted.id);
-    } catch {}
-    setDone(true);
-    setStep(2);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setCheckoutResult(null);
+    await finishSuccess(createdId, total);
   };
 
   /** Recomeça o fluxo para inscrever outro participante na mesma prova. */
   const startAnotherParticipant = () => {
     setDone(false);
     setSignupId(null);
+    setCheckoutResult(null);
+    setStoreCart([]);
     setStep(0);
     setSelectedKits(kitOptions.length === 1 ? [kitOptions[0].name] : []);
     setNotes("");
@@ -1271,12 +1361,11 @@ const ProvaInscricao = () => {
           variant="payment"
           items={storeAcquiredItems}
           summary={{
-            registration_amount: total,
-            products_amount: storeProductsAmount,
-            total_amount: Math.round((total + storeProductsAmount) * 100) / 100,
+            registration_amount: registrationPaidAmount,
+            products_amount: productsPaidAmount,
+            total_amount: payableAmount,
             registration_label: distance ? `Inscrição ${distance}` : "Inscrição",
           }}
-          showMockPixHint
         />
       )}
 
@@ -1316,7 +1405,7 @@ const ProvaInscricao = () => {
                   <div className="text-center">
                     <CheckCircle2 className="w-11 h-11 text-success mx-auto mb-2" />
                     <h1 className="font-display text-xl sm:text-2xl font-bold mb-2">Inscrição registrada! 🎉</h1>
-                    {total > 0 ? (
+                    {payableAmount > 0 ? (
                       <>
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/15 px-3 py-1 text-xs font-semibold text-warning">
                           🟡 Aguardando pagamento
@@ -1348,7 +1437,7 @@ const ProvaInscricao = () => {
                         <span className="font-medium text-right">{appliedCoupon.code}</span>
                       </div>
                     )}
-                    {total === 0 && (subtotal > 0 || couponDiscount > 0) ? (
+                    {payableAmount === 0 && (subtotal > 0 || couponDiscount > 0) ? (
                       <>
                         {subtotal > 0 && (
                           <div className="flex justify-between gap-3">
@@ -1368,16 +1457,16 @@ const ProvaInscricao = () => {
                         </div>
                       </>
                     ) : (
-                      total > 0 && (
+                      payableAmount > 0 && (
                         <div className="flex justify-between gap-3">
                           <span className="text-muted-foreground">Valor</span>
-                          <span className="font-bold text-brand">{brl(total)}</span>
+                          <span className="font-bold text-brand">{brl(payableAmount)}</span>
                         </div>
                       )
                     )}
                   </div>
 
-                  {total === 0 && (
+                  {payableAmount === 0 && (
                     <div className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-foreground/90 space-y-1">
                       <p className="font-medium text-success">✓ Nenhum pagamento é necessário.</p>
                       <p className="text-muted-foreground text-xs leading-relaxed">
@@ -1404,16 +1493,16 @@ const ProvaInscricao = () => {
                           <span className="font-medium text-right">{appliedCoupon.code}</span>
                         </div>
                       )}
-                      {(subtotal > 0 || total > 0) && (
+                      {(subtotal > 0 || payableAmount > 0) && (
                         <div className="flex justify-between gap-3">
                           <span className="text-muted-foreground">Valor</span>
-                          <span className="font-bold text-brand">{brl(total)}</span>
+                          <span className="font-bold text-brand">{brl(payableAmount)}</span>
                         </div>
                       )}
                       <div className="flex justify-between gap-3">
                         <span className="text-muted-foreground">Status</span>
                         <span className="font-medium text-warning">
-                          {total > 0 ? "Aguardando pagamento" : "Aguardando aprovação"}
+                          {payableAmount > 0 ? "Aguardando pagamento" : "Aguardando aprovação"}
                         </span>
                       </div>
                       {signupId && (
@@ -1425,12 +1514,14 @@ const ProvaInscricao = () => {
                     </div>
                   </details>
 
-                  {total > 0 && (
+                  {payableAmount > 0 && (
                     <>
                       {eventStorePublic && storeCart.length > 0 && id && (
                         <EventStoreCheckoutPreview
                           eventId={id}
-                          registrationAmount={total}
+                          registrationAmount={registrationPaidAmount}
+                          productsAmount={productsPaidAmount}
+                          totalAmount={payableAmount}
                           modality={distance}
                           cart={storeCart}
                           isPartner={!!payView.is_partner}
@@ -1452,7 +1543,7 @@ const ProvaInscricao = () => {
                             pixKey={payment.pix_key}
                             recipient={payment.pix_recipient}
                             city={event.city}
-                            amount={total}
+                            amount={payableAmount}
                             txid={`INSC${String(signupId || event.id).replace(/\D/g, "").slice(0, 10)}`}
                             instructions={payment.payment_instructions}
                             summary={{
@@ -2090,14 +2181,14 @@ const ProvaInscricao = () => {
                           )}
                           <div className="mb-2 flex items-center justify-between text-sm sm:hidden">
                             <span className="text-muted-foreground truncate">{pName || "Participante"}</span>
-                            <span className="font-bold text-brand">{total > 0 ? brl(total) : "—"}</span>
+                            <span className="font-bold text-brand">{payableAmount > 0 ? brl(payableAmount) : "—"}</span>
                           </div>
                           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
                             <Button variant="outline" size="lg" className="min-h-12" onClick={() => { setStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
                               <ChevronLeft className="w-4 h-4" /> Voltar
                             </Button>
                             <Button onClick={submit} disabled={submitting || !participantComplete} variant="brand" size="lg" className="min-h-12 flex-1">
-                              {submitting ? "Enviando..." : submitError ? "Tentar novamente" : total > 0 ? `Confirmar e pagar ${brl(total)}` : "Confirmar inscrição"}
+                              {submitting ? "Enviando..." : submitError ? "Tentar novamente" : payableAmount > 0 ? `Confirmar e pagar ${brl(payableAmount)}` : "Confirmar inscrição"}
                             </Button>
                           </div>
                         </div>
@@ -2110,7 +2201,7 @@ const ProvaInscricao = () => {
                     <details className="lg:hidden rounded-2xl border border-border bg-card overflow-hidden">
                       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold">
                         <span>Resumo da inscrição</span>
-                        <span className="text-brand">{total > 0 ? brl(total) : ""}</span>
+                        <span className="text-brand">{payableAmount > 0 ? brl(payableAmount) : ""}</span>
                       </summary>
                       <div className="border-t border-border p-1">{summaryCard}</div>
                     </details>
