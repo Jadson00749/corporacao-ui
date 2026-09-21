@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,13 @@ import { Pencil, Trash2, Plus, Upload } from "lucide-react";
 import { ImageFocusPicker } from "@/components/admin/ImageFocusPicker";
 import { LinkPicker } from "@/components/admin/LinkPicker";
 import { toast } from "sonner";
+import { useSessionDraft, loadSessionDraftData } from "@/hooks/useSessionDraft";
+import {
+  clearSessionKey,
+  peekSessionDraft,
+  writeSessionEnvelope,
+  type ActiveDraftPointer,
+} from "@/lib/sessionDraft";
 
 export type FieldDef = {
   key: string;
@@ -41,6 +48,11 @@ type Props = {
   extraActions?: (row: any) => ReactNode;
   /** Called after rows are loaded (create/update/delete/toggle included). */
   onRowsLoaded?: (rows: any[]) => void;
+  /**
+   * Prefixo de chave sessionStorage para rascunho (ex: "admin:training-draft").
+   * Gera `:new`, `:{id}` e `:active`.
+   */
+  draftKeyPrefix?: string;
 };
 
 const emptyFor = (fields: FieldDef[]) => {
@@ -66,11 +78,26 @@ export const CrudTable = ({
   renderSubtitle,
   extraActions,
   onRowsLoaded,
+  draftKeyPrefix,
 }: Props) => {
   const qc = useQueryClient();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<any | null>(null);
+  const restoredRef = useRef(false);
+
+  const draftKey = draftKeyPrefix
+    ? editing
+      ? `${draftKeyPrefix}:${editing.id ? String(editing.id) : "new"}`
+      : null
+    : null;
+
+  useSessionDraft({
+    key: draftKey,
+    value: editing,
+    enabled: !!draftKeyPrefix && !!editing,
+    debounceMs: 400,
+  });
 
   const load = async () => {
     setLoading(true);
@@ -86,6 +113,70 @@ export const CrudTable = ({
 
   useEffect(() => { load(); }, [table]);
 
+  const openNew = () => {
+    if (!draftKeyPrefix) {
+      setEditing(emptyFor(fields));
+      return;
+    }
+    const key = `${draftKeyPrefix}:new`;
+    writeSessionEnvelope<ActiveDraftPointer>(`${draftKeyPrefix}:active`, {
+      kind: "new",
+      id: null,
+    });
+    const draft = loadSessionDraftData<any>(key);
+    if (draft && typeof draft === "object") {
+      setEditing({ ...emptyFor(fields), ...draft, id: undefined });
+      toast.message("Rascunho recuperado");
+    } else {
+      setEditing(emptyFor(fields));
+    }
+  };
+
+  const openEdit = (r: any) => {
+    if (!draftKeyPrefix) {
+      setEditing(r);
+      return;
+    }
+    writeSessionEnvelope<ActiveDraftPointer>(`${draftKeyPrefix}:active`, {
+      kind: "edit",
+      id: String(r.id),
+    });
+    const draft = loadSessionDraftData<any>(`${draftKeyPrefix}:${r.id}`);
+    if (draft && typeof draft === "object") {
+      setEditing({ ...r, ...draft, id: r.id });
+      toast.message("Rascunho recuperado");
+    } else {
+      setEditing(r);
+    }
+  };
+
+  const closeEditor = () => {
+    if (!editing) return;
+    if (draftKeyPrefix) {
+      const key = `${draftKeyPrefix}:${editing.id ? String(editing.id) : "new"}`;
+      if (peekSessionDraft(key)) {
+        if (!window.confirm("Descartar alterações não salvas?")) return;
+        clearSessionKey(key);
+      }
+      clearSessionKey(`${draftKeyPrefix}:active`);
+    }
+    setEditing(null);
+  };
+
+  useEffect(() => {
+    if (!draftKeyPrefix || restoredRef.current || editing || loading) return;
+    const active = loadSessionDraftData<ActiveDraftPointer>(`${draftKeyPrefix}:active`);
+    if (!active) return;
+    restoredRef.current = true;
+    if (active.kind === "edit" && active.id) {
+      const row = rows.find((r) => r.id === active.id);
+      if (row) openEdit(row);
+      return;
+    }
+    if (peekSessionDraft(`${draftKeyPrefix}:new`)) openNew();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKeyPrefix, loading, rows, editing]);
+
   const save = async () => {
     const payload = { ...editing };
     delete payload.created_at;
@@ -99,6 +190,12 @@ export const CrudTable = ({
 
     if (error) return toast.error(error.message);
     toast.success(isNew ? "Criado!" : "Atualizado!");
+    if (draftKeyPrefix) {
+      clearSessionKey(`${draftKeyPrefix}:new`);
+      if (payload.id) clearSessionKey(`${draftKeyPrefix}:${payload.id}`);
+      if (editing?.id) clearSessionKey(`${draftKeyPrefix}:${editing.id}`);
+      clearSessionKey(`${draftKeyPrefix}:active`);
+    }
     setEditing(null);
     qc.invalidateQueries({ queryKey: [queryKey] });
     load();
@@ -147,7 +244,7 @@ export const CrudTable = ({
           <h1 className="font-display text-3xl font-bold">{title}</h1>
           <p className="text-muted-foreground mt-1">{rows.length} {rows.length === 1 ? "item" : "itens"}</p>
         </div>
-        <Button onClick={() => setEditing(emptyFor(fields))} variant="brand">
+        <Button onClick={openNew} variant="brand">
           <Plus className="w-4 h-4" /> Novo
         </Button>
       </div>
@@ -181,7 +278,7 @@ export const CrudTable = ({
               )}
               <div className="flex gap-2 flex-wrap">
                 {extraActions?.(r)}
-                <Button onClick={() => setEditing(r)} variant="outline" size="sm"><Pencil className="w-4 h-4" /></Button>
+                <Button onClick={() => openEdit(r)} variant="outline" size="sm"><Pencil className="w-4 h-4" /></Button>
                 <Button onClick={() => remove(r.id)} variant="outline" size="sm"><Trash2 className="w-4 h-4" /></Button>
               </div>
             </div>
@@ -189,7 +286,7 @@ export const CrudTable = ({
         ))}
       </div>
 
-      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+      <Dialog open={!!editing} onOpenChange={(o) => !o && closeEditor()}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing?.id ? "Editar" : "Novo item"}</DialogTitle>
@@ -297,7 +394,7 @@ export const CrudTable = ({
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={closeEditor}>Cancelar</Button>
             <Button variant="brand" onClick={save}>Salvar</Button>
           </DialogFooter>
         </DialogContent>

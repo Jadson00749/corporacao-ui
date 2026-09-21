@@ -315,8 +315,11 @@ export function EventStoreAdminPanel({
     <div className="space-y-5">
       <div className="rounded-xl border border-border/60 bg-card/40 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed">
         <span className="font-semibold text-foreground">Loja da prova</span>
-        {" · "}cadastre produtos oficiais desta prova. Somente você e a equipe
-        autorizada gerenciam estes itens.
+        {" · "}produtos, separação e retirada. Aprovação de PIX fica em{" "}
+        <span className="font-medium text-foreground/80">
+          Inscrições → Pagamentos
+        </span>
+        .
       </div>
 
       <div className="flex flex-wrap gap-2">

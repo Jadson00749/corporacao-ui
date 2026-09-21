@@ -4,6 +4,7 @@ import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Link } from "@/lib/router-compat";
 import {
   computeEventStoreOrderKpis,
   computeEventStoreSeparation,
@@ -12,7 +13,6 @@ import {
   eventStoreOrderOriginLabel,
   mapEventStoreAdminOrderError,
   updateEventStoreOrderFulfillment,
-  updateEventStoreStandalonePaymentStatus,
   useEventStoreOrders,
   type EventStoreFulfillmentStatus,
   type EventStoreOrderRow,
@@ -59,7 +59,10 @@ export function EventStoreOrdersPanel({ eventId, eventName }: Props) {
     () => computeEventStoreSeparation(orders),
     [orders],
   );
-  const flatRows = useMemo(() => flattenOrderRows(filteredOrders), [filteredOrders]);
+  const flatRows = useMemo(
+    () => flattenOrderRows(filteredOrders, eventId),
+    [filteredOrders, eventId],
+  );
 
   const onExport = async () => {
     setExporting(true);
@@ -102,34 +105,6 @@ export function EventStoreOrdersPanel({ eventId, eventName }: Props) {
     }
   };
 
-  const setStandalonePayment = async (
-    order: EventStoreOrderRow,
-    status: "confirmada" | "cancelada",
-  ) => {
-    if (order.order_type !== "standalone") return;
-    setUpdatingId(order.id);
-    try {
-      await updateEventStoreStandalonePaymentStatus({
-        orderId: order.id,
-        status,
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["admin_event_store_orders", eventId],
-      });
-      toast.success(
-        status === "confirmada" ? "Pagamento aprovado." : "Pedido cancelado.",
-      );
-    } catch (e: any) {
-      toast.error(
-        mapEventStoreAdminOrderError(e ?? {}) ||
-          e?.message ||
-          "Não foi possível atualizar o pagamento.",
-      );
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -138,9 +113,9 @@ export function EventStoreOrdersPanel({ eventId, eventName }: Props) {
             Pedidos e separação
           </h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Pedidos da loja desta prova (inscrição + compra avulsa). Cancelados
-            não entram na separação. Em atraso continua reservando estoque até o
-            cancelamento.
+            Separação, variantes e retirada. Status de pagamento aparece como
+            informação — a rotina principal de aprovar PIX fica em Inscrições →
+            Pagamentos.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -315,43 +290,13 @@ export function EventStoreOrdersPanel({ eventId, eventName }: Props) {
                             {r.op.overdueHint}
                           </p>
                         ) : null}
-                        {r.canApproveStandalonePayment ? (
-                          <div className="flex flex-col gap-1 pt-0.5">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="brand"
-                              className="h-7 text-[11px]"
-                              disabled={updatingId === r.orderId}
-                              onClick={() =>
-                                void setStandalonePayment(r.order, "confirmada")
-                              }
-                            >
-                              Aprovar pagamento
-                            </Button>
-                            <button
-                              type="button"
-                              className="text-[10px] text-muted-foreground underline-offset-2 hover:underline text-left"
-                              disabled={updatingId === r.orderId}
-                              onClick={() =>
-                                void setStandalonePayment(r.order, "cancelada")
-                              }
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        ) : null}
-                        {r.canCancelStandaloneConfirmed ? (
-                          <button
-                            type="button"
-                            className="text-[10px] text-muted-foreground underline-offset-2 hover:underline text-left pt-0.5"
-                            disabled={updatingId === r.orderId}
-                            onClick={() =>
-                              void setStandalonePayment(r.order, "cancelada")
-                            }
+                        {r.showManagePaymentLink ? (
+                          <Link
+                            to={r.managePaymentHref}
+                            className="inline-block pt-0.5 text-[10px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                           >
-                            Cancelar pedido
-                          </button>
+                            Gerenciar pagamento
+                          </Link>
                         ) : null}
                       </div>
                     </td>
@@ -428,7 +373,7 @@ function Kpi({
   );
 }
 
-function flattenOrderRows(orders: EventStoreOrderRow[]) {
+function flattenOrderRows(orders: EventStoreOrderRow[], eventId: string) {
   const rows: {
     key: string;
     orderId: string;
@@ -442,8 +387,8 @@ function flattenOrderRows(orders: EventStoreOrderRow[]) {
     op: ReturnType<typeof getSignupStatusInfo>;
     fulfillmentLabel: string;
     canMarkFulfillment: boolean;
-    canApproveStandalonePayment: boolean;
-    canCancelStandaloneConfirmed: boolean;
+    showManagePaymentLink: boolean;
+    managePaymentHref: string;
     date: string;
   }[] = [];
 
@@ -453,11 +398,18 @@ function flattenOrderRows(orders: EventStoreOrderRow[]) {
       status: order.status || order.event_signups?.status,
     });
     const canMarkFulfillment = order.status === "confirmada";
-    const canApproveStandalonePayment =
-      order.order_type === "standalone" &&
-      (order.status === "pendente" || order.status === "pagamento_atrasado");
-    const canCancelStandaloneConfirmed =
-      order.order_type === "standalone" && order.status === "confirmada";
+    const pendingPayment =
+      order.status === "pendente" || order.status === "pagamento_atrasado";
+    const showManagePaymentLink = pendingPayment;
+    const params = new URLSearchParams({ tab: "pagamentos", event: eventId });
+    if (order.status === "pagamento_atrasado") {
+      params.set("status", "pagamento_atrasado");
+    } else if (order.status === "pendente") {
+      params.set("status", "pendente");
+    }
+    if (buyer && buyer !== "—") params.set("q", buyer);
+    const managePaymentHref = `/admin/event-signups?${params.toString()}`;
+
     const items = order.event_store_order_items ?? [];
     items.forEach((item, idx) => {
       rows.push({
@@ -473,8 +425,8 @@ function flattenOrderRows(orders: EventStoreOrderRow[]) {
         op,
         fulfillmentLabel: eventStoreFulfillmentLabel(order.fulfillment_status),
         canMarkFulfillment: canMarkFulfillment && idx === 0,
-        canApproveStandalonePayment: canApproveStandalonePayment && idx === 0,
-        canCancelStandaloneConfirmed: canCancelStandaloneConfirmed && idx === 0,
+        showManagePaymentLink: showManagePaymentLink && idx === 0,
+        managePaymentHref,
         date: formatDateTime(order.created_at),
       });
     });

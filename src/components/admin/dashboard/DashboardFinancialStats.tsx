@@ -41,6 +41,12 @@ export type FinancialMetrics = {
   confirmedPartners?: number;
   partnerEventsWithMovement?: number;
   partners?: PartnerCommissionRow[];
+  /** Quebra sem duplicar signup_bundle. */
+  revenueRegistration?: number;
+  revenueProducts?: number;
+  pendingSignupCount?: number;
+  pendingStandaloneCount?: number;
+  productsSoldQty?: number;
 };
 
 type Props = {
@@ -64,6 +70,7 @@ const Card = ({
   hint2,
   tone = "default",
   to,
+  className: classNameProp,
 }: {
   icon: typeof Wallet;
   label: string;
@@ -72,6 +79,7 @@ const Card = ({
   hint2?: string;
   tone?: Tone;
   to?: string;
+  className?: string;
 }) => {
   const className = cn(
     "flex h-full flex-col rounded-xl border p-2.5 text-left transition-colors sm:p-3",
@@ -80,7 +88,8 @@ const Card = ({
     tone === "muted" && "border-border/60 bg-card/60",
     tone === "default" && "border-border bg-card",
     to &&
-      "cursor-pointer hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+      "cursor-pointer hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
+    classNameProp
   );
   const body = (
     <>
@@ -194,10 +203,10 @@ export function DashboardFinancialStats({ metrics, isAdmin, partnerView, onOpenP
           />
           <Card
             icon={Clock}
-            label="Receita em aberto"
+            label="A receber"
             value={brl(partnerView.pendingRevenue)}
             hint={`${partnerView.pending} pendentes`}
-            to="/admin/event-signups?status=pendente"
+            to="/admin/event-signups?tab=pagamentos&status=pendente"
           />
         </div>
       </section>
@@ -205,40 +214,48 @@ export function DashboardFinancialStats({ metrics, isAdmin, partnerView, onOpenP
   }
 
   if (!isAdmin) {
+    const reg = metrics.revenueRegistration ?? 0;
+    const prod = metrics.revenueProducts ?? 0;
+    const pendingSignups = metrics.pendingSignupCount ?? metrics.pending;
+    const pendingBuys = metrics.pendingStandaloneCount ?? 0;
+    const soldQty = metrics.productsSoldQty ?? 0;
     return (
       <section className={className}>
         <h2 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
           Financeiro
         </h2>
-        <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
           <Card
             icon={Wallet}
             label="Receita confirmada"
             value={brl(metrics.revenue)}
-            hint={`${metrics.confirmed} inscrições pagas`}
+            hint={`Inscrições ${brl(reg)} · Produtos ${brl(prod)}`}
             tone={metrics.revenue > 0 ? "brand" : "default"}
-            to="/admin/event-signups?status=confirmada"
+            to="/admin/event-signups?tab=pagamentos&status=confirmada"
           />
           <Card
             icon={Clock}
-            label="Receita em aberto"
+            label="A receber"
             value={brl(metrics.pendingRevenue)}
-            hint={`${metrics.pending} pendentes`}
-            to="/admin/event-signups?status=pendente"
+            hint={`${pendingSignups} ${pendingSignups === 1 ? "inscrição" : "inscrições"}${
+              pendingBuys > 0
+                ? ` · ${pendingBuys} ${pendingBuys === 1 ? "compra" : "compras"}`
+                : ""
+            }`}
+            to="/admin/event-signups?tab=pagamentos&status=pendente"
           />
-          <Card icon={TrendingUp} label="Ticket médio" value={brl(metrics.ticket)} hint="Por inscrição confirmada" />
           <Card
-            icon={Wallet}
-            label="Inscrições vendidas"
-            value={String(metrics.confirmed)}
-            hint={`${metrics.pending} pendentes`}
-            to="/admin/event-signups?status=confirmada"
+            icon={TrendingUp}
+            label="Produtos vendidos"
+            value={brl(prod)}
+            hint={`${soldQty} ${soldQty === 1 ? "item" : "itens"}`}
+            className="col-span-2 xl:col-span-1"
+            to="/admin/event-signups?tab=pagamentos"
           />
         </div>
       </section>
     );
   }
-
   const corpRevenue = metrics.revenueCorporate ?? 0;
   const corpPending = metrics.pendingRevenueCorporate ?? 0;
   const corpConfirmed = metrics.confirmedCorporate ?? 0;
@@ -259,14 +276,14 @@ export function DashboardFinancialStats({ metrics, isAdmin, partnerView, onOpenP
             value={brl(corpRevenue)}
             hint="Somente provas da Corporação"
             tone={corpRevenue > 0 ? "brand" : "default"}
-            to="/admin/event-signups?status=confirmada"
+            to="/admin/event-signups?tab=pagamentos&status=confirmada"
           />
           <Card
             icon={Clock}
-            label="Receita em aberto"
+            label="A receber"
             value={brl(corpPending)}
             hint="Pendentes das provas próprias"
-            to="/admin/event-signups?status=pendente"
+            to="/admin/event-signups?tab=pagamentos&status=pendente"
           />
           <Card
             icon={TrendingUp}

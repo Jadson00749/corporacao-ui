@@ -33,6 +33,13 @@ import {
   type SignupStatusFilter,
 } from "@/lib/signupOperationalStatus";
 import { cn } from "@/lib/utils";
+import { AdminPaymentsPanel } from "@/components/admin/AdminPaymentsPanel";
+import {
+  readSignupsUiSession,
+  writeSignupsUiSession,
+  type SignupsUiSession,
+} from "@/lib/sessionDraft";
+import type { PaymentOrigin } from "@/lib/adminPayments";
 
 type Row = {
   id: string;
@@ -271,26 +278,166 @@ const SignupRow = memo(function SignupRow({
   );
 });
 
+type MainTab = "inscricoes" | "pagamentos";
+
 const AdminEventSignups = () => {
   const qc = useQueryClient();
   const { isAdmin, organizerId } = useAuth();
-  const [searchParams] = useSearchParams();
-  const statusFromUrl = searchParams.get("status") || "all";
-  const eventFromUrl = searchParams.get("event") || "all";
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [search, setSearch] = useState("");
+  const savedUi = useMemo(() => readSignupsUiSession(), []);
+
+  const tabFromUrl = searchParams.get("tab");
+  const isPaymentsUrl = tabFromUrl === "pagamentos";
+
+  const mainTab: MainTab = isPaymentsUrl
+    ? "pagamentos"
+    : tabFromUrl === "inscricoes"
+      ? "inscricoes"
+      : savedUi?.tab === "pagamentos"
+        ? "pagamentos"
+        : "inscricoes";
+
+  const setMainTab = (tab: MainTab) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "pagamentos") next.set("tab", "pagamentos");
+    else next.delete("tab");
+    setSearchParams(next, { replace: true });
+  };
+
+  // Prioridade: URL (quando explícito e pertinente à aba) > session > default
+  const [search, setSearch] = useState(() => {
+    if (!isPaymentsUrl && searchParams.has("q")) return searchParams.get("q") || "";
+    return savedUi?.search ?? "";
+  });
   const deferredSearch = useDeferredValue(search);
-  const [eventFilter, setEventFilter] = useState<string>(eventFromUrl);
-  const [statusFilter, setStatusFilter] = useState<SignupStatusFilter>(
-    parseSignupStatusFilterFromUrl(statusFromUrl),
+  const [eventFilter, setEventFilter] = useState(() => {
+    if (!isPaymentsUrl && searchParams.has("event")) {
+      return searchParams.get("event") || "all";
+    }
+    return savedUi?.eventFilter ?? "all";
+  });
+  const [statusFilter, setStatusFilter] = useState<SignupStatusFilter>(() => {
+    if (!isPaymentsUrl && searchParams.has("status")) {
+      return parseSignupStatusFilterFromUrl(searchParams.get("status"));
+    }
+    return parseSignupStatusFilterFromUrl(savedUi?.statusFilter ?? "all");
+  });
+  const [genderFilter, setGenderFilter] = useState<"all" | "F" | "M" | "kids">(
+    () => savedUi?.genderFilter ?? "all",
   );
-  const [genderFilter, setGenderFilter] = useState<"all" | "F" | "M" | "kids">("all");
-  const [ownership, setOwnership] = useState<"all" | "corp" | "external">("all");
-  const [orgFilter, setOrgFilter] = useState<string>("all");
-  const [pageSize, setPageSize] = useState<number>(50);
-  const [page, setPage] = useState(0);
+  const [ownership, setOwnership] = useState<"all" | "corp" | "external">(() => {
+    if (!isPaymentsUrl && searchParams.has("origin")) {
+      const o = searchParams.get("origin");
+      if (o === "corp" || o === "external" || o === "all") return o;
+    }
+    return savedUi?.ownership ?? "all";
+  });
+  const [orgFilter, setOrgFilter] = useState<string>(() => {
+    if (!isPaymentsUrl && searchParams.has("organizer")) {
+      return searchParams.get("organizer") || "all";
+    }
+    return savedUi?.orgFilter ?? "all";
+  });
+  const [pageSize, setPageSize] = useState<number>(() => {
+    const n = savedUi?.pageSize;
+    return n === 0 || n === 50 || n === 100 ? n : 50;
+  });
+  const [page, setPage] = useState(() =>
+    typeof savedUi?.page === "number" && savedUi.page >= 0 ? savedUi.page : 0,
+  );
   const [exporting, setExporting] = useState(false);
   const [detail, setDetail] = useState<AdminSignupDetailRow | null>(null);
+
+  const paymentsInitial = useMemo(
+    () => ({
+      search: isPaymentsUrl && searchParams.has("q")
+        ? searchParams.get("q") || ""
+        : savedUi?.payments?.search ?? "",
+      eventFilter:
+        isPaymentsUrl && searchParams.has("event")
+          ? searchParams.get("event") || "all"
+          : savedUi?.payments?.eventFilter ?? "all",
+      statusFilter: parseSignupStatusFilterFromUrl(
+        isPaymentsUrl && searchParams.has("status")
+          ? searchParams.get("status")
+          : savedUi?.payments?.statusFilter ?? "all",
+      ),
+      originFilter: (savedUi?.payments?.originFilter as
+        | "all"
+        | PaymentOrigin
+        | undefined) ?? "all",
+      ownership: savedUi?.payments?.ownership ?? ("all" as const),
+      orgFilter: savedUi?.payments?.orgFilter ?? "all",
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só no mount
+    [],
+  );
+
+  // Sync tab da session → URL (sem params) uma vez
+  useEffect(() => {
+    if (!tabFromUrl && savedUi?.tab === "pagamentos") {
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", "pagamentos");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persistir filtros em session + params importantes na URL (aba Inscrições)
+  useEffect(() => {
+    const payload: SignupsUiSession = {
+      tab: mainTab,
+      search,
+      eventFilter,
+      statusFilter,
+      genderFilter,
+      ownership,
+      orgFilter,
+      page,
+      pageSize,
+      payments: readSignupsUiSession()?.payments,
+    };
+    writeSignupsUiSession(payload);
+
+    if (mainTab !== "inscricoes") return;
+
+    const next = new URLSearchParams(searchParams);
+    let dirty = false;
+    const setOrDel = (key: string, value: string, isDefault: boolean) => {
+      const cur = next.get(key);
+      if (isDefault) {
+        if (cur != null) {
+          next.delete(key);
+          dirty = true;
+        }
+      } else if (cur !== value) {
+        next.set(key, value);
+        dirty = true;
+      }
+    };
+    setOrDel("event", eventFilter, eventFilter === "all");
+    setOrDel("status", statusFilter, statusFilter === "all");
+    setOrDel("q", search, !search.trim());
+    setOrDel("origin", ownership, ownership === "all");
+    setOrDel("organizer", orgFilter, orgFilter === "all");
+    if (next.get("tab") === "pagamentos") {
+      next.delete("tab");
+      dirty = true;
+    }
+    if (dirty) setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    mainTab,
+    search,
+    eventFilter,
+    statusFilter,
+    genderFilter,
+    ownership,
+    orgFilter,
+    page,
+    pageSize,
+  ]);
 
   const { data: organizers = [] } = useQuery({
     enabled: isAdmin,
@@ -582,21 +729,67 @@ const AdminEventSignups = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold">Inscrições em provas</h1>
-          {isFetching && !isLoading ? (
+          {isFetching && !isLoading && mainTab === "inscricoes" ? (
             <p className="text-xs text-muted-foreground mt-0.5">Atualizando…</p>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={() => refetch()} disabled={isFetching}>
-            Atualizar
-          </Button>
-          <Button onClick={exportXlsx} disabled={exporting}>
-            <FileSpreadsheet className="w-4 h-4" />{" "}
-            {exporting ? "Gerando..." : "Exportar Excel"}
-          </Button>
-        </div>
+        {mainTab === "inscricoes" ? (
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => refetch()} disabled={isFetching}>
+              Atualizar
+            </Button>
+            <Button onClick={exportXlsx} disabled={exporting}>
+              <FileSpreadsheet className="w-4 h-4" />{" "}
+              {exporting ? "Gerando..." : "Exportar Excel"}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
+      <div className="flex flex-wrap gap-2 border-b border-border/60 pb-0">
+        {(
+          [
+            ["inscricoes", "Inscrições"],
+            ["pagamentos", "Pagamentos"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setMainTab(id)}
+            className={cn(
+              "-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors",
+              mainTab === id
+                ? "border-brand text-brand"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {mainTab === "pagamentos" ? (
+        <AdminPaymentsPanel
+          isAdmin={!!isAdmin}
+          organizerId={organizerId}
+          events={events as any[]}
+          eventIds={eventIds}
+          organizers={organizers as { id: string; name: string }[]}
+          signups={scopedSignups as any[]}
+          signupsLoading={isLoading}
+          initialStatusFilter={paymentsInitial.statusFilter}
+          initialEventFilter={paymentsInitial.eventFilter}
+          initialSearch={paymentsInitial.search}
+          initialOriginFilter={paymentsInitial.originFilter}
+          initialOwnership={paymentsInitial.ownership}
+          initialOrgFilter={paymentsInitial.orgFilter}
+          syncUrl={mainTab === "pagamentos"}
+          onApproveSignup={(id) => updateStatus(id, "confirmada")}
+          onCancelSignup={(id) => updateStatus(id, "cancelada")}
+        />
+      ) : (
+        <>
       <div className="grid sm:grid-cols-3 gap-3">
         <Input
           placeholder="Buscar atleta, e-mail, CPF, prova..."
@@ -879,6 +1072,8 @@ const AdminEventSignups = () => {
           if (opts?.closeSheet) setDetail(null);
         }}
       />
+        </>
+      )}
     </div>
   );
 };

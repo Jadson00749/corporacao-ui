@@ -4,7 +4,8 @@ import { useSearchParams } from "@/lib/router-compat";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { isMainOrg } from "@/hooks/useOrganizerStats";
-import { signupValue, type ExportSignup, type EventPricingRow } from "@/lib/exportSignupsXlsx";
+import { type ExportSignup, type EventPricingRow } from "@/lib/exportSignupsXlsx";
+import { resolveSignupMoney } from "@/lib/adminPayments";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AttentionNeeded, type AttentionItem } from "@/components/site/AttentionNeeded";
 import { EmptyState } from "@/components/site/EmptyState";
@@ -140,6 +141,120 @@ const AdminDashboard = () => {
     },
   });
 
+  type StandaloneDashOrder = {
+    id: string;
+    event_id: string;
+    organizer_id: string | null;
+    status: string;
+    total_amount: number;
+    created_at: string;
+    items_qty: number;
+  };
+
+  const { data: standaloneOrders = [] } = useQuery({
+    queryKey: [
+      "admin_dashboard_standalone_orders",
+      isAdmin ? "all" : organizerId,
+      pricing.map((e) => e.id).join(","),
+    ],
+    enabled: isAdmin || !!organizerId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<StandaloneDashOrder[]> => {
+      const ids = pricing.map((e) => e.id);
+      let q = supabase
+        .from("event_store_orders")
+        .select(
+          `
+          id, event_id, organizer_id, status, total_amount, created_at, order_type,
+          event_store_order_items ( quantity )
+        `,
+        )
+        .eq("order_type", "standalone");
+      if (!isAdmin) {
+        if (!ids.length) return [];
+        q = q.in("event_id", ids);
+      }
+      const { data, error } = await q;
+      if (error) {
+        if (/order_type|column|relation/i.test(error.message)) return [];
+        throw error;
+      }
+      return ((data ?? []) as any[]).map((o) => {
+        const items = Array.isArray(o.event_store_order_items)
+          ? o.event_store_order_items
+          : [];
+        const items_qty = items.reduce(
+          (sum: number, it: any) => sum + (Number(it.quantity) || 0),
+          0,
+        );
+        return {
+          id: o.id as string,
+          event_id: o.event_id as string,
+          organizer_id: (o.organizer_id as string | null) ?? null,
+          status: String(o.status || "").toLowerCase(),
+          total_amount: Number(o.total_amount) || 0,
+          created_at: o.created_at as string,
+          items_qty,
+        };
+      });
+    },
+  });
+
+  /** Pedidos confirmados (signup_bundle + standalone) com itens — qty filtrada no período. */
+  type ConfirmedStoreOrderDash = {
+    id: string;
+    event_id: string;
+    created_at: string;
+    order_type: string;
+    items_qty: number;
+  };
+
+  const { data: confirmedStoreOrders = [] } = useQuery({
+    queryKey: [
+      "admin_dashboard_confirmed_store_orders",
+      isAdmin ? "all" : organizerId,
+      pricing.map((e) => e.id).join(","),
+    ],
+    enabled: isAdmin || !!organizerId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<ConfirmedStoreOrderDash[]> => {
+      const ids = pricing.map((e) => e.id);
+      let q = supabase
+        .from("event_store_orders")
+        .select(
+          `
+          id, event_id, created_at, order_type, status,
+          event_store_order_items ( quantity )
+        `,
+        )
+        .eq("status", "confirmada");
+      if (!isAdmin) {
+        if (!ids.length) return [];
+        q = q.in("event_id", ids);
+      }
+      const { data, error } = await q;
+      if (error) {
+        if (/relation|column|order_type/i.test(error.message)) return [];
+        throw error;
+      }
+      return ((data ?? []) as any[]).map((o) => {
+        const items = Array.isArray(o.event_store_order_items)
+          ? o.event_store_order_items
+          : [];
+        const items_qty = items.reduce(
+          (sum: number, it: any) => sum + (Number(it.quantity) || 0),
+          0,
+        );
+        return {
+          id: o.id as string,
+          event_id: o.event_id as string,
+          created_at: o.created_at as string,
+          order_type: String(o.order_type || "signup_bundle"),
+          items_qty,
+        };
+      });
+    },
+  });
   const { data: organizerPayment } = useOrganizerPayment(!isAdmin ? organizerId : null);
 
   const { data: rentalRows = [] } = useQuery({
@@ -207,6 +322,9 @@ const AdminDashboard = () => {
   const metrics = useMemo(() => {
     const priceMap = new Map(activePricing.map((e) => [e.id, e]));
     const rows = signups.filter((s) => activeEventIds.has(s.event_id) && inPeriod(s.created_at));
+    const standaloneRows = standaloneOrders.filter(
+      (o) => activeEventIds.has(o.event_id) && inPeriod(o.created_at),
+    );
 
     let confirmed = 0;
     let pending = 0;
@@ -220,6 +338,12 @@ const AdminDashboard = () => {
     let confirmedCorporate = 0;
     let confirmedPartners = 0;
     let estimatedCommission = 0;
+    let revenueRegistration = 0;
+    let revenueProducts = 0;
+    let pendingSignupCount = 0;
+    let pendingStandaloneCount = 0;
+    let pendingSignupRevenue = 0;
+    let pendingStandaloneRevenue = 0;
 
     const byEvent = new Map<
       string,
@@ -279,7 +403,8 @@ const AdminDashboard = () => {
 
     for (const s of rows) {
       const status = (s.status || "").toLowerCase();
-      const value = signupValue(s, priceMap.get(s.event_id)) ?? 0;
+      const money = resolveSignupMoney(s as any, priceMap.get(s.event_id));
+      const value = money.total;
       const org = eventOrgInfo(s.event_id);
       const eventOrgId = priceMap.get(s.event_id)?.organizer_id ?? null;
       const orgData = eventOrgId ? organizerMap.get(eventOrgId) : null;
@@ -292,6 +417,8 @@ const AdminDashboard = () => {
       if (status === "confirmada") {
         confirmed += 1;
         revenue += value;
+        revenueRegistration += money.registration;
+        revenueProducts += money.products;
         if (org.isCorp) {
           revenueCorporate += value;
           confirmedCorporate += 1;
@@ -319,8 +446,11 @@ const AdminDashboard = () => {
         cur.commission = org.isCorp ? 0 : (cur.revenue * commissionPct) / 100;
         byEvent.set(s.event_id, cur);
       } else {
+        // pendente + pagamento_atrasado
         pending += 1;
+        pendingSignupCount += 1;
         pendingRevenue += value;
+        pendingSignupRevenue += value;
         if (org.isCorp) {
           pendingRevenueCorporate += value;
         } else {
@@ -340,6 +470,67 @@ const AdminDashboard = () => {
         cur.isCorp = org.isCorp;
         cur.commissionPct = commissionPct;
         byEvent.set(s.event_id, cur);
+      }
+    }
+
+    // Compras avulsas (standalone) — nunca somar signup_bundle aqui.
+    for (const o of standaloneRows) {
+      const value = o.total_amount || 0;
+      const org = eventOrgInfo(o.event_id);
+      const eventOrgId =
+        o.organizer_id ?? priceMap.get(o.event_id)?.organizer_id ?? null;
+      const orgData = eventOrgId ? organizerMap.get(eventOrgId) : null;
+      const commissionPct = !org.isCorp ? Number(orgData?.commission_percentage ?? 0) : 0;
+      const eventName = priceMap.get(o.event_id)?.name || "Prova";
+
+      if (o.status === "cancelada") continue;
+
+      if (o.status === "confirmada") {
+        revenue += value;
+        revenueProducts += value;
+        if (org.isCorp) {
+          revenueCorporate += value;
+        } else {
+          revenueOrganizers += value;
+          if (commissionPct > 0) estimatedCommission += (value * commissionPct) / 100;
+          if (eventOrgId) {
+            const existing = touchPartner(eventOrgId, org.name, commissionPct);
+            existing.approvedValue += value;
+            existing.commission = (existing.approvedValue * commissionPct) / 100;
+            byPartner.set(eventOrgId, existing);
+          }
+        }
+        const cur = touch(o.event_id, eventName);
+        cur.revenue += value;
+        cur.organizerId = eventOrgId;
+        cur.organizerName = org.name;
+        cur.isCorp = org.isCorp;
+        cur.commissionPct = commissionPct;
+        cur.commission = org.isCorp ? 0 : (cur.revenue * commissionPct) / 100;
+        byEvent.set(o.event_id, cur);
+      } else if (o.status === "pendente" || o.status === "pagamento_atrasado") {
+        pending += 1;
+        pendingStandaloneCount += 1;
+        pendingRevenue += value;
+        pendingStandaloneRevenue += value;
+        if (org.isCorp) {
+          pendingRevenueCorporate += value;
+        } else {
+          pendingRevenueOrganizers += value;
+          if (eventOrgId) {
+            const existing = touchPartner(eventOrgId, org.name, commissionPct);
+            existing.pending += 1;
+            existing.pendingRevenue += value;
+            byPartner.set(eventOrgId, existing);
+          }
+        }
+        const cur = touch(o.event_id, eventName);
+        cur.pending += 1;
+        cur.organizerId = eventOrgId;
+        cur.organizerName = org.name;
+        cur.isCorp = org.isCorp;
+        cur.commissionPct = commissionPct;
+        byEvent.set(o.event_id, cur);
       }
     }
 
@@ -375,6 +566,15 @@ const AdminDashboard = () => {
       rows.filter((s) => (s.status || "").toLowerCase() === "confirmada").map((s) => (s as any).user_id)
     ).size;
 
+    // Qty de produtos no MESMO período da receita de produtos:
+    // itens de pedidos confirmados (signup_bundle + standalone) com created_at no período.
+    // Não duplica: cada order entra uma vez (bundle e standalone são pedidos distintos).
+    let productsSoldQty = 0;
+    for (const o of confirmedStoreOrders) {
+      if (!activeEventIds.has(o.event_id) || !inPeriod(o.created_at)) continue;
+      productsSoldQty += o.items_qty || 0;
+    }
+
     return {
       confirmed,
       pending,
@@ -401,9 +601,26 @@ const AdminDashboard = () => {
       topEvents: Array.from(byEvent.values())
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 8),
+      revenueRegistration: Math.round(revenueRegistration * 100) / 100,
+      revenueProducts: Math.round(revenueProducts * 100) / 100,
+      pendingSignupCount,
+      pendingStandaloneCount,
+      pendingSignupRevenue: Math.round(pendingSignupRevenue * 100) / 100,
+      pendingStandaloneRevenue: Math.round(pendingStandaloneRevenue * 100) / 100,
+      productsSoldQty,
     };
-  }, [signups, members, activePricing, activeEventIds, since, organizerMap, pricing, organizers]);
-
+  }, [
+    signups,
+    members,
+    activePricing,
+    activeEventIds,
+    since,
+    organizerMap,
+    pricing,
+    organizers,
+    standaloneOrders,
+    confirmedStoreOrders,
+  ]);
   const partnerOptions = useMemo(
     () => (isAdmin ? metrics.partners : []),
     [isAdmin, metrics.partners]
@@ -441,6 +658,9 @@ const AdminDashboard = () => {
     const rows = signups.filter(
       (s) => partnerEventIds.has(s.event_id) && inPeriod(s.created_at)
     );
+    const standaloneRows = standaloneOrders.filter(
+      (o) => partnerEventIds.has(o.event_id) && inPeriod(o.created_at),
+    );
 
     let approvedValue = 0;
     let confirmed = 0;
@@ -455,7 +675,7 @@ const AdminDashboard = () => {
       const status = (s.status || "").toLowerCase();
       if (status === "cancelada") continue;
       const ev = priceMap.get(s.event_id);
-      const value = signupValue(s, ev) ?? 0;
+      const value = resolveSignupMoney(s as any, ev).total;
       const cur =
         byEvent.get(s.event_id) ?? {
           eventId: s.event_id,
@@ -477,6 +697,29 @@ const AdminDashboard = () => {
       byEvent.set(s.event_id, cur);
     }
 
+    for (const o of standaloneRows) {
+      if (o.status === "cancelada") continue;
+      const value = o.total_amount || 0;
+      const ev = priceMap.get(o.event_id);
+      const cur =
+        byEvent.get(o.event_id) ?? {
+          eventId: o.event_id,
+          name: ev?.name || "Prova",
+          confirmed: 0,
+          pending: 0,
+          revenue: 0,
+        };
+      if (o.status === "confirmada") {
+        approvedValue += value;
+        cur.revenue += value;
+      } else if (o.status === "pendente" || o.status === "pagamento_atrasado") {
+        pending += 1;
+        pendingRevenue += value;
+        cur.pending += 1;
+      }
+      byEvent.set(o.event_id, cur);
+    }
+
     const pct = selectedPartner.commissionPct;
     return {
       approvedValue,
@@ -487,8 +730,7 @@ const AdminDashboard = () => {
       pendingRevenue,
       events: byEvent,
     };
-  }, [selectedPartner, pricing, signups, partnerEventIds, since]);
-
+  }, [selectedPartner, pricing, signups, partnerEventIds, since, standaloneOrders]);
   const eventsWithoutConfig = useMemo(
     () =>
       activePricing.filter((e) => {
@@ -581,18 +823,16 @@ const AdminDashboard = () => {
   ]);
 
   const recentRows = useMemo((): RecentSignupRow[] => {
-    // Mapa de preços do conjunto COMPLETO de provas (inclui desativadas/encerradas),
-    // para que pendentes/confirmadas de provas históricas mostrem valor. Fonte única: signupValue.
+    // Mapa completo (inclui provas históricas). Preferência snapshot; fallback signupValue.
     const priceMap = new Map((pricing as AdminPricingRow[]).map((e) => [e.id, e]));
     return signups
       .filter((s) => scopeEventIds.has(s.event_id) && (s.status || "").toLowerCase() !== "cancelada")
       .slice(0, 5)
       .map((s) => ({
         signup: s,
-        value: signupValue(s, priceMap.get(s.event_id)),
+        value: resolveSignupMoney(s as any, priceMap.get(s.event_id)).total,
       }));
   }, [signups, pricing, scopeEventIds]);
-
   const trendPoints = useMemo((): TrendPoint[] => {
     const rows = signups.filter((s) => {
       if (!scopeEventIds.has(s.event_id) || !inPeriod(s.created_at)) return false;

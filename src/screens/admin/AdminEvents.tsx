@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,15 @@ import { useOrganizerStats, brl, isMainOrg } from "@/hooks/useOrganizerStats";
 import { useOrganizerPayment } from "@/lib/eventPayment";
 import { Link, useSearchParams } from "@/lib/router-compat";
 import { cn } from "@/lib/utils";
-
+import {
+  clearSessionKey,
+  eventDraftKey,
+  EVENT_DRAFT_ACTIVE_KEY,
+  peekSessionDraft,
+  writeSessionEnvelope,
+  type ActiveDraftPointer,
+} from "@/lib/sessionDraft";
+import { useSessionDraft, loadSessionDraftData } from "@/hooks/useSessionDraft";
 
 
 type Distance = { distance: string; price?: number; price_lote2?: number; lote2_starts_at?: string | null; price_lote3?: number; lote3_starts_at?: string | null; price_60_plus?: number };
@@ -88,7 +96,34 @@ const AdminEvents = () => {
       return data;
     },
     enabled: isAdmin || !!organizerId,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
+
+  const draftKey = editing
+    ? eventDraftKey(editing.id ? String(editing.id) : null)
+    : null;
+  useSessionDraft({
+    key: draftKey,
+    value: editing,
+    enabled: !!editing,
+    debounceMs: 400,
+  });
+
+  const openNewEvent = () => {
+    const key = eventDraftKey(null);
+    const draft = loadSessionDraftData<any>(key);
+    writeSessionEnvelope<ActiveDraftPointer>(EVENT_DRAFT_ACTIVE_KEY, {
+      kind: "new",
+      id: null,
+    });
+    if (draft && typeof draft === "object") {
+      setEditing({ ...emptyEvent(), ...draft, id: undefined });
+      toast.message("Rascunho recuperado");
+    } else {
+      setEditing(emptyEvent());
+    }
+  };
 
   // Visão analítica de propriedade das provas (somente ADMIN)
   const stats = useOrganizerStats(isAdmin);
@@ -134,7 +169,7 @@ const AdminEvents = () => {
 
   const openEdit = async (r: any) => {
     if (!canManageEvent(r)) return unauthorizedOrMissing();
-    setEditing({
+    const base = {
       ...r,
       banner_aspect_ratio: r.banner_aspect_ratio ?? "9:16",
       banner_mobile_image: r.banner_mobile_image ?? "",
@@ -145,7 +180,18 @@ const AdminEvents = () => {
       coupons: Array.isArray(r.coupons)
         ? r.coupons.map((c: any) => toAdminCouponDraft(c))
         : [],
+    };
+    writeSessionEnvelope<ActiveDraftPointer>(EVENT_DRAFT_ACTIVE_KEY, {
+      kind: "edit",
+      id: String(r.id),
     });
+    const draft = loadSessionDraftData<any>(eventDraftKey(String(r.id)));
+    if (draft && typeof draft === "object") {
+      setEditing({ ...base, ...draft, id: r.id });
+      toast.message("Rascunho recuperado");
+    } else {
+      setEditing(base);
+    }
     setCouponUses({});
     setShirtSizeUses({});
     setActiveSignupsCount(0);
@@ -170,6 +216,34 @@ const AdminEvents = () => {
       setActiveSignupsCount(active);
     }
   };
+
+  const closeEditor = () => {
+    if (!editing) return;
+    const key = eventDraftKey(editing.id ? String(editing.id) : null);
+    if (peekSessionDraft(key)) {
+      if (!window.confirm("Descartar alterações não salvas?")) return;
+      clearSessionKey(key);
+    }
+    clearSessionKey(EVENT_DRAFT_ACTIVE_KEY);
+    setEditing(null);
+  };
+
+  const restoredEventRef = useRef(false);
+  useEffect(() => {
+    if (restoredEventRef.current || editing || isLoading) return;
+    const active = loadSessionDraftData<ActiveDraftPointer>(EVENT_DRAFT_ACTIVE_KEY);
+    if (!active) return;
+    restoredEventRef.current = true;
+    if (active.kind === "edit" && active.id) {
+      const row = (rows as any[]).find((r) => r.id === active.id);
+      if (row) void openEdit(row);
+      return;
+    }
+    if (peekSessionDraft(eventDraftKey(null))) {
+      openNewEvent();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, rows, editing]);
 
 
   const save = async () => {
@@ -325,6 +399,9 @@ const AdminEvents = () => {
 
     toast.success(isNew ? "Criado!" : "Atualizado!");
     const savedEventId = payload?.id as string | undefined;
+    clearSessionKey(eventDraftKey(isNew ? null : savedEventId ?? editing?.id));
+    if (isNew) clearSessionKey(eventDraftKey(null));
+    clearSessionKey(EVENT_DRAFT_ACTIVE_KEY);
     setEditing(null);
     qc.invalidateQueries({ queryKey: ["events"] });
     if (savedEventId) {
@@ -439,7 +516,7 @@ const AdminEvents = () => {
           <h1 className="font-display text-3xl font-bold">Provas</h1>
           <p className="text-muted-foreground mt-1">{visibleRows.length} {visibleRows.length === 1 ? "prova" : "provas"}</p>
         </div>
-        <Button variant="brand" onClick={() => setEditing(emptyEvent())}><Plus className="w-4 h-4" /> Nova prova</Button>
+        <Button variant="brand" onClick={openNewEvent}><Plus className="w-4 h-4" /> Nova prova</Button>
       </div>
 
       {isAdmin && (
@@ -478,7 +555,7 @@ const AdminEvents = () => {
         {!isLoading && visibleRows.length === 0 && (
           <div className="p-8 text-center">
             <p className="text-muted-foreground">Nenhuma prova encontrada.</p>
-            <Button variant="brand" className="mt-4" onClick={() => setEditing(emptyEvent())}>
+            <Button variant="brand" className="mt-4" onClick={openNewEvent}>
               <Plus className="w-4 h-4" /> Nova prova
             </Button>
           </div>
@@ -600,7 +677,7 @@ const AdminEvents = () => {
         <EventEditorDialog
           editing={editing}
           setEditing={setEditing}
-          onClose={() => setEditing(null)}
+          onClose={closeEditor}
           onSave={save}
           isAdmin={isAdmin}
           organizerId={organizerId}

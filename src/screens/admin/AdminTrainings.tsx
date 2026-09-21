@@ -189,6 +189,7 @@ const AdminTrainings = () => {
         inlineToggleKey="active"
         inlineToggleLabel="Ativo"
         fields={TRAINING_FIELDS}
+        draftKeyPrefix="admin:training-draft"
         onRowsLoaded={refreshCounts}
         renderSubtitle={(r) => {
           const n = counts[r.id] ?? 0;
