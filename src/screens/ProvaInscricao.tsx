@@ -87,6 +87,18 @@ import { BirthDateInput } from "@/components/account/BirthDateInput";
 
 import { PixPayment } from "@/components/site/PixPayment";
 import { Confetti } from "@/components/site/Confetti";
+import { useEventStorePublicEnabled } from "@/lib/eventStoreDev";
+import {
+  EventStoreCheckoutPreview,
+  EventStoreSignupProducts,
+} from "@/components/site/EventStoreSignupProducts";
+import type { EventStoreCartLine } from "@/lib/eventStore";
+import {
+  eventStoreCartProductsAmount,
+  eventStoreCartToAcquiredItems,
+  useEventStoreSignupCatalog,
+} from "@/lib/eventStore";
+import { StoreAcquiredOrderPanel } from "@/components/store-mock/StoreAcquiredProducts";
 
 type Distance = { distance: string; price?: number };
 type AgeBracket = { min: number; max: number };
@@ -221,6 +233,18 @@ const ProvaInscricao = () => {
   const [signupId, setSignupId] = useState<string | null>(null);
   const [resumeDismissed, setResumeDismissed] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const eventStorePublic = useEventStorePublicEnabled();
+  const [storeCart, setStoreCart] = useState<EventStoreCartLine[]>([]);
+  const { data: storeCatalog = [] } = useEventStoreSignupCatalog(
+    eventStorePublic ? id : null,
+  );
+  const storeProductsAmount = eventStorePublic
+    ? eventStoreCartProductsAmount(storeCatalog, storeCart)
+    : 0;
+  const storeAcquiredItems = useMemo(() => {
+    if (!eventStorePublic || storeCart.length === 0) return [];
+    return eventStoreCartToAcquiredItems(storeCatalog, storeCart);
+  }, [eventStorePublic, storeCart, storeCatalog]);
 
   // ---- PARTICIPANTE (rascunhos independentes: "eu mesmo" x "outra pessoa") ----
   type ParticipantDraft = {
@@ -1241,6 +1265,21 @@ const ProvaInscricao = () => {
         </div>
       )}
 
+      {eventStorePublic && storeAcquiredItems.length > 0 && (
+        <StoreAcquiredOrderPanel
+          className="mt-1"
+          variant="payment"
+          items={storeAcquiredItems}
+          summary={{
+            registration_amount: total,
+            products_amount: storeProductsAmount,
+            total_amount: Math.round((total + storeProductsAmount) * 100) / 100,
+            registration_label: distance ? `Inscrição ${distance}` : "Inscrição",
+          }}
+          showMockPixHint
+        />
+      )}
+
     </div>
   );
 
@@ -1388,6 +1427,16 @@ const ProvaInscricao = () => {
 
                   {total > 0 && (
                     <>
+                      {eventStorePublic && storeCart.length > 0 && id && (
+                        <EventStoreCheckoutPreview
+                          eventId={id}
+                          registrationAmount={total}
+                          modality={distance}
+                          cart={storeCart}
+                          isPartner={!!payView.is_partner}
+                          partnerName={payView.organizer_name || partnerOrganizerName}
+                        />
+                      )}
                       <div>
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-brand mb-2">
                           2. Realize o pagamento
@@ -1967,6 +2016,14 @@ const ProvaInscricao = () => {
                               </div>
                             )}
                           </div>
+                        )}
+
+                        {eventStorePublic && id && (
+                          <EventStoreSignupProducts
+                            eventId={id}
+                            cart={storeCart}
+                            onCartChange={setStoreCart}
+                          />
                         )}
 
                         <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-4">

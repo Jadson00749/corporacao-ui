@@ -53,6 +53,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EventBannerConfig } from "@/components/admin/EventBannerConfig";
 import { EventKitItemsEditor } from "@/components/admin/EventKitItemsEditor";
+import { EventStoreAdminPanel } from "@/components/admin/EventStoreAdminPanel";
+import { useEventStoreAdminEnabled } from "@/lib/eventStoreDev";
 import { isOrganizerPaymentReady, maskPixKey } from "@/lib/eventPayment";
 import { Link } from "@/lib/router-compat";
 import { cn } from "@/lib/utils";
@@ -88,9 +90,10 @@ export type EditorTabId =
   | "inscricao"
   | "percursos"
   | "kit"
+  | "loja"
   | "conteudo";
 
-const TABS: { id: EditorTabId; label: string }[] = [
+const BASE_TABS: { id: EditorTabId; label: string }[] = [
   { id: "geral", label: "Geral" },
   { id: "midia", label: "Mídia" },
   { id: "inscricao", label: "Inscrição" },
@@ -99,9 +102,9 @@ const TABS: { id: EditorTabId; label: string }[] = [
   { id: "conteudo", label: "Conteúdo" },
 ];
 
-type TabHealth = "complete" | "incomplete" | "not_started" | "error";
+const OPTIONAL_TABS = new Set<EditorTabId>(["kit", "conteudo", "loja"]);
 
-const OPTIONAL_TABS = new Set<EditorTabId>(["kit", "conteudo"]);
+type TabHealth = "complete" | "incomplete" | "not_started" | "error";
 
 const filled = (v: unknown) => String(v ?? "").trim().length > 0;
 
@@ -204,6 +207,7 @@ function computeTabHealth(
     inscricao: pack(inscricaoDone, inscricaoChecks.length),
     percursos: pack(percursosDone, percursosChecks.length, badLote || kidsSenior),
     kit: pack(kitDone, Math.max(kitChecks.length, 1), couponError),
+    loja: pack(1, 1), // opcional — catálogo real fora do progresso obrigatório
     conteudo: pack(conteudoDone, conteudoChecks.length),
   };
 }
@@ -257,6 +261,19 @@ export const EventEditorDialog = ({
 }: Props) => {
   const shirtStock = parseShirtSizeStock(editing?.shirt_size_stock);
   const isMobile = useIsMobile();
+  const eventStoreAdmin = useEventStoreAdminEnabled();
+  // Sempre derivar TABS no render (sem risco de lista stale)
+  const TABS: { id: EditorTabId; label: string }[] = eventStoreAdmin
+    ? (() => {
+        const tabs = [...BASE_TABS];
+        const kitIdx = tabs.findIndex((t) => t.id === "kit");
+        tabs.splice(kitIdx >= 0 ? kitIdx + 1 : tabs.length - 1, 0, {
+          id: "loja",
+          label: "Loja",
+        });
+        return tabs;
+      })()
+    : BASE_TABS;
   const [tab, setTab] = useState<EditorTabId>("geral");
   const [shirtForecast, setShirtForecast] = useState<string>("");
   const [planAppliedHint, setPlanAppliedHint] = useState(false);
@@ -271,6 +288,10 @@ export const EventEditorDialog = ({
       setShirtForecast("");
     }
   }, [editing?.id]);
+
+  useEffect(() => {
+    if (!eventStoreAdmin && tab === "loja") setTab("geral");
+  }, [eventStoreAdmin, tab]);
 
   const addItem = (key: string, item: any) =>
     setEditing({ ...editing, [key]: [...(editing[key] || []), item] });
@@ -335,6 +356,7 @@ export const EventEditorDialog = ({
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent
+        data-event-store-admin={eventStoreAdmin ? "1" : "0"}
         className={cn(
           "max-w-4xl w-[calc(100%-0.75rem)] sm:w-[calc(100%-2rem)]",
           "p-0 gap-0 overflow-hidden flex flex-col",
@@ -1339,6 +1361,12 @@ export const EventEditorDialog = ({
                     </Button>
                   </Section>
                 )}
+              </Panel>
+            )}
+
+            {eventStoreAdmin && show("loja") && (
+              <Panel isMobile={isMobile} title="Loja" status={health.loja.health}>
+                <EventStoreAdminPanel eventId={editing.id ?? null} />
               </Panel>
             )}
 

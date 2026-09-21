@@ -90,6 +90,138 @@ export type Database = {
           },
         ]
       }
+      event_store_products: {
+        Row: {
+          id: string
+          event_id: string
+          name: string
+          description: string
+          image_url: string | null
+          price: number
+          active: boolean
+          sort_order: number
+          has_variants: boolean
+          sale_starts_at: string | null
+          sale_ends_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          name: string
+          description?: string
+          image_url?: string | null
+          price: number
+          active?: boolean
+          sort_order?: number
+          has_variants?: boolean
+          sale_starts_at?: string | null
+          sale_ends_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          name?: string
+          description?: string
+          image_url?: string | null
+          price?: number
+          active?: boolean
+          sort_order?: number
+          has_variants?: boolean
+          sale_starts_at?: string | null
+          sale_ends_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_store_products_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_store_product_variants: {
+        Row: {
+          id: string
+          product_id: string
+          name: string
+          stock_quantity: number | null
+          price_override: number | null
+          active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          name?: string
+          stock_quantity?: number | null
+          price_override?: number | null
+          active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          name?: string
+          stock_quantity?: number | null
+          price_override?: number | null
+          active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_store_product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "event_store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_store_product_images: {
+        Row: {
+          id: string
+          product_id: string
+          image_url: string
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          image_url: string
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          image_url?: string
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_store_product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "event_store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_signups: {
         Row: {
           accepted_event_terms_at: string | null
@@ -1090,6 +1222,23 @@ export type Database = {
           payment_contact_name: string
           organizer_name: string
           is_partner: boolean
+        }[]
+      }
+      get_event_store_availability: {
+        Args: { _event_id: string }
+        Returns: {
+          product_id: string
+          variant_id: string
+          product_name: string
+          variant_name: string
+          unit_price: number
+          stock_quantity: number | null
+          reserved_quantity: number
+          available_quantity: number | null
+          unlimited: boolean
+          active: boolean
+          sale_starts_at: string | null
+          sale_ends_at: string | null
         }[]
       }
       update_organizer_payment_settings: {
