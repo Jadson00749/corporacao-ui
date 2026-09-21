@@ -1,27 +1,29 @@
 /**
  * Loja por prova — feature flags.
  *
- * ADMIN (produção):
+ * ADMIN:
  *   Sempre habilitado na UI do editor de provas.
  *   Segurança real = auth + roles + RLS (não esconder UI).
  *
  * PÚBLICO (inscrição + Produtos da prova + checkout standalone):
- *   Somente localhost/DEV + VITE_ENABLE_EVENT_STORE_DEV=true.
- *   Produção NÃO mostra carrinho/produtos na inscrição nem compra avulsa.
+ *   Habilitado por padrão em todos os ambientes (incluindo produção).
+ *   Kill switch opcional: VITE_ENABLE_EVENT_STORE_PUBLIC=false
  */
 
+/** Kill switch / enable explícito da loja pública. */
+export const EVENT_STORE_PUBLIC_ENV = "VITE_ENABLE_EVENT_STORE_PUBLIC";
+
+/** @deprecated Prefer EVENT_STORE_PUBLIC_ENV — mantido por compatibilidade local. */
 export const EVENT_STORE_DEV_ENV = "VITE_ENABLE_EVENT_STORE_DEV";
 
-function isLocalRuntimeAllowed(): boolean {
-  if (import.meta.env.DEV === true) return true;
-  if (import.meta.env.MODE === "development") return true;
-  if (typeof window !== "undefined") {
-    const h = window.location.hostname;
-    if (h === "localhost" || h === "127.0.0.1" || h === "[::1]") return true;
-  }
-  return false;
+function isPublicEnvDisabled(): boolean {
+  const raw = String(import.meta.env.VITE_ENABLE_EVENT_STORE_PUBLIC ?? "true")
+    .trim()
+    .toLowerCase();
+  return raw === "false" || raw === "0" || raw === "off";
 }
 
+/** @deprecated Usado só em tooling local legado. */
 export function isEventStoreDevEnvOn(): boolean {
   return (
     String(import.meta.env.VITE_ENABLE_EVENT_STORE_DEV ?? "")
@@ -36,11 +38,11 @@ export function isEventStoreAdminEnabled(): boolean {
 }
 
 /**
- * Catálogo + carrinho visual na inscrição pública.
- * Só localhost/DEV com a env local — nunca em build de produção na Vercel.
+ * Catálogo público + compra avulsa + produtos na inscrição.
+ * ON por padrão; desligar com VITE_ENABLE_EVENT_STORE_PUBLIC=false.
  */
 export function isEventStorePublicEnabled(): boolean {
-  return isLocalRuntimeAllowed() && isEventStoreDevEnvOn();
+  return !isPublicEnvDisabled();
 }
 
 /** @deprecated Use isEventStorePublicEnabled */
