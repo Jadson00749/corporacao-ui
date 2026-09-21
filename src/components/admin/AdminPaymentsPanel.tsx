@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,8 @@ const formatDate = (iso: string) => {
   });
 };
 
+const PAGE_SIZE = 50;
+
 type EventOpt = {
   id: string;
   name: string;
@@ -86,11 +88,30 @@ type Props = {
   initialOriginFilter?: OriginFilter;
   initialOwnership?: "all" | "corp" | "external";
   initialOrgFilter?: string;
-  /** Quando true, espelha filtros importantes na URL */
+  /** Quando true, espelha filtros importantes na URL (debounced) */
   syncUrl?: boolean;
   onApproveSignup: (id: string) => Promise<void>;
   onCancelSignup: (id: string) => Promise<void>;
 };
+
+function FilterField({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <label className={cn("block min-w-0 space-y-1", className)}>
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
 
 export function AdminPaymentsPanel({
   isAdmin,
@@ -111,7 +132,7 @@ export function AdminPaymentsPanel({
   onCancelSignup,
 }: Props) {
   const qc = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(initialSearch);
   const deferredSearch = useDeferredValue(search);
   const [eventFilter, setEventFilter] = useState(initialEventFilter);
@@ -120,48 +141,51 @@ export function AdminPaymentsPanel({
   const [ownership, setOwnership] = useState<"all" | "corp" | "external">(initialOwnership);
   const [orgFilter, setOrgFilter] = useState(initialOrgFilter);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
 
+  /**
+   * Persistência / URL DEPOIS do clique.
+   * State local atualiza na hora → 0 chamadas Supabase por filtro.
+   * setSearchParams é adiado (~350ms) para não competir com o paint do filtro.
+   */
+  const persistTimer = useRef<number | null>(null);
   useEffect(() => {
-    const prev = readSignupsUiSession() ?? {};
-    writeSignupsUiSession({
-      ...prev,
-      tab: "pagamentos",
-      payments: {
-        search,
-        eventFilter,
-        statusFilter,
-        originFilter,
-        ownership,
-        orgFilter,
-      },
-    });
+    if (persistTimer.current) window.clearTimeout(persistTimer.current);
+    persistTimer.current = window.setTimeout(() => {
+      const prev = readSignupsUiSession() ?? {};
+      writeSignupsUiSession({
+        ...prev,
+        tab: "pagamentos",
+        payments: {
+          search,
+          eventFilter,
+          statusFilter,
+          originFilter,
+          ownership,
+          orgFilter,
+        },
+      });
 
-    if (!syncUrl) return;
-    const next = new URLSearchParams(searchParams);
-    let dirty = false;
-    const setOrDel = (key: string, value: string, isDefault: boolean) => {
-      const cur = next.get(key);
-      if (isDefault) {
-        if (cur != null) {
-          next.delete(key);
-          dirty = true;
-        }
-      } else if (cur !== value) {
-        next.set(key, value);
-        dirty = true;
-      }
-    };
-    if (next.get("tab") !== "pagamentos") {
+      if (!syncUrl) return;
+      const next = new URLSearchParams(
+        typeof window !== "undefined" ? window.location.search : "",
+      );
+      const setOrDel = (key: string, value: string, isDefault: boolean) => {
+        if (isDefault) next.delete(key);
+        else next.set(key, value);
+      };
       next.set("tab", "pagamentos");
-      dirty = true;
-    }
-    setOrDel("event", eventFilter, eventFilter === "all");
-    setOrDel("status", statusFilter, statusFilter === "all");
-    setOrDel("q", search, !search.trim());
-    setOrDel("origin", ownership, ownership === "all");
-    setOrDel("organizer", orgFilter, orgFilter === "all");
-    if (dirty) setSearchParams(next, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      setOrDel("event", eventFilter, eventFilter === "all");
+      setOrDel("status", statusFilter, statusFilter === "all");
+      setOrDel("q", search, !search.trim());
+      setOrDel("ownership", ownership, ownership === "all" || !isAdmin);
+      setOrDel("organizer", orgFilter, orgFilter === "all" || !isAdmin);
+      setOrDel("payOrigin", originFilter, originFilter === "all");
+      setSearchParams(next, { replace: true });
+    }, 350);
+    return () => {
+      if (persistTimer.current) window.clearTimeout(persistTimer.current);
+    };
   }, [
     search,
     eventFilter,
@@ -170,7 +194,13 @@ export function AdminPaymentsPanel({
     ownership,
     orgFilter,
     syncUrl,
+    isAdmin,
+    setSearchParams,
   ]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [deferredSearch, eventFilter, statusFilter, originFilter, ownership, orgFilter]);
 
   const eventMap = useMemo(
     () => new Map(events.map((e) => [e.id, e])),
@@ -181,11 +211,16 @@ export function AdminPaymentsPanel({
     [organizers],
   );
 
-  const standaloneKey = [
-    "admin_payment_standalone_orders",
-    isAdmin ? "all" : organizerId ?? "",
-    eventIds.slice().sort().join(","),
-  ] as const;
+  const standaloneKey = useMemo(
+    () =>
+      [
+        "admin_payment_standalone_orders",
+        isAdmin ? "all" : organizerId ?? "",
+        // eventIds já vem memoizado do parent; join estável
+        eventIds.join(","),
+      ] as const,
+    [isAdmin, organizerId, eventIds],
+  );
 
   const {
     data: standaloneOrders = [],
@@ -194,8 +229,9 @@ export function AdminPaymentsPanel({
   } = useQuery({
     queryKey: standaloneKey,
     enabled: isAdmin || (!!organizerId && eventIds.length > 0),
-    staleTime: 30_000,
+    staleTime: 60_000,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
     queryFn: async () => {
       let q = supabase
         .from("event_store_orders")
@@ -294,53 +330,70 @@ export function AdminPaymentsPanel({
 
   const kpis = useMemo(() => computePaymentKpis(filtered), [filtered]);
 
-  const approve = async (row: PaymentRow) => {
-    setBusyId(row.id);
-    try {
-      if (row.entityType === "signup") {
-        await onApproveSignup(row.id);
-      } else {
-        await updateEventStoreStandalonePaymentStatus({
-          orderId: row.id,
-          status: "confirmada",
-        });
-        await qc.invalidateQueries({ queryKey: ["admin_payment_standalone_orders"] });
-        toast.success("Pagamento aprovado");
-      }
-    } catch (e: any) {
-      toast.error(
-        mapEventStoreAdminOrderError(e ?? {}) ||
-          e?.message ||
-          "Não foi possível aprovar.",
-      );
-    } finally {
-      setBusyId(null);
-    }
-  };
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pagedRows = useMemo(() => {
+    const start = safePage * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, safePage]);
 
-  const cancel = async (row: PaymentRow) => {
-    setBusyId(row.id);
-    try {
-      if (row.entityType === "signup") {
-        await onCancelSignup(row.id);
-      } else {
-        await updateEventStoreStandalonePaymentStatus({
-          orderId: row.id,
-          status: "cancelada",
-        });
-        await qc.invalidateQueries({ queryKey: ["admin_payment_standalone_orders"] });
-        toast.success("Pedido cancelado");
+  const setStatusQuick = useCallback((next: SignupStatusFilter) => {
+    setStatusFilter((prev) => (prev === next ? "all" : next));
+  }, []);
+
+  const approve = useCallback(
+    async (row: PaymentRow) => {
+      setBusyId(row.id);
+      try {
+        if (row.entityType === "signup") {
+          await onApproveSignup(row.id);
+        } else {
+          await updateEventStoreStandalonePaymentStatus({
+            orderId: row.id,
+            status: "confirmada",
+          });
+          await qc.invalidateQueries({ queryKey: ["admin_payment_standalone_orders"] });
+          toast.success("Pagamento aprovado");
+        }
+      } catch (e: any) {
+        toast.error(
+          mapEventStoreAdminOrderError(e ?? {}) ||
+            e?.message ||
+            "Não foi possível aprovar.",
+        );
+      } finally {
+        setBusyId(null);
       }
-    } catch (e: any) {
-      toast.error(
-        mapEventStoreAdminOrderError(e ?? {}) ||
-          e?.message ||
-          "Não foi possível cancelar.",
-      );
-    } finally {
-      setBusyId(null);
-    }
-  };
+    },
+    [onApproveSignup, qc],
+  );
+
+  const cancel = useCallback(
+    async (row: PaymentRow) => {
+      setBusyId(row.id);
+      try {
+        if (row.entityType === "signup") {
+          await onCancelSignup(row.id);
+        } else {
+          await updateEventStoreStandalonePaymentStatus({
+            orderId: row.id,
+            status: "cancelada",
+          });
+          await qc.invalidateQueries({ queryKey: ["admin_payment_standalone_orders"] });
+          toast.success("Pedido cancelado");
+        }
+      } catch (e: any) {
+        toast.error(
+          mapEventStoreAdminOrderError(e ?? {}) ||
+            e?.message ||
+            "Não foi possível cancelar.",
+        );
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [onCancelSignup, qc],
+  );
 
   const loading = signupsLoading || standaloneLoading;
   const partnerOrganizers = useMemo(
@@ -372,14 +425,14 @@ export function AdminPaymentsPanel({
           label="A receber"
           value={brl(kpis.aReceber)}
           hint={`${kpis.countReceber} ${kpis.countReceber === 1 ? "pagamento" : "pagamentos"}`}
-          onClick={() => setStatusFilter("pendente")}
+          onClick={() => setStatusQuick("pendente")}
           active={statusFilter === "pendente"}
         />
         <Kpi
           label="Em atraso"
           value={brl(kpis.emAtraso)}
           hint={`${kpis.countAtraso} ${kpis.countAtraso === 1 ? "pagamento" : "pagamentos"}`}
-          onClick={() => setStatusFilter("pagamento_atrasado")}
+          onClick={() => setStatusQuick("pagamento_atrasado")}
           active={statusFilter === "pagamento_atrasado"}
           emphasize={kpis.emAtraso > 0}
         />
@@ -387,66 +440,77 @@ export function AdminPaymentsPanel({
           label="Recebido"
           value={brl(kpis.recebido)}
           hint={`${kpis.countRecebido} ${kpis.countRecebido === 1 ? "pagamento" : "pagamentos"}`}
-          onClick={() => setStatusFilter("confirmada")}
+          onClick={() => setStatusQuick("confirmada")}
           active={statusFilter === "confirmada"}
           className="col-span-2 sm:col-span-1"
         />
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <Input
-          placeholder="Buscar nome, e-mail, CPF…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <Select value={eventFilter} onValueChange={setEventFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Prova" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as provas</SelectItem>
-            {events.map((e) => (
-              <SelectItem key={e.id} value={e.id}>
-                {e.name}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <FilterField label="Buscar">
+          <Input
+            placeholder="Buscar nome, e-mail, CPF…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </FilterField>
+        <FilterField label="Prova">
+          <Select value={eventFilter} onValueChange={setEventFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Prova" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as provas</SelectItem>
+              {events.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterField>
+        <FilterField label="Status">
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as SignupStatusFilter)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              <SelectItem value="pendente">Em andamento</SelectItem>
+              <SelectItem value="pagamento_atrasado">Em atraso</SelectItem>
+              <SelectItem value="confirmada">Aprovados</SelectItem>
+              <SelectItem value="cancelada">Cancelados</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterField>
+        <FilterField label="Origem">
+          <Select
+            value={originFilter}
+            onValueChange={(v) => setOriginFilter(v as OriginFilter)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Origem" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as origens</SelectItem>
+              <SelectItem value="registration">Inscrição</SelectItem>
+              <SelectItem value="registration_with_products">
+                Inscrição + produtos
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={statusFilter}
-          onValueChange={(v) => setStatusFilter(v as SignupStatusFilter)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="pendente">Em andamento</SelectItem>
-            <SelectItem value="pagamento_atrasado">Em atraso</SelectItem>
-            <SelectItem value="confirmada">Aprovados</SelectItem>
-            <SelectItem value="cancelada">Cancelados</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
-          value={originFilter}
-          onValueChange={(v) => setOriginFilter(v as OriginFilter)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Origem" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            <SelectItem value="registration">Inscrição</SelectItem>
-            <SelectItem value="registration_with_products">
-              Inscrição + produtos
-            </SelectItem>
-            <SelectItem value="product">Produto</SelectItem>
-          </SelectContent>
-        </Select>
+              <SelectItem value="product">Produto</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterField>
       </div>
 
       {isAdmin ? (
         <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mr-1">
+            Organizador
+          </span>
           {(
             [
               ["all", "Todas"],
@@ -500,20 +564,50 @@ export function AdminPaymentsPanel({
         </p>
       ) : (
         <>
-          {/* Mobile cards */}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>
+              {filtered.length}{" "}
+              {filtered.length === 1 ? "pagamento" : "pagamentos"}
+              {pageCount > 1 ? ` · página ${safePage + 1} de ${pageCount}` : ""}
+            </span>
+            {pageCount > 1 ? (
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  disabled={safePage <= 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  disabled={safePage >= pageCount - 1}
+                  onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                >
+                  Próxima
+                </Button>
+              </div>
+            ) : null}
+          </div>
+
           <div className="space-y-2 md:hidden">
-            {filtered.map((r) => (
+            {pagedRows.map((r) => (
               <PaymentMobileCard
                 key={`${r.entityType}:${r.id}`}
                 row={r}
                 busy={busyId === r.id}
-                onApprove={() => void approve(r)}
-                onCancel={() => void cancel(r)}
+                onApprove={approve}
+                onCancel={cancel}
               />
             ))}
           </div>
 
-          {/* Desktop table */}
           <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
             <table className="w-full min-w-[48rem] text-sm">
               <thead>
@@ -528,13 +622,13 @@ export function AdminPaymentsPanel({
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r) => (
+                {pagedRows.map((r) => (
                   <PaymentDesktopRow
                     key={`${r.entityType}:${r.id}`}
                     row={r}
                     busy={busyId === r.id}
-                    onApprove={() => void approve(r)}
-                    onCancel={() => void cancel(r)}
+                    onApprove={approve}
+                    onCancel={cancel}
                   />
                 ))}
               </tbody>
@@ -668,7 +762,7 @@ function PaymentActions({
   );
 }
 
-function PaymentDesktopRow({
+const PaymentDesktopRow = memo(function PaymentDesktopRow({
   row,
   busy,
   onApprove,
@@ -676,8 +770,8 @@ function PaymentDesktopRow({
 }: {
   row: PaymentRow;
   busy: boolean;
-  onApprove: () => void;
-  onCancel: () => void;
+  onApprove: (row: PaymentRow) => void;
+  onCancel: (row: PaymentRow) => void;
 }) {
   return (
     <tr className="border-b border-border/40 last:border-0">
@@ -708,15 +802,15 @@ function PaymentDesktopRow({
         <PaymentActions
           row={row}
           busy={busy}
-          onApprove={onApprove}
-          onCancel={onCancel}
+          onApprove={() => onApprove(row)}
+          onCancel={() => onCancel(row)}
         />
       </td>
     </tr>
   );
-}
+});
 
-function PaymentMobileCard({
+const PaymentMobileCard = memo(function PaymentMobileCard({
   row,
   busy,
   onApprove,
@@ -724,8 +818,8 @@ function PaymentMobileCard({
 }: {
   row: PaymentRow;
   busy: boolean;
-  onApprove: () => void;
-  onCancel: () => void;
+  onApprove: (row: PaymentRow) => void;
+  onCancel: (row: PaymentRow) => void;
 }) {
   return (
     <div className="rounded-xl border border-border/60 bg-card/40 p-3.5 space-y-2.5">
@@ -752,10 +846,10 @@ function PaymentMobileCard({
       <PaymentActions
         row={row}
         busy={busy}
-        onApprove={onApprove}
-        onCancel={onCancel}
+        onApprove={() => onApprove(row)}
+        onCancel={() => onCancel(row)}
         compact
       />
     </div>
   );
-}
+});

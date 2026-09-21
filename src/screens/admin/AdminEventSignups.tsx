@@ -363,12 +363,35 @@ const AdminEventSignups = () => {
           ? searchParams.get("status")
           : savedUi?.payments?.statusFilter ?? "all",
       ),
-      originFilter: (savedUi?.payments?.originFilter as
-        | "all"
-        | PaymentOrigin
-        | undefined) ?? "all",
-      ownership: savedUi?.payments?.ownership ?? ("all" as const),
-      orgFilter: savedUi?.payments?.orgFilter ?? "all",
+      originFilter: ((): "all" | PaymentOrigin => {
+        const fromUrl =
+          isPaymentsUrl && searchParams.has("payOrigin")
+            ? searchParams.get("payOrigin")
+            : null;
+        const raw = fromUrl ?? savedUi?.payments?.originFilter ?? "all";
+        if (
+          raw === "registration" ||
+          raw === "registration_with_products" ||
+          raw === "product" ||
+          raw === "all"
+        ) {
+          return raw;
+        }
+        return "all";
+      })(),
+      ownership: ((): "all" | "corp" | "external" => {
+        const fromUrl =
+          isPaymentsUrl && searchParams.has("ownership")
+            ? searchParams.get("ownership")
+            : null;
+        const raw = fromUrl ?? savedUi?.payments?.ownership ?? "all";
+        if (raw === "corp" || raw === "external" || raw === "all") return raw;
+        return "all";
+      })(),
+      orgFilter:
+        isPaymentsUrl && searchParams.has("organizer")
+          ? searchParams.get("organizer") || "all"
+          : savedUi?.payments?.orgFilter ?? "all",
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só no mount
     [],
@@ -704,6 +727,15 @@ const AdminEventSignups = () => {
     [allSignups, eventIds, isAdmin, patchSignupStatus],
   );
 
+  const approveSignupPayment = useCallback(
+    (id: string) => updateStatus(id, "confirmada"),
+    [updateStatus],
+  );
+  const cancelSignupPayment = useCallback(
+    (id: string) => updateStatus(id, "cancelada"),
+    [updateStatus],
+  );
+
   const openDetail = useCallback((row: Row) => setDetail(row), []);
 
   const setStatusFilterSafe: Dispatch<SetStateAction<SignupStatusFilter>> = setStatusFilter;
@@ -785,8 +817,8 @@ const AdminEventSignups = () => {
           initialOwnership={paymentsInitial.ownership}
           initialOrgFilter={paymentsInitial.orgFilter}
           syncUrl={mainTab === "pagamentos"}
-          onApproveSignup={(id) => updateStatus(id, "confirmada")}
-          onCancelSignup={(id) => updateStatus(id, "cancelada")}
+          onApproveSignup={approveSignupPayment}
+          onCancelSignup={cancelSignupPayment}
         />
       ) : (
         <>
