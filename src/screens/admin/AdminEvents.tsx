@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, Package } from "lucide-react";
 import { toast } from "sonner";
 import { isKidsDistance } from "@/lib/eventPricing";
 import {
@@ -620,6 +620,11 @@ const AdminEvents = () => {
                 <Switch checked={!!r.active} onCheckedChange={(v) => toggleActive(r, v)} />
                 <span className="hidden sm:inline">{r.active ? "Ativa" : "Inativa"}</span>
               </label>
+              <Button variant="outline" size="sm" asChild title="Pedidos da prova">
+                <Link to={`/admin/store-orders?event=${r.id}`}>
+                  <Package className="w-4 h-4" />
+                </Link>
+              </Button>
               <Button variant="outline" size="sm" onClick={() => openEdit(r)}><Pencil className="w-4 h-4" /></Button>
               <Button
                 variant="outline"

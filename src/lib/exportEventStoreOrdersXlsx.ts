@@ -53,9 +53,20 @@ const styleHeader = (ws: ExcelJS.Worksheet) => {
 export async function downloadEventStoreOrdersXlsx(args: {
   eventName: string;
   orders: EventStoreOrderRow[];
+  /** Inclui coluna Prova quando o export cobre várias provas. */
+  includeEventColumn?: boolean;
+  eventNameById?: Map<string, string> | Record<string, string>;
 }) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Corporação";
+  const includeEvent = !!args.includeEventColumn;
+  const nameOf = (eventId: string) => {
+    if (!args.eventNameById) return "";
+    if (args.eventNameById instanceof Map) {
+      return args.eventNameById.get(eventId) || "";
+    }
+    return args.eventNameById[eventId] || "";
+  };
 
   const sep = computeEventStoreSeparation(args.orders);
   const ws1 = wb.addWorksheet("Resumo para separação");
@@ -79,6 +90,9 @@ export async function downloadEventStoreOrdersXlsx(args: {
 
   const ws2 = wb.addWorksheet("Pedidos e retirada");
   ws2.columns = [
+    ...(includeEvent
+      ? [{ header: "Prova", key: "prova", width: 28 } as const]
+      : []),
     { header: "Origem", key: "origem", width: 16 },
     { header: "Comprador", key: "comprador", width: 28 },
     { header: "Telefone", key: "telefone", width: 16 },
@@ -102,6 +116,7 @@ export async function downloadEventStoreOrdersXlsx(args: {
     });
     for (const item of order.event_store_order_items ?? []) {
       ws2.addRow({
+        ...(includeEvent ? { prova: nameOf(order.event_id) } : {}),
         origem: eventStoreOrderOriginLabel(order.order_type),
         comprador,
         telefone: phone,

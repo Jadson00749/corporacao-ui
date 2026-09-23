@@ -30,7 +30,7 @@ import {
   type EventStoreProduct,
   type EventStoreVariant,
 } from "@/lib/eventStore";
-import { EventStoreOrdersPanel } from "@/components/admin/EventStoreOrdersPanel";
+import { Link } from "@/lib/router-compat";
 
 const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -155,8 +155,6 @@ type Props = {
   onSaveEvent?: () => void;
 };
 
-type StoreSubTab = "produtos" | "pedidos";
-
 export function EventStoreAdminPanel({
   eventId,
   eventName,
@@ -169,7 +167,6 @@ export function EventStoreAdminPanel({
   const [editing, setEditing] = useState<DraftProduct | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [subTab, setSubTab] = useState<StoreSubTab>("produtos");
 
   const sorted = useMemo(
     () => [...products].sort((a, b) => a.sort_order - b.sort_order),
@@ -315,50 +312,35 @@ export function EventStoreAdminPanel({
     <div className="space-y-5">
       <div className="rounded-xl border border-border/60 bg-card/40 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed">
         <span className="font-semibold text-foreground">Loja da prova</span>
-        {" · "}produtos, separação e retirada. Aprovação de PIX fica em{" "}
+        {" · "}cadastro de produtos, preços e estoque. Separação e retirada
+        ficam em{" "}
+        <Link
+          to={`/admin/store-orders?event=${eventId}`}
+          className="font-medium text-brand underline-offset-2 hover:underline"
+        >
+          Pedidos
+        </Link>
+        . Aprovação de PIX fica em{" "}
         <span className="font-medium text-foreground/80">
           Inscrições → Pagamentos
         </span>
         .
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            { id: "produtos" as const, label: "Produtos" },
-            { id: "pedidos" as const, label: "Pedidos e separação" },
-          ] as const
-        ).map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setSubTab(t.id)}
-            className={cn(
-              "text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors",
-              subTab === t.id
-                ? "border-brand bg-brand/15 text-brand"
-                : "border-border text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {subTab === "pedidos" ? (
-        <EventStoreOrdersPanel
-          eventId={eventId}
-          eventName={eventName?.trim() || "prova"}
-        />
-      ) : (
-        <>
-      <div className="space-y-1">
-        <h3 className="font-display text-base font-semibold text-foreground">
-          Produtos
-        </h3>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Venda produtos oficiais junto com a inscrição.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h3 className="font-display text-base font-semibold text-foreground">
+            Produtos
+          </h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Venda produtos oficiais junto com a inscrição ou avulsos.
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to={`/admin/store-orders?event=${eventId}`}>
+            Ver pedidos desta prova
+          </Link>
+        </Button>
       </div>
 
       <Button type="button" variant="outline" size="sm" onClick={openNew}>
@@ -464,8 +446,6 @@ export function EventStoreAdminPanel({
         onChange={setEditing}
         onSave={save}
       />
-        </>
-      )}
     </div>
   );
 }

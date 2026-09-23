@@ -38,6 +38,7 @@ import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminRentalItemsRouteImport } from './routes/admin.rental-items'
 import { Route as AdminRentalOrdersRouteImport } from './routes/admin.rental-orders'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminStoreOrdersRouteImport } from './routes/admin.store-orders'
 import { Route as AdminTestimonialsRouteImport } from './routes/admin.testimonials'
 import { Route as AdminTrainingsRouteImport } from './routes/admin.trainings'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -190,6 +191,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminStoreOrdersRoute = AdminStoreOrdersRouteImport.update({
+  id: '/store-orders',
+  path: '/store-orders',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminTestimonialsRoute = AdminTestimonialsRouteImport.update({
   id: '/testimonials',
   path: '/testimonials',
@@ -250,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/admin/rental-items': typeof AdminRentalItemsRoute
   '/admin/rental-orders': typeof AdminRentalOrdersRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/store-orders': typeof AdminStoreOrdersRoute
   '/admin/testimonials': typeof AdminTestimonialsRoute
   '/admin/trainings': typeof AdminTrainingsRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -286,6 +293,7 @@ export interface FileRoutesByTo {
   '/admin/rental-items': typeof AdminRentalItemsRoute
   '/admin/rental-orders': typeof AdminRentalOrdersRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/store-orders': typeof AdminStoreOrdersRoute
   '/admin/testimonials': typeof AdminTestimonialsRoute
   '/admin/trainings': typeof AdminTrainingsRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -324,6 +332,7 @@ export interface FileRoutesById {
   '/admin/rental-items': typeof AdminRentalItemsRoute
   '/admin/rental-orders': typeof AdminRentalOrdersRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/store-orders': typeof AdminStoreOrdersRoute
   '/admin/testimonials': typeof AdminTestimonialsRoute
   '/admin/trainings': typeof AdminTrainingsRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -363,6 +372,7 @@ export interface FileRouteTypes {
     | '/admin/rental-items'
     | '/admin/rental-orders'
     | '/admin/settings'
+    | '/admin/store-orders'
     | '/admin/testimonials'
     | '/admin/trainings'
     | '/auth/callback'
@@ -399,6 +409,7 @@ export interface FileRouteTypes {
     | '/admin/rental-items'
     | '/admin/rental-orders'
     | '/admin/settings'
+    | '/admin/store-orders'
     | '/admin/testimonials'
     | '/admin/trainings'
     | '/auth/callback'
@@ -436,6 +447,7 @@ export interface FileRouteTypes {
     | '/admin/rental-items'
     | '/admin/rental-orders'
     | '/admin/settings'
+    | '/admin/store-orders'
     | '/admin/testimonials'
     | '/admin/trainings'
     | '/auth/callback'
@@ -669,6 +681,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/store-orders': {
+      id: '/admin/store-orders'
+      path: '/store-orders'
+      fullPath: '/admin/store-orders'
+      preLoaderRoute: typeof AdminStoreOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/testimonials': {
       id: '/admin/testimonials'
       path: '/testimonials'
@@ -730,6 +749,7 @@ interface AdminRouteChildren {
   AdminRentalItemsRoute: typeof AdminRentalItemsRoute
   AdminRentalOrdersRoute: typeof AdminRentalOrdersRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminStoreOrdersRoute: typeof AdminStoreOrdersRoute
   AdminTestimonialsRoute: typeof AdminTestimonialsRoute
   AdminTrainingsRoute: typeof AdminTrainingsRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -751,6 +771,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminRentalItemsRoute: AdminRentalItemsRoute,
   AdminRentalOrdersRoute: AdminRentalOrdersRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminStoreOrdersRoute: AdminStoreOrdersRoute,
   AdminTestimonialsRoute: AdminTestimonialsRoute,
   AdminTrainingsRoute: AdminTrainingsRoute,
   AdminIndexRoute: AdminIndexRoute,

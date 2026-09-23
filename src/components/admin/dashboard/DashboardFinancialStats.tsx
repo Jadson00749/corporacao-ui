@@ -250,7 +250,7 @@ export function DashboardFinancialStats({ metrics, isAdmin, partnerView, onOpenP
             value={brl(prod)}
             hint={`${soldQty} ${soldQty === 1 ? "item" : "itens"}`}
             className="col-span-2 xl:col-span-1"
-            to="/admin/event-signups?tab=pagamentos"
+            to="/admin/store-orders"
           />
         </div>
       </section>

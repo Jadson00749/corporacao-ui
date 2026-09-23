@@ -1124,26 +1124,35 @@ function normalizeOrderRow(row: any): EventStoreOrderRow {
 export async function fetchEventStoreOrders(
   eventId: string,
 ): Promise<EventStoreOrderRow[]> {
-  const withNew = await supabase
-    .from("event_store_orders")
-    .select(ORDERS_SELECT_FULL)
-    .eq("event_id", eventId)
-    .order("created_at", { ascending: false });
+  return fetchEventStoreOrdersScoped([eventId]);
+}
 
+/**
+ * Pedidos da loja no escopo do admin/organizer.
+ * `eventIds === "all"` → sem filtro de prova (admin; RLS limita).
+ */
+export async function fetchEventStoreOrdersScoped(
+  eventIds: string[] | "all",
+): Promise<EventStoreOrderRow[]> {
+  if (eventIds !== "all" && eventIds.length === 0) return [];
+
+  const run = (select: string) => {
+    let q = supabase
+      .from("event_store_orders")
+      .select(select)
+      .order("created_at", { ascending: false });
+    if (eventIds !== "all") q = q.in("event_id", eventIds);
+    return q;
+  };
+
+  const withNew = await run(ORDERS_SELECT_FULL);
   const needsLegacy =
     !!withNew.error &&
     /order_type|buyer_name_snapshot|fulfillment_status|column/i.test(
       withNew.error.message,
     );
 
-  const result = needsLegacy
-    ? await supabase
-        .from("event_store_orders")
-        .select(ORDERS_SELECT_LEGACY)
-        .eq("event_id", eventId)
-        .order("created_at", { ascending: false })
-    : withNew;
-
+  const result = needsLegacy ? await run(ORDERS_SELECT_LEGACY) : withNew;
   if (result.error) throw result.error;
   return (result.data ?? []).map(normalizeOrderRow);
 }
@@ -1153,6 +1162,27 @@ export function useEventStoreOrders(eventId: string | null | undefined) {
     queryKey: ["admin_event_store_orders", eventId],
     enabled: !!eventId && isEventStoreAdminEnabled(),
     queryFn: () => fetchEventStoreOrders(eventId!),
+  });
+}
+
+/** Hub Pedidos: uma query para todas as provas do escopo. */
+export function useEventStoreOrdersScoped(
+  eventIds: string[] | "all" | null | undefined,
+) {
+  const key =
+    eventIds === "all"
+      ? "all"
+      : eventIds
+        ? [...eventIds].sort().join(",")
+        : "";
+  return useQuery({
+    queryKey: ["admin_event_store_orders_scoped", key],
+    enabled:
+      isEventStoreAdminEnabled() &&
+      eventIds != null &&
+      (eventIds === "all" || eventIds.length > 0),
+    staleTime: 60_000,
+    queryFn: () => fetchEventStoreOrdersScoped(eventIds === null ? [] : eventIds!),
   });
 }
 

@@ -23,6 +23,7 @@ import {
   Wallet,
   ClipboardList,
   ChevronDown,
+  Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OrganizerOnboardingTour } from "@/components/admin/OrganizerOnboardingTour";
@@ -76,6 +77,12 @@ const organizerItems: NavItem[] = [
     organizerLabel: "Minhas provas",
   },
   {
+    to: "/admin/store-orders",
+    label: "Pedidos",
+    icon: Package,
+    organizer: true,
+  },
+  {
     to: "/admin/event-structure",
     label: "Locação de Estruturas",
     icon: Tent,
@@ -98,6 +105,7 @@ const adminGroups: NavGroup[] = [
     items: [
       { to: "/admin/event-signups", label: "Inscrições provas", icon: Trophy },
       { to: "/admin/events", label: "Provas", icon: Trophy },
+      { to: "/admin/store-orders", label: "Pedidos", icon: Package },
       { to: "/admin/trainings", label: "Treinos", icon: Calendar },
     ],
   },
@@ -133,6 +141,8 @@ const organizerRoutes = new Set([
   "/admin/events/",
   "/admin/event-signups",
   "/admin/event-signups/",
+  "/admin/store-orders",
+  "/admin/store-orders/",
   "/admin/event-structure",
   "/admin/event-structure/",
   "/admin/payment-settings",

@@ -95,3 +95,27 @@ export function readSignupsUiSession(): SignupsUiSession | null {
 export function writeSignupsUiSession(data: SignupsUiSession): void {
   writeSessionEnvelope(SIGNUPS_UI_SESSION_KEY, data);
 }
+
+export const STORE_ORDERS_UI_SESSION_KEY = "admin:store-orders:ui";
+
+export type StoreOrdersUiSession = {
+  search?: string;
+  eventFilter?: string;
+  statusFilter?: string;
+  originFilter?: string;
+  pickupFilter?: string;
+  orgFilter?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export function readStoreOrdersUiSession(): StoreOrdersUiSession | null {
+  return (
+    readSessionEnvelope<StoreOrdersUiSession>(STORE_ORDERS_UI_SESSION_KEY)
+      ?.data ?? null
+  );
+}
+
+export function writeStoreOrdersUiSession(data: StoreOrdersUiSession): void {
+  writeSessionEnvelope(STORE_ORDERS_UI_SESSION_KEY, data);
+}
