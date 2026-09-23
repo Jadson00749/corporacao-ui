@@ -35,6 +35,9 @@ type Props = {
   siteWhatsapp?: string | null;
   partnerName?: string | null;
   autoOpenCheckout?: boolean;
+  /** CTA de inscrição (secundário no mobile quando o carrinho assume o rodapé). */
+  signupHref?: string | null;
+  signupInternal?: boolean;
 };
 
 /**
@@ -53,6 +56,8 @@ export function EventStoreStandaloneSection({
   siteWhatsapp,
   partnerName,
   autoOpenCheckout = false,
+  signupHref,
+  signupInternal = true,
 }: Props) {
   const enabled = isEventStorePublicEnabled();
   const { user } = useAuth();
@@ -70,6 +75,7 @@ export function EventStoreStandaloneSection({
   const [focusOrder, setFocusOrder] = useState<MyEventStoreOrderRow | null>(
     null,
   );
+  const [inProductsSection, setInProductsSection] = useState(false);
 
   const awaitingOrder = useMemo(
     () => pickAwaitingPaymentStandaloneOrder(myOrders),
@@ -105,11 +111,37 @@ export function EventStoreStandaloneSection({
     }
   }, [autoOpenCheckout, cart.length, awaitingOrder]);
 
+  /* Carrinho + seção Produtos visível → CTA contextual no rodapé (some Inscrever-se sticky) */
+  useEffect(() => {
+    if (cart.length === 0) {
+      setInProductsSection(false);
+      document.body.classList.remove("store-cart-priority");
+      return;
+    }
+    const section = document.getElementById("produtos-prova");
+    if (!section) return;
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const active = entry.isIntersecting;
+        setInProductsSection(active);
+        document.body.classList.toggle("store-cart-priority", active);
+      },
+      { rootMargin: "-12% 0px -35% 0px", threshold: [0, 0.05, 0.15] },
+    );
+    io.observe(section);
+    return () => {
+      io.disconnect();
+      document.body.classList.remove("store-cart-priority");
+    };
+  }, [cart.length]);
+
   if (!enabled) return null;
   if (!isLoading && catalog.length === 0) return null;
 
   const preview = eventStoreCartProductsAmount(catalog, cart);
   const itemCount = cart.reduce((s, l) => s + l.quantity, 0);
+  const cartPriority = cart.length > 0 && inProductsSection;
 
   const openCartCheckout = () => {
     setFocusOrder(null);
@@ -122,13 +154,21 @@ export function EventStoreStandaloneSection({
   };
 
   return (
-    <div className="space-y-5 pb-2">
+    <div
+      className={cn(
+        "space-y-5",
+        cartPriority
+          ? "pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-2"
+          : "pb-2",
+      )}
+    >
       <div className="space-y-1">
         <h3 className="font-display text-xl sm:text-2xl font-bold text-foreground">
           Produtos oficiais da prova
         </h3>
         <p className="text-sm text-muted-foreground leading-relaxed max-w-xl">
-          Compre itens da prova para retirar na entrega dos kits.
+          Quer levar algo a mais do evento? Escolha seus produtos e retire na
+          entrega dos kits.
         </p>
       </div>
 
@@ -156,11 +196,11 @@ export function EventStoreStandaloneSection({
       {cart.length > 0 ? (
         <div
           className={cn(
-            "sticky z-30 rounded-xl border border-border/60 bg-background/95 backdrop-blur",
-            "supports-[backdrop-filter]:bg-background/80 px-3 py-2.5 shadow-lg",
-            /* Acima do CTA Inscrever-se; pr evita WhatsApp flutuante cobrir o botão */
-            "bottom-[calc(5.75rem+env(safe-area-inset-bottom))] lg:bottom-4",
-            "pr-14 sm:pr-3",
+            "prova-store-cart-bar z-40 border border-border/60 bg-background/95 backdrop-blur",
+            "supports-[backdrop-filter]:bg-background/80 shadow-lg",
+            cartPriority
+              ? "fixed inset-x-0 bottom-0 rounded-none border-x-0 border-b-0 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:static lg:inset-auto lg:rounded-xl lg:border lg:px-3 lg:py-2.5 lg:pb-2.5"
+              : "sticky rounded-xl px-3 py-2.5 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] lg:bottom-4",
           )}
         >
           <div className="flex items-center justify-between gap-3">
@@ -182,6 +222,27 @@ export function EventStoreStandaloneSection({
               Ver pedido
             </Button>
           </div>
+          {cartPriority && signupHref ? (
+            <p className="mt-2 text-center text-[11px] text-muted-foreground lg:hidden">
+              {signupInternal ? (
+                <Link
+                  to={signupHref}
+                  className="underline-offset-2 hover:text-foreground hover:underline"
+                >
+                  Inscrever-se na prova
+                </Link>
+              ) : (
+                <a
+                  href={signupHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline-offset-2 hover:text-foreground hover:underline"
+                >
+                  Inscrever-se na prova
+                </a>
+              )}
+            </p>
+          ) : null}
         </div>
       ) : null}
 

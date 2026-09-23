@@ -10,6 +10,11 @@ type Props = {
   /** classes de proporção do quadro, ex: "aspect-[16/9]" */
   className?: string;
   imgClassName?: string;
+  /**
+   * contain = arte completa (padrão).
+   * cover = preenche o quadro com crop elegante (listagens mobile).
+   */
+  fit?: "contain" | "cover";
   children?: React.ReactNode;
   loading?: "lazy" | "eager";
 };
@@ -29,8 +34,9 @@ const useIsMdUp = () => {
 };
 
 /**
- * Moldura de banner que preserva a arte completa.
- * Mesma URL: fundo blur + foreground object-contain (sem 2ª requisição).
+ * Moldura de banner.
+ * contain: arte completa sobre blur (padrão).
+ * cover: preenche o quadro sem deformar (crop central).
  */
 export const BannerFrame = ({
   src,
@@ -38,6 +44,7 @@ export const BannerFrame = ({
   alt,
   className,
   imgClassName,
+  fit = "contain",
   children,
   loading = "lazy",
 }: Props) => {
@@ -45,19 +52,22 @@ export const BannerFrame = ({
   const desktop = (src || "").trim();
   const mobile = (mobileSrc || src || "").trim();
   const displaySrc = mdUp ? desktop || mobile : mobile || desktop;
+  const useCover = fit === "cover";
 
   return (
     <div className={cn("relative overflow-hidden bg-[#0b0b0b]", className)}>
       {displaySrc ? (
         <>
-          <img
-            src={displaySrc}
-            alt=""
-            aria-hidden
-            loading={loading}
-            decoding="async"
-            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-2xl"
-          />
+          {!useCover ? (
+            <img
+              src={displaySrc}
+              alt=""
+              aria-hidden
+              loading={loading}
+              decoding="async"
+              className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-2xl"
+            />
+          ) : null}
           <img
             key={displaySrc}
             src={displaySrc}
@@ -65,8 +75,9 @@ export const BannerFrame = ({
             loading={loading}
             decoding="async"
             className={cn(
-              "relative z-[1] h-full w-full object-contain object-center",
-              imgClassName
+              "relative z-[1] h-full w-full object-center",
+              useCover ? "object-cover" : "object-contain",
+              imgClassName,
             )}
           />
         </>

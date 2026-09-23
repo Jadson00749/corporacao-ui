@@ -80,7 +80,8 @@ export const EventCard = ({ event }: { event: RaceEvent }) => {
         src={desktopBanner}
         mobileSrc={mobileBanner}
         alt={`Banner ${event.name}`}
-        className="aspect-[16/9] shrink-0"
+        fit="cover"
+        className="aspect-[4/5] sm:aspect-[3/4] md:aspect-[16/9] shrink-0"
         imgClassName="transition-transform duration-[1200ms] ease-out group-hover:scale-[1.02]"
       />
 

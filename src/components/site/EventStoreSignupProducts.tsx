@@ -221,6 +221,11 @@ export function EventStoreSignupProducts({
                         : []
                   }
                   alt={p.name}
+                  className={
+                    compact
+                      ? "!aspect-[4/3] max-h-[200px] sm:max-h-none sm:!aspect-square"
+                      : undefined
+                  }
                 />
               </div>
               <div className={cn("space-y-2", compact ? "p-3" : "p-3.5 space-y-2.5")}>

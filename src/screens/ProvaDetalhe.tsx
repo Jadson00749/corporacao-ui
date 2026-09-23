@@ -202,10 +202,19 @@ const ProvaDetalhe = () => {
 
   const tabs = [
     { id: "sobre", label: "Sobre" },
-    ...(kitItems.length ? [{ id: "kit-prova", label: "Kit da prova" }] : []),
-    ...(kits.length || event.kit_info ? [{ id: "kit", label: "Kit" }] : []),
+    /* kit-prova = itens inclusos; kit = opções/extras do atleta */
+    ...(kitItems.length ? [{ id: "kit-prova", label: "Kit" }] : []),
+    ...(kits.length || event.kit_info
+      ? [{ id: "kit", label: "Opções de kit" }]
+      : []),
     ...(showStoreProductsTab
-      ? [{ id: "produtos-prova", label: "Produtos da prova" }]
+      ? [
+          {
+            id: "produtos-prova",
+            label: "Produtos",
+            labelLg: "Produtos da prova",
+          },
+        ]
       : []),
     ...(event.regulation_url ? [{ id: "regulamento", label: "Regulamento" }] : []),
     ...(event.registration_deadline ? [{ id: "prazos", label: "Prazos" }] : []),
@@ -379,6 +388,8 @@ const ProvaDetalhe = () => {
                     siteWhatsapp={settings.contact.whatsapp}
                     partnerName={partnerName}
                     autoOpenCheckout={autoOpenStoreCheckout}
+                    signupHref={!inscriptionBlocked ? ctaHref : null}
+                    signupInternal={!!internal}
                   />
                 </Block>
               ) : null}
@@ -630,9 +641,9 @@ const ProvaDetalhe = () => {
         </DialogContent>
       </Dialog>
 
-      {/* CTA fixo no mobile */}
+      {/* CTA fixo no mobile — some quando o carrinho da loja assume o rodapé */}
       {!inscriptionBlocked && (
-        <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="prova-mobile-inscrever lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           {internal ? (
             <Button asChild variant={ctaVariant} size="lg" className="w-full">
               <Link to={ctaHref}>Inscrever-se</Link>
@@ -645,7 +656,7 @@ const ProvaDetalhe = () => {
         </div>
       )}
       {capacityFull && !closed && (
-        <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="prova-mobile-inscrever lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <p className="text-center text-sm text-muted-foreground py-2">
             Inscrições encerradas — limite de participantes atingido.
           </p>
@@ -655,7 +666,11 @@ const ProvaDetalhe = () => {
   );
 };
 
-const SectionTabs = ({ tabs }: { tabs: { id: string; label: string }[] }) => {
+const SectionTabs = ({
+  tabs,
+}: {
+  tabs: { id: string; label: string; labelLg?: string }[];
+}) => {
   const [active, setActive] = useState(tabs[0]?.id);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
@@ -679,7 +694,8 @@ const SectionTabs = ({ tabs }: { tabs: { id: string; label: string }[] }) => {
     const el = tabRefs.current[active];
     const scroller = scrollerRef.current;
     if (!el || !scroller) return;
-    const left = el.offsetLeft - 16;
+    const left =
+      el.offsetLeft - Math.max(0, (scroller.clientWidth - el.offsetWidth) / 2);
     scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [active]);
 
@@ -694,26 +710,51 @@ const SectionTabs = ({ tabs }: { tabs: { id: string; label: string }[] }) => {
   };
 
   return (
-    <div className="sticky top-[86px] z-30 -mx-4 px-4 mt-5 bg-background/95 backdrop-blur-md border-b border-border/60">
-      <div ref={scrollerRef} className="overflow-x-auto no-scrollbar overscroll-x-contain">
-        <div className="flex items-center gap-5 sm:gap-7 min-w-max pr-4">
-          {tabs.map((t) => (
-            <a
-              key={t.id}
-              ref={(node) => {
-                tabRefs.current[t.id] = node;
-              }}
-              href={`#${t.id}`}
-              onClick={(e) => go(e, t.id)}
-              className={cn(
-                "relative py-3 text-sm font-medium whitespace-nowrap transition-colors",
-                active === t.id ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {t.label}
-              {active === t.id && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-brand rounded-full" />}
-            </a>
-          ))}
+    <div className="sticky top-[86px] z-30 -mx-4 mt-5 border-b border-border/60 bg-background/95 backdrop-blur-md">
+      <div className="relative">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-5 bg-gradient-to-r from-background to-transparent sm:hidden"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-5 bg-gradient-to-l from-background to-transparent sm:hidden"
+        />
+        <div
+          ref={scrollerRef}
+          className="overflow-x-auto overscroll-x-contain no-scrollbar scroll-smooth snap-x snap-mandatory"
+        >
+          <div className="flex min-w-max items-center gap-1 px-4 sm:gap-2 sm:px-0">
+            {tabs.map((t) => (
+              <a
+                key={t.id}
+                ref={(node) => {
+                  tabRefs.current[t.id] = node;
+                }}
+                href={`#${t.id}`}
+                onClick={(e) => go(e, t.id)}
+                className={cn(
+                  "relative snap-start px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors",
+                  "min-h-11 inline-flex items-center",
+                  active === t.id
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t.labelLg ? (
+                  <>
+                    <span className="lg:hidden">{t.label}</span>
+                    <span className="hidden lg:inline">{t.labelLg}</span>
+                  </>
+                ) : (
+                  t.label
+                )}
+                {active === t.id && (
+                  <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-brand" />
+                )}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -112,9 +112,9 @@ export const FloatingWhatsApp = () => {
       aria-hidden={hideMobile || undefined}
       tabIndex={hideMobile ? -1 : undefined}
       className={cn(
-        "group fixed z-40 flex items-center justify-center rounded-full bg-[#25D366] text-white",
+        "floating-whatsapp group fixed z-40 flex items-center justify-center rounded-full bg-[#25D366] text-white",
         "shadow-[0_10px_28px_-10px_rgba(37,211,102,0.65)]",
-        "transition-[opacity,transform,box-shadow] duration-300",
+        "transition-[opacity,transform,box-shadow,bottom] duration-300",
         "hover:scale-[1.03] hover:shadow-[0_14px_34px_-10px_rgba(37,211,102,0.8)] active:scale-95",
         "h-14 w-14 md:h-12 md:w-auto md:gap-2 md:pl-3.5 md:pr-4",
         "bottom-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] right-[calc(env(safe-area-inset-right,0px)+0.85rem)]",

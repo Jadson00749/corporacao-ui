@@ -42,7 +42,13 @@ const RaceCard = ({ event }: { event: RaceEvent }) => {
         closed && "opacity-70 pointer-events-none"
       )}
     >
-      <BannerFrame src={banner} alt={`Banner ${event.name}`} className="aspect-[16/9]" imgClassName="transition-transform duration-[1200ms] ease-out group-hover:scale-[1.03]">
+      <BannerFrame
+        src={banner}
+        alt={`Banner ${event.name}`}
+        fit="cover"
+        className="aspect-[4/5] sm:aspect-[16/9]"
+        imgClassName="transition-transform duration-[1200ms] ease-out group-hover:scale-[1.03]"
+      >
         <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         <span
           className={cn(

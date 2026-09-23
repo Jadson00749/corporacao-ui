@@ -431,6 +431,24 @@
   &::-webkit-scrollbar { display: none; }
 }
 
+/* Prova detalhe: carrinho da loja assume o rodapé mobile → esconde Inscrever-se sticky */
+body.store-cart-priority .prova-mobile-inscrever {
+  display: none;
+}
+
+/* WhatsApp acima dos CTAs sticky da página da prova (mobile) */
+@media (max-width: 1023px) {
+  body:has(.prova-store-cart-bar) a.floating-whatsapp {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 10rem);
+  }
+  body.store-cart-priority a.floating-whatsapp {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 5.75rem);
+  }
+  body:has(.prova-mobile-inscrever):not(:has(.prova-store-cart-bar)) a.floating-whatsapp {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 5.75rem);
+  }
+}
+
 @keyframes coachmarkGlow {
   0% { outline-color: hsl(var(--accent-brand) / 0); }
   35% { outline-color: hsl(var(--accent-brand) / 0.9); }
