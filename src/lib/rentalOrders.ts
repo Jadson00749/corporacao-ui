@@ -46,6 +46,39 @@ export const RENTAL_STATUS_CLASS: Record<RentalOrderStatus, string> = {
   cancelled: "bg-destructive/10 text-destructive",
 };
 
+/** Status em que o Admin pode hard-delete (limpeza / testes). */
+export const RENTAL_DELETABLE_STATUSES = [
+  "draft",
+  "requested",
+  "under_review",
+  "cancelled",
+] as const satisfies readonly RentalOrderStatus[];
+
+export type RentalDeletableStatus = (typeof RENTAL_DELETABLE_STATUSES)[number];
+
+export const canAdminDeleteRentalOrder = (raw?: string | null) =>
+  (RENTAL_DELETABLE_STATUSES as readonly string[]).includes(statusOf(raw));
+
+export const mapDeleteRentalOrderError = (err: {
+  message?: string;
+  code?: string;
+}): string => {
+  const msg = String(err?.message || "");
+  if (/ORDER_STATUS_NOT_DELETABLE/i.test(msg)) {
+    return "Pedidos já contratados ou concluídos não podem ser excluídos.";
+  }
+  if (/FORBIDDEN|NOT_AUTHENTICATED/i.test(msg)) {
+    return "Você não tem permissão para excluir este pedido.";
+  }
+  if (/ORDER_NOT_FOUND/i.test(msg)) {
+    return "Pedido não encontrado.";
+  }
+  if (/function.*delete_rental_order|PGRST202|404/i.test(msg)) {
+    return "Exclusão ainda não está disponível no servidor. Aplique a migration 24.";
+  }
+  return "Não foi possível excluir o pedido.";
+};
+
 export const statusOf = (raw?: string | null): RentalOrderStatus =>
   (RENTAL_STATUSES as readonly string[]).includes((raw || "").trim())
     ? ((raw as string).trim() as RentalOrderStatus)

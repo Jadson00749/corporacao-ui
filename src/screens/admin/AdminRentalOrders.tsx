@@ -6,13 +6,30 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ClipboardList, Search } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ClipboardList, MoreHorizontal, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { OrganizersTabs } from "@/components/admin/OrganizersTabs";
 import { brl } from "@/hooks/useOrganizerStats";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "@/lib/router-compat";
 import { EmptyState } from "@/components/site/EmptyState";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   RENTAL_TIMELINE_STEPS,
   StatusTimeline,
@@ -25,8 +42,10 @@ import {
   RENTAL_STATUSES,
   RENTAL_STATUS_CLASS,
   RENTAL_STATUS_LABEL,
+  canAdminDeleteRentalOrder,
   configLabelOf,
   lineTotalOf,
+  mapDeleteRentalOrderError,
   num,
   statusOf,
   sumItems,
@@ -54,6 +73,7 @@ const orderRef = (o: AdminOrder) => o.contract_number || o.id.slice(0, 8).toUppe
 
 const AdminRentalOrders = () => {
   const qc = useQueryClient();
+  const { isAdmin } = useAuth();
   const [searchParams] = useSearchParams();
   const statusFromUrl = searchParams.get("status");
   const initialStatus =
@@ -63,6 +83,7 @@ const AdminRentalOrders = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
   const [open, setOpen] = useState<AdminOrder | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<AdminOrder | null>(null);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["admin_rental_orders"],
@@ -124,6 +145,39 @@ const AdminRentalOrders = () => {
     onError: (e: any) => toast.error(e?.message || "Não foi possível atualizar o status."),
   });
 
+  const deleteOrder = useMutation({
+    mutationFn: async (order: AdminOrder) => {
+      if (!canAdminDeleteRentalOrder(order.status)) {
+        throw { message: "ORDER_STATUS_NOT_DELETABLE" };
+      }
+      const { error } = await db.rpc("delete_rental_order", { _order_id: order.id });
+      if (error) throw error;
+      return order.id;
+    },
+    onSuccess: (id) => {
+      toast.success("Pedido excluído com sucesso.");
+      setPendingDelete(null);
+      setOpen((prev) => (prev?.id === id ? null : prev));
+      qc.setQueryData<AdminOrder[]>(["admin_rental_orders"], (prev) =>
+        (prev ?? []).filter((r) => r.id !== id),
+      );
+      qc.invalidateQueries({ queryKey: ["admin_rental_orders"] });
+      qc.removeQueries({ queryKey: ["admin_rental_order_items", id] });
+    },
+    onError: (e: any) => {
+      toast.error(mapDeleteRentalOrderError(e ?? {}));
+    },
+  });
+
+  const requestDelete = (order: AdminOrder) => {
+    if (!isAdmin) return;
+    if (!canAdminDeleteRentalOrder(order.status)) {
+      toast.error("Pedidos já contratados ou concluídos não podem ser excluídos.");
+      return;
+    }
+    setPendingDelete(order);
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
@@ -136,6 +190,41 @@ const AdminRentalOrders = () => {
   }, [rows, search, statusFilter]);
 
   const openTotal = num(open?.total) || sumItems(openItems);
+
+  const ActionsCell = ({ order }: { order: AdminOrder }) => (
+    <div className="flex items-center justify-end gap-1.5">
+      <Button variant="outline" size="sm" className="min-h-9" onClick={() => setOpen(order)}>
+        Abrir
+      </Button>
+      {isAdmin ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              aria-label="Mais ações"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={(e) => {
+                e.preventDefault();
+                requestDelete(order);
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+              Excluir pedido
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
+    </div>
+  );
 
   return (
     <div>
@@ -240,9 +329,7 @@ const AdminRentalOrders = () => {
                       {dateTimeBR(r.requested_at)}
                     </td>
                     <td className="p-3 text-right">
-                      <Button variant="outline" size="sm" onClick={() => setOpen(r)}>
-                        Abrir
-                      </Button>
+                      <ActionsCell order={r} />
                     </td>
                   </tr>
                 ))}
@@ -252,16 +339,17 @@ const AdminRentalOrders = () => {
 
           <div className="mt-5 md:hidden space-y-2">
             {filtered.map((r) => (
-              <button
+              <div
                 key={r.id}
-                type="button"
-                onClick={() => setOpen(r)}
-                className="w-full text-left rounded-xl border border-border bg-card p-3"
+                className="w-full rounded-xl border border-border bg-card p-3 space-y-2.5"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-semibold truncate">{r.event_name || "Prova"}</p>
                     <p className="text-xs text-muted-foreground truncate">{r.organizer_name}</p>
+                    <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                      {orderRef(r)}
+                    </p>
                   </div>
                   <span
                     className={cn(
@@ -272,11 +360,12 @@ const AdminRentalOrders = () => {
                     {RENTAL_STATUS_LABEL[statusOf(r.status)]}
                   </span>
                 </div>
-                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>{dateBR(r.event_date)}</span>
                   <span className="font-semibold text-foreground tabular-nums">{brl(num(r.total))}</span>
                 </div>
-              </button>
+                <ActionsCell order={r} />
+              </div>
             ))}
           </div>
         </>
@@ -376,13 +465,72 @@ const AdminRentalOrders = () => {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            {isAdmin && open && canAdminDeleteRentalOrder(open.status) ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                onClick={() => requestDelete(open)}
+              >
+                Excluir pedido
+              </Button>
+            ) : null}
             <Button variant="ghost" onClick={() => setOpen(null)}>
               Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => {
+          if (!o && !deleteOrder.isPending) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-[min(24rem,calc(100vw-1.5rem))]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir este pedido?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  Esta ação removerá permanentemente o pedido de locação e seus itens. Essa ação
+                  não poderá ser desfeita.
+                </p>
+                {pendingDelete ? (
+                  <div className="rounded-lg border border-border/60 bg-secondary/30 px-3 py-2.5 text-foreground space-y-0.5">
+                    <p className="font-mono text-xs font-semibold">
+                      Pedido {orderRef(pendingDelete)}
+                    </p>
+                    <p className="text-sm font-medium">
+                      {pendingDelete.organizer_name || "—"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {pendingDelete.event_name || "—"}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel disabled={deleteOrder.isPending} className="min-h-10">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteOrder.isPending || !pendingDelete}
+              className="min-h-10 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                if (pendingDelete) void deleteOrder.mutateAsync(pendingDelete);
+              }}
+            >
+              {deleteOrder.isPending ? "Excluindo…" : "Excluir pedido"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
