@@ -1054,10 +1054,15 @@ export const EventEditorDialog = ({
                                 <div>
                                   <Label className="text-xs">Tabela de medidas — imagem (opcional)</Label>
                                   <Input
-                                    placeholder="https://..."
+                                    placeholder="https://… (PNG/JPG ou Drive público)"
                                     value={k.size_chart_url ?? ""}
                                     onChange={(e) => updateItem("kit_options", i, { size_chart_url: e.target.value })}
                                   />
+                                  <p className="mt-1 text-[11px] text-muted-foreground leading-snug">
+                                    Prefira URL direta da imagem. Links do Drive tipo{" "}
+                                    <span className="font-mono">/view</span> precisam estar públicos
+                                    (“qualquer pessoa com o link”).
+                                  </p>
                                 </div>
                                 <div>
                                   <Label className="text-xs">Tabela de medidas — informações (opcional)</Label>

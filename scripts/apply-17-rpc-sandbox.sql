@@ -1,0 +1,75 @@
+-- ============================================================
+-- SANDBOX RPC — após apply + smoke do site OK
+--
+-- Testa create_event_signup_with_store com dados CONTROLADOS.
+-- NÃO usar CPFs/eventos de clientes reais.
+--
+-- Pré-requisitos:
+--   1) Migration 17 aplicada
+--   2) Smoke do frontend atual OK
+--   3) Criar evento/produto/variante/usuário de TESTE
+--   4) Autenticar no SQL Editor como o user de teste
+--      (ou chamar via supabase.rpc no app de staging)
+-- ============================================================
+
+-- S0) Seed mínimo de teste (ajuste user_id / colunas NOT NULL do schema)
+-- Preferir evento DEDICADO "TESTE LOJA — APAGAR" com organizer parceiro 5%
+-- e um evento Corporação (is_platform_owner) ou organizer_id null.
+
+-- Guarde:
+--   :event_partner
+--   :event_corp
+--   :variant_ok      stock >= 5
+--   :variant_last    stock = 1
+--   :variant_other   de outra prova
+--   :variant_inactive
+
+-- Exemplo de chamada base:
+-- select * from public.create_event_signup_with_store(
+--   _event_id := :event_partner,
+--   _distance := '5Km',
+--   _category := 'Geral',
+--   _kit_names := '[]'::jsonb,
+--   _shirt_size := null,
+--   _coupon_code := null,
+--   _team_name := '',
+--   _notes := 'SANDBOX',
+--   _participant_full_name := 'Sandbox A',
+--   _participant_cpf := '52998224725',  -- CPF de teste válido
+--   _participant_birth_date := '1990-01-01',
+--   _participant_gender := 'outro',
+--   _participant_phone := '11988887777',
+--   _accepted_event_terms_at := now(),
+--   _store_items := '[]'::jsonb
+-- );
+
+-- Checklist:
+-- L parceiro 5%     → commission_percentage_snapshot=5, amount=round(total*5/100,2)
+-- M Corporação 0%   → pct=0, commission=0, net=total
+-- C kit econômico   → kit_adjustment_amount negativo
+-- E/F cupom 100%    → registration=0; +produto comissão sobre products
+-- G qty>1
+-- H última unidade
+-- J cancelar signup → order cancelada; snapshots PERMANECEM
+-- K reativar sem stock → STORE_OUT_OF_STOCK
+-- N update organizers.commission_percentage=7 → snapshot antigo intacto
+-- O store_items com unit_price → STORE_CLIENT_PRICE_FORBIDDEN
+-- P variant outra prova → STORE_PRODUCT_WRONG_EVENT
+-- Q inactive → STORE_VARIANT_INACTIVE
+
+-- Conferir snapshot:
+-- select registration_amount, products_amount, total_amount,
+--        commission_percentage_snapshot, commission_amount, organizer_net_amount,
+--        pricing_snapshot
+-- from public.event_signups
+-- where notes = 'SANDBOX'
+-- order by created_at desc;
+
+-- Exemplo esperado parceiro:
+--   registration 89.90 + products 39.90 = 129.80
+--   commission 5% → 6.49
+--   net → 123.31
+
+-- Limpeza ao final:
+-- delete from public.event_signups where notes = 'SANDBOX';
+-- (orders/items caem por cascade se FK estiver assim)

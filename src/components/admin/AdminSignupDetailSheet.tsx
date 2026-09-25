@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, Clock, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +45,13 @@ import {
   kidsBracketFor,
   kidsCategoryForAge,
 } from "@/lib/eventPricing";
+import {
+  eventGenderOptions,
+  isSignupCategoryCompatible,
+  listCompatibleSignupCategories,
+  matchEventGenderLabel,
+  type EventCategoryConfig,
+} from "@/lib/eventSignupCategory";
 import { formatBirthDateBR, parseBirthDateInput, toBirthDateInputValue } from "@/lib/birthDate";
 import { formatCPF, formatPhone } from "@/lib/cpf";
 
@@ -110,6 +118,7 @@ type EditDraft = {
   gender: string;
   phone: string;
   shirtSize: string;
+  category: string;
 };
 
 const draftFrom = (s: AdminSignupDetailRow): EditDraft => ({
@@ -119,6 +128,7 @@ const draftFrom = (s: AdminSignupDetailRow): EditDraft => ({
   gender: s.participant_gender || "",
   phone: s.participant_phone || "",
   shirtSize: (s.shirt_size || "").toUpperCase(),
+  category: s.category || "",
 });
 
 export type AdminSignupSavedOpts = {
@@ -165,7 +175,60 @@ export const AdminSignupDetailSheet = ({ signup, open, onOpenChange, onSaved }: 
   }, [open, signup?.id]);
 
   const incompleteKids = row ? needsParticipantData(row) : false;
-  const isKids = row ? isKidsCategory(row.category) : false;
+
+  const { data: eventConfig } = useQuery({
+    queryKey: ["admin_signup_event_category_config", row?.event_id],
+    enabled: open && !!row?.event_id,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<EventCategoryConfig> => {
+      const { data, error } = await supabase
+        .from("events")
+        .select("id,date,distance,distances,genders,age_brackets")
+        .eq("id", row!.event_id)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? {}) as EventCategoryConfig;
+    },
+  });
+
+  const categoryConfig = useMemo<EventCategoryConfig>(() => {
+    if (!row) return {};
+    return {
+      ...(eventConfig ?? {}),
+      date: eventConfig?.date || row.events?.date || null,
+    };
+  }, [eventConfig, row]);
+
+  const genderOptions = useMemo(
+    () => eventGenderOptions(categoryConfig),
+    [categoryConfig],
+  );
+
+  const compatibleCategories = useMemo(() => {
+    if (!draft) return [] as string[];
+    return listCompatibleSignupCategories({
+      config: categoryConfig,
+      birthDate: draft.birth || null,
+      gender: draft.gender || null,
+    });
+  }, [categoryConfig, draft?.birth, draft?.gender]);
+
+  const categoryCompatible = useMemo(() => {
+    if (!draft?.category) return false;
+    return isSignupCategoryCompatible(draft.category, {
+      config: categoryConfig,
+      birthDate: draft.birth || null,
+      gender: draft.gender || null,
+    });
+  }, [categoryConfig, draft?.category, draft?.birth, draft?.gender]);
+
+  /** Se a categoria atual sair da lista (gênero/nascimento), limpa o select. */
+  useEffect(() => {
+    if (!editing || !draft?.category) return;
+    if (!eventConfig) return;
+    if (compatibleCategories.includes(draft.category)) return;
+    setDraft((d) => (d ? { ...d, category: "" } : d));
+  }, [editing, eventConfig, compatibleCategories, draft?.category]);
 
   const participantAge = useMemo(() => {
     if (!row?.participant_birth_date) return null;
@@ -195,7 +258,12 @@ export const AdminSignupDetailSheet = ({ signup, open, onOpenChange, onSaved }: 
 
   const startEdit = () => {
     if (!row) return;
-    setDraft(draftFrom(row));
+    const base = draftFrom(row);
+    setDraft({
+      ...base,
+      gender:
+        matchEventGenderLabel(base.gender, genderOptions) || base.gender,
+    });
     setEditing(true);
   };
 
@@ -218,7 +286,21 @@ export const AdminSignupDetailSheet = ({ signup, open, onOpenChange, onSaved }: 
         return;
       }
     }
-    if (isKids && draft.birth) {
+    if (!draft.category.trim()) {
+      toast.error("Selecione uma categoria compatível com os dados atualizados.");
+      return;
+    }
+    if (
+      !isSignupCategoryCompatible(draft.category, {
+        config: categoryConfig,
+        birthDate: draft.birth || null,
+        gender: draft.gender || null,
+      })
+    ) {
+      toast.error("Selecione uma categoria compatível com os dados atualizados.");
+      return;
+    }
+    if (isKidsCategory(draft.category) && draft.birth) {
       const age = ageAtEvent(draft.birth, row?.events?.date);
       if (!kidsCategoryForAge(age)) {
         toast.error("Idade fora das baterias Kids (2 a 13 anos na data da prova).");
@@ -237,6 +319,20 @@ export const AdminSignupDetailSheet = ({ signup, open, onOpenChange, onSaved }: 
     }
     const birthIso = birthParsed && birthParsed.ok ? birthParsed.iso : null;
 
+    const category = draft.category.trim();
+    if (
+      !category ||
+      !isSignupCategoryCompatible(category, {
+        config: categoryConfig,
+        birthDate: birthIso || draft.birth || null,
+        gender: draft.gender || null,
+      })
+    ) {
+      toast.error("Selecione uma categoria compatível com os dados atualizados.");
+      setConfirmEdit(false);
+      return;
+    }
+
     const patch: Record<string, string | null> = {
       participant_full_name: draft.name.trim() || null,
       participant_cpf: draft.cpf.trim() || null,
@@ -244,22 +340,14 @@ export const AdminSignupDetailSheet = ({ signup, open, onOpenChange, onSaved }: 
       participant_gender: draft.gender.trim() || null,
       participant_phone: draft.phone.trim() || null,
       shirt_size: draft.shirtSize.trim() || null,
+      category,
     };
-
-    if (isKidsCategory(row.category) && birthIso) {
-      const kidsCat = kidsCategoryForAge(ageAtEvent(birthIso, row.events?.date));
-      if (!kidsCat) {
-        toast.error("Idade fora das baterias Kids (2 a 13 anos na data da prova).");
-        return;
-      }
-      patch.category = kidsCat;
-    }
 
     setSaving(true);
     const { error } = await supabase.from("event_signups").update(patch as any).eq("id", row.id);
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(error.message || "Não foi possível atualizar a inscrição.");
       setConfirmEdit(false);
       return;
     }
@@ -271,13 +359,13 @@ export const AdminSignupDetailSheet = ({ signup, open, onOpenChange, onSaved }: 
       participant_gender: patch.participant_gender,
       participant_phone: patch.participant_phone,
       shirt_size: patch.shirt_size,
-      ...(patch.category ? { category: patch.category } : {}),
+      category,
     };
     setLocalPatch((prev) => ({ ...prev, ...uiPatch }));
     setConfirmEdit(false);
     setEditing(false);
     setDraft(null);
-    toast.success("Dados do participante atualizados.");
+    toast.success("Inscrição atualizada com sucesso.");
     onSaved({ patch: uiPatch });
   };
 
@@ -446,8 +534,11 @@ export const AdminSignupDetailSheet = ({ signup, open, onOpenChange, onSaved }: 
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Masculino">Masculino</SelectItem>
-                            <SelectItem value="Feminino">Feminino</SelectItem>
+                            {genderOptions.map((g) => (
+                              <SelectItem key={g} value={g}>
+                                {g}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -482,12 +573,48 @@ export const AdminSignupDetailSheet = ({ signup, open, onOpenChange, onSaved }: 
                           </SelectContent>
                         </Select>
                       </div>
+                      <div className="sm:col-span-2">
+                        <Label>Categoria</Label>
+                        <Select
+                          value={
+                            draft.category && compatibleCategories.includes(draft.category)
+                              ? draft.category
+                              : undefined
+                          }
+                          onValueChange={(v) => setDraft({ ...draft, category: v })}
+                          disabled={!compatibleCategories.length}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue
+                              placeholder={
+                                !eventConfig
+                                  ? "Carregando categorias…"
+                                  : compatibleCategories.length
+                                    ? "Selecione"
+                                    : "Nenhuma categoria compatível"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {compatibleCategories.map((cat) => (
+                              <SelectItem key={cat} value={cat}>
+                                {cat}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {!categoryCompatible ? (
+                          <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-300/90">
+                            Selecione uma categoria compatível com os dados atualizados.
+                          </p>
+                        ) : null}
+                      </div>
                       <div className="sm:col-span-2 text-xs text-muted-foreground">
                         Idade na data do evento:{" "}
                         <span className="font-semibold text-foreground">
                           {editAge != null ? `${editAge} anos` : "—"}
                         </span>
-                        {isKids && editKidsBracket && (
+                        {isKidsCategory(draft.category) && editKidsBracket && (
                           <>
                             {" "}
                             · Bateria:{" "}
@@ -497,7 +624,6 @@ export const AdminSignupDetailSheet = ({ signup, open, onOpenChange, onSaved }: 
                           </>
                         )}
                       </div>
-                      <Field label="Categoria (atual)" value={dash(row.category)} />
                       <Field label="Kit" value={formatKit(row.kit_option || "")} />
                     </div>
                   ) : (
@@ -673,8 +799,13 @@ export const AdminSignupDetailSheet = ({ signup, open, onOpenChange, onSaved }: 
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>Confirmar alterações nos dados do participante?</p>
-                {isKids && editKidsBracket && (
+                {draft?.category ? (
                   <p className="rounded-lg border border-brand/30 bg-brand/10 px-3 py-2 text-foreground">
+                    Categoria: <span className="font-semibold">{draft.category}</span>
+                  </p>
+                ) : null}
+                {draft && isKidsCategory(draft.category) && editKidsBracket && (
+                  <p className="rounded-lg border border-border/60 bg-secondary/30 px-3 py-2 text-foreground">
                     Bateria Kids:{" "}
                     <span className="font-semibold">
                       {editKidsBracket.title} · {editKidsBracket.raceDistance}

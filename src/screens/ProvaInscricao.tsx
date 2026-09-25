@@ -60,6 +60,8 @@ import {
   getKitAvailability,
   isKitAvailableForDistance,
   kitHasShirt,
+  resolveSizeChartImageUrl,
+  sizeChartOpenUrl,
 } from "@/lib/eventKits";
 
 import { buildSignupWhatsMessage, type SignupBlock } from "@/lib/signupWhatsMessage";
@@ -2048,7 +2050,16 @@ const ProvaInscricao = () => {
                                   <h4 className="text-sm font-semibold">
                                     Tamanho da camiseta {pName ? `de ${pName.split(" ")[0]}` : ""}
                                   </h4>
-                                  {(shirtKit?.size_chart_url || shirtKit?.size_chart_info) && (
+                                  {shirtKit?.size_chart_url ? (
+                                    <a
+                                      href={sizeChartOpenUrl(shirtKit.size_chart_url)}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-1 text-xs font-medium text-brand underline underline-offset-2 hover:text-brand/90"
+                                    >
+                                      <Ruler className="w-3.5 h-3.5" /> Tabela de medidas
+                                    </a>
+                                  ) : shirtKit?.size_chart_info ? (
                                     <button
                                       type="button"
                                       onClick={() => setSizeChartKit(shirtKit)}
@@ -2056,7 +2067,7 @@ const ProvaInscricao = () => {
                                     >
                                       <Ruler className="w-3.5 h-3.5" /> Tabela de medidas
                                     </button>
-                                  )}
+                                  ) : null}
                                 </div>
                                 <p className="text-[11px] text-muted-foreground mb-3">
                                   Tamanhos sujeitos à disponibilidade.
@@ -2220,20 +2231,69 @@ const ProvaInscricao = () => {
           <DialogHeader>
             <DialogTitle>Tabela de medidas</DialogTitle>
           </DialogHeader>
-          {sizeChartKit?.size_chart_url && (
-            <img
-              src={sizeChartKit.size_chart_url}
-              alt="Tabela de medidas da camiseta"
-              className="w-full rounded-xl border border-border"
-              loading="lazy"
-            />
-          )}
+          {sizeChartKit?.size_chart_url ? (
+            <SizeChartMedia url={sizeChartKit.size_chart_url} />
+          ) : null}
           {sizeChartKit?.size_chart_info && (
-            <p className="whitespace-pre-line text-sm text-muted-foreground">{sizeChartKit.size_chart_info}</p>
+            <p className="whitespace-pre-line text-sm text-muted-foreground">
+              {sizeChartKit.size_chart_info}
+            </p>
           )}
         </DialogContent>
       </Dialog>
     </Layout>
+  );
+};
+
+/** Exibe a tabela: tenta imagem (com conversão Drive) e oferece com link se falhar. */
+const SizeChartMedia = ({ url }: { url: string }) => {
+  const displaySrc = resolveSizeChartImageUrl(url);
+  const openHref = sizeChartOpenUrl(url) || url;
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [displaySrc]);
+
+  if (!displaySrc) return null;
+
+  return (
+    <div className="space-y-3">
+      {!failed ? (
+        <img
+          key={displaySrc}
+          src={displaySrc}
+          alt="Tabela de medidas da camiseta"
+          className="w-full rounded-xl border border-border bg-secondary/20"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div className="rounded-xl border border-border/60 bg-secondary/30 px-4 py-5 text-center space-y-2">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Não foi possível exibir a imagem aqui. Abra a tabela em uma nova aba.
+          </p>
+          <Button asChild variant="brand" size="sm">
+            <a href={openHref} target="_blank" rel="noreferrer">
+              Abrir tabela de medidas
+            </a>
+          </Button>
+        </div>
+      )}
+      {!failed ? (
+        <p className="text-center">
+          <a
+            href={openHref}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            Abrir em nova aba
+          </a>
+        </p>
+      ) : null}
+    </div>
   );
 };
 

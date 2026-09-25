@@ -84,6 +84,34 @@ export const formatKitExtraPriceLabel = (extra?: number | null): string | null =
   return n > 0 ? `+ ${abs}` : `− ${abs}`;
 };
 
+/**
+ * Converte links de compartilhamento (ex.: Google Drive /view) em URL usável
+ * em <img>. Links de página HTML não carregam como imagem.
+ */
+export const resolveSizeChartImageUrl = (raw?: string | null): string => {
+  const url = (raw || "").trim();
+  if (!url) return "";
+
+  const fileId =
+    url.match(/drive\.google\.com\/file\/d\/([^/?#]+)/i)?.[1] ||
+    url.match(/drive\.google\.com\/(?:open|uc)\?[^#]*[?&]id=([^&]+)/i)?.[1] ||
+    url.match(/docs\.google\.com\/uc\?[^#]*[?&]id=([^&]+)/i)?.[1] ||
+    null;
+
+  if (fileId) {
+    return `https://drive.google.com/uc?export=view&id=${encodeURIComponent(fileId)}`;
+  }
+
+  return url;
+};
+
+/** URL original para "abrir em nova aba" (mantém o link que o admin colou). */
+export const sizeChartOpenUrl = (raw?: string | null): string => {
+  const url = (raw || "").trim();
+  if (!url) return "";
+  return resolveSizeChartImageUrl(url) || url;
+};
+
 /** UI: kits sem camiseta usam campo "desconto"; com camiseta usam "ajuste". */
 export const kitUsesDiscountField = (k: EventKitOption) => !kitHasShirt(k);
 
