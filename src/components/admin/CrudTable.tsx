@@ -309,13 +309,47 @@ export const CrudTable = ({
                     <Input type="date" value={editing[f.key] ?? ""} onChange={(e) => setEditing({ ...editing, [f.key]: e.target.value })} className="mt-1" />
                   )}
                   {f.type === "tags" && (
-                    <Textarea
-                      value={(editing[f.key] ?? []).join("\n")}
-                      onChange={(e) => setEditing({ ...editing, [f.key]: e.target.value.split("\n").filter(Boolean) })}
-                      placeholder="Um item por linha"
-                      rows={5}
-                      className="mt-1"
-                    />
+                    <div className="mt-1 space-y-2">
+                      <div className="flex flex-wrap gap-2 min-h-9">
+                        {((editing[f.key] ?? []) as string[]).map((tag: string, ti: number) => (
+                          <span
+                            key={ti}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary border border-border text-sm font-medium"
+                          >
+                            {tag}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = [...(editing[f.key] ?? [])];
+                                next.splice(ti, 1);
+                                setEditing({ ...editing, [f.key]: next });
+                              }}
+                              className="text-muted-foreground hover:text-destructive transition-colors ml-0.5"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Digite e pressione Enter ou vírgula para adicionar"
+                        className="w-full border border-input bg-background rounded-md h-10 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === ",") {
+                            e.preventDefault();
+                            const val = (e.target as HTMLInputElement).value.trim().replace(/,$/, "");
+                            if (!val) return;
+                            const current: string[] = editing[f.key] ?? [];
+                            if (!current.includes(val)) {
+                              setEditing({ ...editing, [f.key]: [...current, val] });
+                            }
+                            (e.target as HTMLInputElement).value = "";
+                          }
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground">Pressione Enter ou vírgula para adicionar cada tamanho.</p>
+                    </div>
                   )}
                   {f.type === "multiselect" && (
                     <div className="mt-2 flex flex-wrap gap-2">

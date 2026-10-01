@@ -631,6 +631,24 @@ export const EventEditorDialog = ({
                     )}
                   </Section>
                 )}
+
+                {isAdmin && editing.internal_signup && (
+                  <Section title="Parcelamento" subtitle="Número máximo de parcelas no cartão de crédito para esta prova.">
+                    <Field label="Parcelas permitidas">
+                      <select
+                        className="w-full border border-input bg-background rounded-md h-10 px-3"
+                        value={editing.installments ?? 1}
+                        onChange={(e) => setEditing({ ...editing, installments: Number(e.target.value) })}
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                          <option key={n} value={n}>
+                            {n === 1 ? "À vista (1x)" : `Até ${n}x`}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </Section>
+                )}
               </Panel>
             )}
 

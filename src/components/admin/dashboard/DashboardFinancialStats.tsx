@@ -53,6 +53,8 @@ type Props = {
   metrics: FinancialMetrics;
   /** Super admin vê blocos Corp / Parceiros separados. */
   isAdmin: boolean;
+  /** Comissão (%) cobrada pela plataforma sobre as receitas do organizador. */
+  commissionPct?: number;
   /** Quando presente, exibe somente o bloco azul do parceiro selecionado. */
   partnerView?: PartnerFinancialView;
   /** Atalho da faixa compacta de parceiros (foca o seletor do topo). */
@@ -170,7 +172,7 @@ function SectionTitle({
   );
 }
 
-export function DashboardFinancialStats({ metrics, isAdmin, partnerView, onOpenPartners, className }: Props) {
+export function DashboardFinancialStats({ metrics, isAdmin, commissionPct = 0, partnerView, onOpenPartners, className }: Props) {
   if (isAdmin && partnerView) {
     return (
       <section className={className}>
@@ -219,19 +221,29 @@ export function DashboardFinancialStats({ metrics, isAdmin, partnerView, onOpenP
     const pendingSignups = metrics.pendingSignupCount ?? metrics.pending;
     const pendingBuys = metrics.pendingStandaloneCount ?? 0;
     const soldQty = metrics.productsSoldQty ?? 0;
+    const bruto = metrics.revenue;
+    const commission = commissionPct > 0 ? (bruto * commissionPct) / 100 : 0;
+    const liquido = bruto - commission;
     return (
       <section className={className}>
         <h2 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
           Financeiro
         </h2>
-        <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
           <Card
             icon={Wallet}
-            label="Receita confirmada"
-            value={brl(metrics.revenue)}
+            label="Valor bruto"
+            value={brl(bruto)}
             hint={`Inscrições ${brl(reg)} · Produtos ${brl(prod)}`}
-            tone={metrics.revenue > 0 ? "brand" : "default"}
+            tone={bruto > 0 ? "brand" : "default"}
             to="/admin/event-signups?tab=pagamentos&status=confirmada"
+          />
+          <Card
+            icon={TrendingUp}
+            label="Valor líquido"
+            value={brl(liquido)}
+            hint={commissionPct > 0 ? `Após comissão de ${commissionPct}% · ${brl(commission)} retidos` : "Sem comissão contratada"}
+            tone={liquido > 0 ? "brand" : "default"}
           />
           <Card
             icon={Clock}
@@ -249,7 +261,6 @@ export function DashboardFinancialStats({ metrics, isAdmin, partnerView, onOpenP
             label="Produtos vendidos"
             value={brl(prod)}
             hint={`${soldQty} ${soldQty === 1 ? "item" : "itens"}`}
-            className="col-span-2 xl:col-span-1"
             to="/admin/store-orders"
           />
         </div>

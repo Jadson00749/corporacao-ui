@@ -361,6 +361,8 @@ const ManageOrganizerDialog = ({
   const [paymentWhatsapp, setPaymentWhatsapp] = useState("");
   const [paymentEmail, setPaymentEmail] = useState("");
   const [paymentContactName, setPaymentContactName] = useState("");
+  const [asaasApiKey, setAsaasApiKey] = useState("");
+  const [asaasWalletId, setAsaasWalletId] = useState("");
   const [payLoaded, setPayLoaded] = useState(false);
 
   useEffect(() => {
@@ -370,6 +372,8 @@ const ManageOrganizerDialog = ({
     setPaymentWhatsapp(pay.payment_whatsapp ?? "");
     setPaymentEmail(pay.payment_email ?? "");
     setPaymentContactName(pay.payment_contact_name ?? "");
+    setAsaasApiKey(pay.asaas_api_key ?? "");
+    setAsaasWalletId(pay.asaas_wallet_id ?? "");
     setPayLoaded(true);
   }, [pay, payLoaded]);
 
@@ -394,6 +398,8 @@ const ManageOrganizerDialog = ({
         payment_whatsapp: paymentWhatsapp.replace(/\D/g, ""),
         payment_email: paymentEmail.trim(),
         payment_contact_name: paymentContactName.trim(),
+        asaas_api_key: asaasApiKey.trim() || null,
+        asaas_wallet_id: asaasWalletId.trim() || null,
       })
       .eq("id", organizer.id);
     setSaving(false);
@@ -550,6 +556,36 @@ const ManageOrganizerDialog = ({
                 onChange={(e) => setPaymentContactName(e.target.value)}
                 placeholder="Ex.: João Financeiro"
               />
+            </div>
+
+            <div className="border-t border-border/60 pt-4 space-y-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Integração Asaas
+              </p>
+              <div>
+                <Label>API Key Asaas</Label>
+                <Input
+                  className="mt-1 font-mono text-xs"
+                  value={asaasApiKey}
+                  onChange={(e) => setAsaasApiKey(e.target.value)}
+                  placeholder="$aact_..."
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Configurações → Integrações → API Key na conta Asaas do organizador.
+                </p>
+              </div>
+              <div>
+                <Label>Wallet ID Asaas</Label>
+                <Input
+                  className="mt-1 font-mono text-xs"
+                  value={asaasWalletId}
+                  onChange={(e) => setAsaasWalletId(e.target.value)}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  ID da carteira do organizador para receber o split de pagamento.
+                </p>
+              </div>
             </div>
           </div>
         )}

@@ -1,10 +1,9 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Copy, MessageCircle } from "lucide-react";
-import { toast } from "sonner";
-import { useSettings, useWhatsappLink } from "@/contexts/SettingsContext";
 import type { Product } from "@/data/products";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "@/lib/router-compat";
+import { ArrowRight } from "lucide-react";
 
 type Props = {
   product: Product | null;
@@ -12,80 +11,90 @@ type Props = {
   onOpenChange: (v: boolean) => void;
 };
 
+function parsePrice(price?: string): number {
+  if (!price) return 0;
+  return parseFloat(price.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+}
+
 export const ProductPurchaseDialog = ({ product, open, onOpenChange }: Props) => {
-  const { productPayment } = useSettings();
-  const buildWhats = useWhatsappLink();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   if (!product) return null;
 
-  const copyPix = () => {
-    if (!productPayment.pixKey) return;
-    navigator.clipboard.writeText(productPayment.pixKey);
-    toast.success("Chave PIX copiada!");
-  };
+  const value = parsePrice(product.price);
 
-  const whatsMessage =
-    `Olá! Quero comprar o produto: ${product.name}` +
-    (product.price ? ` (${product.price})` : "") +
-    `. Vou enviar o comprovante do PIX e combinar a entrega/retirada.`;
+  const handleCheckout = () => {
+    onOpenChange(false);
+    navigate(`/checkout/${product.id}`);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display">{product.name}</DialogTitle>
-          <DialogDescription>
-            Pague via PIX e envie o comprovante no WhatsApp para combinar entrega ou retirada.
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {product.price && (
-            <div className="bg-secondary/40 rounded-xl p-4 flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Valor</span>
-              <span className="font-display text-xl font-bold text-brand">{product.price}</span>
+        <div className="space-y-5">
+          {product.image && (
+            <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-border/50 bg-card">
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
             </div>
           )}
 
-          {(productPayment.pixKey || productPayment.pixRecipient || productPayment.instructions) ? (
-            <div className="border border-brand/40 bg-brand/5 rounded-xl p-4 space-y-3">
-              <h3 className="font-display font-bold text-brand">Pagamento via PIX</h3>
-              {productPayment.pixRecipient && (
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Recebedor: </span>
-                  <span className="font-medium">{productPayment.pixRecipient}</span>
-                </div>
-              )}
-              {productPayment.pixKey && (
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Chave PIX</div>
-                  <div className="flex gap-2">
-                    <Input readOnly value={productPayment.pixKey} className="font-mono text-sm" />
-                    <Button type="button" variant="outline" size="icon" onClick={copyPix} aria-label="Copiar chave PIX">
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {productPayment.instructions && (
-                <p className="text-sm whitespace-pre-line text-foreground/80">{productPayment.instructions}</p>
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+            <div>
+              <h3 className="font-display text-base font-bold leading-tight text-foreground">
+                {product.name}
+              </h3>
+              {product.description && (
+                <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                  {product.description}
+                </p>
               )}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Toque em "Falar no WhatsApp" para combinar pagamento e entrega com o time.
+
+            {product.price && (
+              <div className="border-t border-border pt-3 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Produto</span>
+                  <span className="font-medium">{product.name}</span>
+                </div>
+                <div className="flex justify-between font-bold text-base pt-2 border-t border-border">
+                  <span>Total</span>
+                  <span className="text-brand">{product.price}</span>
+                </div>
+                <p className="text-xs text-muted-foreground pt-1">
+                  Pagamento via PIX ou cartão de crédito.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            A retirada do produto é combinada com a equipe após a confirmação do pagamento.
+          </p>
+
+          {!user && (
+            <p className="text-sm text-center text-muted-foreground">
+              Faça login para prosseguir com a compra.
             </p>
           )}
 
-          <Button asChild variant="brand" size="lg" className="w-full">
-            <a href={buildWhats(whatsMessage)} target="_blank" rel="noreferrer">
-              <MessageCircle className="w-4 h-4" /> Enviar comprovante no WhatsApp
-            </a>
+          <Button
+            variant="brand"
+            size="lg"
+            className="w-full"
+            disabled={!user || value <= 0}
+            onClick={handleCheckout}
+          >
+            Ir para o pagamento <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
-
-          <p className="text-xs text-muted-foreground text-center">
-            A entrega ou retirada da camiseta é combinada direto com o time pelo WhatsApp.
-          </p>
         </div>
       </DialogContent>
     </Dialog>

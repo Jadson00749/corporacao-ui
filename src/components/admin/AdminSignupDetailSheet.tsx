@@ -67,6 +67,7 @@ export type AdminSignupDetailRow = {
   shirt_size: string | null;
   coupon_code: string;
   team_name: string;
+  payment_method?: string | null;
   participant_full_name?: string | null;
   participant_cpf?: string | null;
   participant_birth_date?: string | null;
@@ -704,6 +705,18 @@ export const AdminSignupDetailSheet = ({ signup, open, onOpenChange, onSaved }: 
                     />
                     <Field label="Equipe" value={dash(row.team_name || row.profiles?.team_name)} />
                     <Field label="Cupom" value={dash(row.coupon_code)} />
+                    <Field
+                      label="Forma de pagamento"
+                      value={
+                        row.payment_method === "CREDIT_CARD"
+                          ? "Cartão de crédito"
+                          : row.payment_method === "PIX"
+                          ? "PIX"
+                          : row.payment_method === "BOLETO"
+                          ? "Boleto"
+                          : "—"
+                      }
+                    />
                     {row.notes ? <Field label="Observações" value={row.notes} /> : null}
                   </dl>
                 </section>

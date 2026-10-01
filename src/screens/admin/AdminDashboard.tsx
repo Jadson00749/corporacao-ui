@@ -257,6 +257,22 @@ const AdminDashboard = () => {
   });
   const { data: organizerPayment } = useOrganizerPayment(!isAdmin ? organizerId : null);
 
+  const { data: currentOrganizer } = useQuery({
+    enabled: !isAdmin && !!organizerId,
+    queryKey: ["current_organizer_commission", organizerId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("organizers")
+        .select("commission_percentage")
+        .eq("id", organizerId)
+        .maybeSingle();
+      if (error) return null;
+      return data as { commission_percentage: number | null } | null;
+    },
+  });
+
+  const commissionPct = !isAdmin ? Number(currentOrganizer?.commission_percentage ?? 0) : 0;
+
   const { data: rentalRows = [] } = useQuery({
     queryKey: ["admin_dashboard_rentals", isAdmin ? "all" : organizerId],
     enabled: isAdmin || !!organizerId,
@@ -1077,6 +1093,7 @@ const AdminDashboard = () => {
           <DashboardFinancialStats
             metrics={metrics}
             isAdmin={isAdmin}
+            commissionPct={commissionPct}
             partnerView={partnerMode ? partnerView : undefined}
             onOpenPartners={
               isAdmin && !partnerMode && partnerOptions.length > 0

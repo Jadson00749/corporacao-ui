@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SEO } from "@/components/site/SEO";
 import { ProfileFields } from "@/components/account/ProfileFields";
@@ -15,6 +15,7 @@ import { signupSchema, SignupValues } from "@/lib/profileSchema";
 import { onlyDigits } from "@/lib/cpf";
 import { LogoMark } from "@/components/site/LogoMark";
 import { Eye, EyeOff } from "lucide-react";
+
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -77,6 +78,7 @@ const Auth = () => {
   const [params] = useSearchParams();
   const redirectTo = params.get("redirect") || "";
   const { user, isAdmin, loading } = useAuth();
+  const [tab, setTab] = useState<"login" | "signup">(redirectTo ? "signup" : "login");
   const [submitting, setSubmitting] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -129,21 +131,24 @@ const Auth = () => {
             </p>
           </div>
 
-          <Tabs defaultValue={redirectTo ? "signup" : "login"} className="w-full">
-            <TabsList className="grid grid-cols-2 w-full mb-8 p-1.5 h-auto bg-muted/70 rounded-2xl border border-border">
-              <TabsTrigger
-                value="login"
-                className="rounded-xl py-2.5 text-sm font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/60 transition-all"
-              >
-                Entrar
-              </TabsTrigger>
-              <TabsTrigger
-                value="signup"
-                className="rounded-xl py-2.5 text-sm font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-border/60 transition-all"
-              >
-                Criar conta
-              </TabsTrigger>
-            </TabsList>
+          <div className="w-full">
+            <div className="grid grid-cols-2 w-full mb-8 p-1.5 bg-muted/70 rounded-2xl border border-border">
+              {(["login", "signup"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTab(t)}
+                  className={cn(
+                    "rounded-xl py-2.5 text-sm font-semibold transition-all",
+                    tab === t
+                      ? "bg-card text-foreground shadow-sm ring-1 ring-border/60"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {t === "login" ? "Entrar" : "Criar conta"}
+                </button>
+              ))}
+            </div>
 
             <GoogleSignIn redirectTo={redirectTo} />
 
@@ -156,7 +161,7 @@ const Auth = () => {
               </div>
             </div>
 
-            <TabsContent value="login" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+            {tab === "login" ? (
               <form onSubmit={handleLogin} className="space-y-5">
                 <div className="space-y-1.5">
                   <Label htmlFor="email" className="text-sm font-medium">E-mail</Label>
@@ -224,15 +229,13 @@ const Auth = () => {
                   Esqueci minha senha
                 </button>
               </form>
-            </TabsContent>
-
-            <TabsContent value="signup" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+            ) : (
               <SignupForm onDone={() => {
                 const dest = redirectTo || "/minha-conta";
                 navigate(dest, { replace: true });
               }} />
-            </TabsContent>
-          </Tabs>
+            )}
+          </div>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">

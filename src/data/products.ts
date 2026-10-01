@@ -14,6 +14,7 @@ export type Product = {
   price?: string;
   description: string;
   ctaMessage: string;
+  sizes?: string[];
 };
 
 export const products: Product[] = [

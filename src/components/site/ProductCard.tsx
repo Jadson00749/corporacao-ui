@@ -1,11 +1,29 @@
 import { useState } from "react";
 import { Product } from "@/data/products";
-import { MessageCircle, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { MessageCircle, ChevronLeft, ChevronRight, ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWhatsappLink } from "@/contexts/SettingsContext";
+import { useCart } from "@/contexts/CartContext";
 
-export const ProductCard = ({ product }: { product: Product }) => {
+export const ProductCard = ({
+  product,
+  onBuy,
+}: {
+  product: Product;
+  onBuy?: (size?: string) => void;
+}) => {
   const whatsappLink = useWhatsappLink();
+  const { items } = useCart();
+  const inCart = items.some((i) => i.product.id === product.id);
+  const hasSizes = (product.sizes?.length ?? 0) > 0;
+  // Count per size already in cart for this product
+  const sizeCountsInCart = items
+    .filter((i) => i.product.id === product.id)
+    .reduce<Record<string, number>>((acc, i) => {
+      if (i.selectedSize) acc[i.selectedSize] = (acc[i.selectedSize] ?? 0) + i.quantity;
+      return acc;
+    }, {});
+
   const gallery = (product.images && product.images.length > 0
     ? product.images
     : [product.image]
@@ -90,22 +108,66 @@ export const ProductCard = ({ product }: { product: Product }) => {
           {product.price && (
             <div className="font-display text-lg font-semibold text-foreground tracking-tight">{product.price}</div>
           )}
-          <a
-            data-whatsapp-cta
-            href={whatsappLink(
-              product.ctaMessage ||
-                `Olá! Tenho interesse no produto: ${product.name}${product.price ? ` (${product.price})` : ""}. Quero combinar a retirada.`
-            )}
-            target="_blank"
-            rel="noreferrer"
-            className="group/cta inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase text-foreground hover:text-brand transition-colors"
-          >
-            <MessageCircle className="w-3.5 h-3.5" />
-            Pedir
-            <span className="w-4 h-px bg-foreground/40 group-hover/cta:w-8 group-hover/cta:bg-brand transition-all duration-300" />
-            <ArrowRight className="w-3 h-3 opacity-0 -translate-x-1 group-hover/cta:opacity-100 group-hover/cta:translate-x-0 transition-all duration-300" />
-          </a>
+          {onBuy && !hasSizes ? (
+            <button
+              type="button"
+              onClick={() => onBuy()}
+              className={cn(
+                "group/cta inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase transition-colors",
+                inCart ? "text-brand" : "text-foreground hover:text-brand"
+              )}
+            >
+              {inCart ? <Check className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+              {inCart ? "Adicionado" : "Adicionar"}
+              <span className={cn("h-px transition-all duration-300", inCart ? "w-8 bg-brand" : "w-4 bg-foreground/40 group-hover/cta:w-8 group-hover/cta:bg-brand")} />
+            </button>
+          ) : !onBuy ? (
+            <a
+              data-whatsapp-cta
+              href={whatsappLink(
+                product.ctaMessage ||
+                  `Olá! Tenho interesse no produto: ${product.name}${product.price ? ` (${product.price})` : ""}. Quero combinar a retirada.`
+              )}
+              target="_blank"
+              rel="noreferrer"
+              className="group/cta inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase text-foreground hover:text-brand transition-colors"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Pedir
+              <span className="w-4 h-px bg-foreground/40 group-hover/cta:w-8 group-hover/cta:bg-brand transition-all duration-300" />
+              <ArrowRight className="w-3 h-3 opacity-0 -translate-x-1 group-hover/cta:opacity-100 group-hover/cta:translate-x-0 transition-all duration-300" />
+            </a>
+          ) : null}
         </div>
+
+        {/* Tamanhos sempre visíveis — clicar adiciona ao carrinho */}
+        {hasSizes && onBuy && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {product.sizes!.map((size) => {
+              const qty = sizeCountsInCart[size] ?? 0;
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => onBuy(size)}
+                  className={cn(
+                    "relative px-2.5 py-1 rounded-lg border text-xs font-semibold uppercase tracking-wide transition-all",
+                    qty > 0
+                      ? "border-brand bg-brand/10 text-brand"
+                      : "border-border bg-background text-foreground hover:border-brand hover:text-brand hover:bg-brand/10"
+                  )}
+                >
+                  {size}
+                  {qty > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-brand text-background text-[9px] font-bold leading-none">
+                      {qty}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </article>
   );

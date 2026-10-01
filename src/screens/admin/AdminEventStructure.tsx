@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { brl } from "@/hooks/useOrganizerStats";
 import { cn } from "@/lib/utils";
 import { whatsappLinkFor } from "@/lib/eventPayment";
+import { RentalPaymentStep } from "@/components/site/RentalPaymentStep";
 import {
   CATALOG_COLUMNS,
   KIND_LABEL,
@@ -502,20 +503,42 @@ const AdminEventStructure = () => {
             O valor exibido é uma estimativa da locação e não representa pagamento realizado.
           </p>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            {whatsLink && (
-              <Button asChild variant="outline" className="sm:flex-1">
-                <a href={whatsLink} target="_blank" rel="noreferrer">
-                  <MessageCircle className="w-4 h-4" /> Enviar solicitação pelo WhatsApp
-                </a>
-              </Button>
-            )}
-            {status === "requested" && (
-              <Button variant="ghost" onClick={editRequest} disabled={reopen.isPending}>
-                {reopen.isPending ? "Reabrindo..." : "Editar solicitação"}
-              </Button>
-            )}
-          </div>
+          {status === "contracted" ? (
+            <div className="rounded-xl border border-success/30 bg-success/10 px-4 py-4 text-sm space-y-1">
+              <p className="font-semibold text-success">✓ Pagamento confirmado — locação contratada!</p>
+              <p className="text-muted-foreground">Aguarde o contato da equipe para alinhamento da entrega.</p>
+            </div>
+          ) : status === "approved" ? (
+            <RentalPaymentStep
+              rentalOrderId={order!.id}
+              value={requestedTotal}
+              customer={{
+                name: organizerName || profile?.full_name || "",
+                cpfCnpj: profile?.cpf?.replace(/\D/g, "") || "",
+                email: profile?.email ?? "",
+                phone: profile?.whatsapp?.replace(/\D/g, "") || "",
+              }}
+              description={`Locação de estrutura — ${order?.event_name || event?.name || ""}`}
+              onSuccess={() => {
+                toast.success("Pagamento realizado! Sua locação está confirmada.");
+              }}
+            />
+          ) : (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {whatsLink && (
+                <Button asChild variant="outline" className="sm:flex-1">
+                  <a href={whatsLink} target="_blank" rel="noreferrer">
+                    <MessageCircle className="w-4 h-4" /> Enviar solicitação pelo WhatsApp
+                  </a>
+                </Button>
+              )}
+              {status === "requested" && (
+                <Button variant="ghost" onClick={editRequest} disabled={reopen.isPending}>
+                  {reopen.isPending ? "Reabrindo..." : "Editar solicitação"}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         /* ---------- Catálogo + rascunho ---------- */

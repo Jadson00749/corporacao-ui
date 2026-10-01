@@ -88,6 +88,7 @@ import {
 import { BirthDateInput } from "@/components/account/BirthDateInput";
 
 import { PixPayment } from "@/components/site/PixPayment";
+import { AsaasPaymentStep } from "@/components/site/AsaasPaymentStep";
 import { Confetti } from "@/components/site/Confetti";
 import { useEventStorePublicEnabled } from "@/lib/eventStoreDev";
 import {
@@ -234,6 +235,8 @@ const ProvaInscricao = () => {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [asaasPaid, setAsaasPaid] = useState(false);
+
   const [signupId, setSignupId] = useState<string | null>(null);
   const [resumeDismissed, setResumeDismissed] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
@@ -1407,13 +1410,22 @@ const ProvaInscricao = () => {
                   <div className="text-center">
                     <CheckCircle2 className="w-11 h-11 text-success mx-auto mb-2" />
                     <h1 className="font-display text-xl sm:text-2xl font-bold mb-2">Inscrição registrada! 🎉</h1>
-                    {payableAmount > 0 ? (
+                    {asaasPaid ? (
+                      <>
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-success/40 bg-success/15 px-3 py-1 text-xs font-semibold text-success">
+                          ✅ Pagamento confirmado
+                        </span>
+                        <p className="text-muted-foreground text-sm mt-2.5">
+                          Seu pagamento foi processado e sua inscrição está confirmada. Em breve você receberá um e-mail de confirmação.
+                        </p>
+                      </>
+                    ) : payableAmount > 0 ? (
                       <>
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/15 px-3 py-1 text-xs font-semibold text-warning">
                           🟡 Aguardando pagamento
                         </span>
                         <p className="text-muted-foreground text-sm mt-2.5">
-                          Seu cadastro foi salvo. Agora falta realizar o pagamento e enviar o comprovante para concluir a confirmação.
+                          Seu cadastro foi salvo. Agora falta realizar o pagamento para concluir a confirmação.
                         </p>
                       </>
                     ) : (
@@ -1534,12 +1546,31 @@ const ProvaInscricao = () => {
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-brand mb-2">
                           2. Realize o pagamento
                         </p>
-                        {payView.unavailable ? (
+                        {payView.loading ? (
+                          <p className="text-sm text-muted-foreground">Carregando dados de pagamento…</p>
+                        ) : (event as any)?.organizer_id ? (
+                          <>
+                            <AsaasPaymentStep
+                              eventId={event.id}
+                              organizerId={(event as any).organizer_id}
+                              value={payableAmount}
+                              maxInstallments={(event as any).installments ?? 1}
+                              customer={{
+                                name: pName,
+                                cpfCnpj: pCpf,
+                                email: user.email ?? "",
+                                phone: pPhone || profile?.whatsapp || "",
+                              }}
+                              description={`Inscrição: ${event.name} — ${distance}`}
+                              signupId={signupId ?? undefined}
+                              userId={user?.id}
+                              onSuccess={() => {}}
+                            />
+                          </>
+                        ) : payView.unavailable ? (
                           <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-foreground/90">
                             {PAYMENT_UNAVAILABLE_MESSAGE}
                           </p>
-                        ) : payView.loading ? (
-                          <p className="text-sm text-muted-foreground">Carregando dados de pagamento…</p>
                         ) : (
                           <PixPayment
                             pixKey={payment.pix_key}
@@ -1559,35 +1590,6 @@ const ProvaInscricao = () => {
                         )}
                       </div>
 
-                      <div className="space-y-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          3. Envie o comprovante
-                        </p>
-                        {payView.unavailable ? (
-                          <p className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-                            O envio de comprovante ficará disponível assim que os dados de pagamento
-                            forem carregados corretamente.
-                          </p>
-                        ) : payView.loading ? null : proofLink ? (
-                          <>
-                            <Button asChild variant="outline" size="lg" className="w-full">
-                              <a href={proofLink} target="_blank" rel="noreferrer">
-                                <MessageCircle className="w-4 h-4" /> Enviar comprovante
-                              </a>
-                            </Button>
-                            {payView.is_partner && payView.organizer_name && (
-                              <p className="text-center text-xs text-muted-foreground">
-                                O comprovante vai para {payView.organizer_name}, organizador desta prova.
-                              </p>
-                            )}
-                          </>
-                        ) : (
-                          <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-foreground/80">
-                            O organizador desta prova ainda não configurou um WhatsApp para receber
-                            comprovantes. Guarde o comprovante e fale com a organização.
-                          </p>
-                        )}
-                      </div>
                     </>
                   )}
 

@@ -165,6 +165,44 @@ const MinhaConta = () => {
     if (!loading && !user) navigate("/auth", { replace: true });
   }, [loading, user, navigate]);
 
+  const confirmedSignups = signups.filter((s) => s.status === "confirmada");
+  const pendingSignups = signups.filter((s) => s.status !== "confirmada" && s.status !== "cancelada");
+  const kidsIncomplete = incompleteKidsSignups(signups);
+
+  const attentionItems = useMemo((): AttentionItem[] => {
+    const items: AttentionItem[] = [];
+    if (pendingSignups.length > 0) {
+      items.push({
+        id: "pending-pay",
+        title:
+          pendingSignups.length === 1
+            ? "1 inscrição aguardando pagamento"
+            : `${pendingSignups.length} inscrições aguardando pagamento`,
+        description: "Realize o pagamento para confirmar sua inscrição.",
+        onClick: () => {
+          setActiveTab("signups");
+          setStatusFilter("pending");
+          setTimeout(() => signupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+        },
+      });
+    }
+    if (kidsIncomplete.length > 0) {
+      items.push({
+        id: "kids-data",
+        title:
+          kidsIncomplete.length === 1
+            ? "Dados do participante incompletos"
+            : `${kidsIncomplete.length} participantes com dados incompletos`,
+        description: "Informe nome e data de nascimento para classificação Kids.",
+        onClick: () => {
+          setActiveTab("signups");
+          setTimeout(() => signupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+        },
+      });
+    }
+    return items;
+  }, [pendingSignups.length, kidsIncomplete.length]);
+
   if (loading || !user) {
     return (
       <Layout>
@@ -201,8 +239,6 @@ const MinhaConta = () => {
   ];
   const completionPct = Math.round((completionFields.filter(Boolean).length / completionFields.length) * 100);
 
-  const confirmedSignups = signups.filter((s) => s.status === "confirmada");
-  const pendingSignups = signups.filter((s) => s.status !== "confirmada" && s.status !== "cancelada");
   const latestSignup = signups[0];
   const startOfToday = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
   const upcomingSignups = signups.filter(
@@ -214,45 +250,6 @@ const MinhaConta = () => {
       : statusFilter === "confirmed"
       ? confirmedSignups
       : signups;
-
-  const kidsIncomplete = incompleteKidsSignups(signups);
-
-  const attentionItems = useMemo((): AttentionItem[] => {
-    const items: AttentionItem[] = [];
-    // Cadastro incompleto já tem IncompleteProfileBanner — não duplicar aqui.
-    if (pendingSignups.length > 0) {
-      items.push({
-        id: "pending-pay",
-        title:
-          pendingSignups.length === 1
-            ? "1 inscrição aguardando pagamento"
-            : `${pendingSignups.length} inscrições aguardando pagamento`,
-        description: "Pague via PIX e envie o comprovante para confirmar.",
-        onClick: () => {
-          setActiveTab("signups");
-          setStatusFilter("pending");
-          setTimeout(() => signupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-        },
-      });
-    }
-    if (kidsIncomplete.length > 0) {
-      items.push({
-        id: "kids-data",
-        title:
-          kidsIncomplete.length === 1
-            ? "Dados do participante incompletos"
-            : `${kidsIncomplete.length} participantes com dados incompletos`,
-        description: "Informe nome e data de nascimento para classificação Kids.",
-        onClick: () => {
-          setActiveTab("signups");
-          setTimeout(() => signupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-        },
-      });
-    }
-    return items;
-  }, [pendingSignups.length, kidsIncomplete.length]);
-
-
 
   return (
     <Layout>
@@ -785,7 +782,7 @@ const SignupCard = ({
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-stretch">
           {s.events?.id && (
             <Button asChild variant="brand" className="h-11 min-h-11 w-full flex-1 touch-manipulation sm:flex-[1.4]">
-              <Link to={`/provas/${s.events.id}/inscricao?retomar=${s.id}`}>Pagar via PIX</Link>
+              <Link to={`/provas/${s.events.id}/inscricao?retomar=${s.id}`}>Realizar pagamento</Link>
             </Button>
           )}
           {payView.unavailable ? (

@@ -14,6 +14,7 @@ const AdminProducts = () => (
       { key: "image", label: "Imagem", type: "image", hint: "Recomendado 1080 × 1080 px (quadrada 1:1)." },
       { key: "price", label: "Preço (ex: R$ 120)" },
       { key: "description", label: "Descrição", type: "textarea" },
+      { key: "sizes", label: "Tamanhos disponíveis (ex: P, M, G, GG)", type: "tags" },
       { key: "cta_message", label: "Mensagem do botão (WhatsApp)" },
       { key: "active", label: "Ativo (aparece no site)", type: "boolean" },
       { key: "sort_order", label: "Ordem", type: "number" },

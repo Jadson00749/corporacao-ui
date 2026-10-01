@@ -16,6 +16,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ScrollToTop } from "@/components/site/ScrollToTop";
 import NotFound from "@/screens/NotFound";
@@ -112,7 +113,9 @@ function RootComponent() {
         <ThemeProvider>
           <AuthProvider>
             <SettingsProvider>
-              <Outlet />
+              <CartProvider>
+                <Outlet />
+              </CartProvider>
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>

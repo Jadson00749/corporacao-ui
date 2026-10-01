@@ -143,10 +143,12 @@ export type OrganizerPayment = {
   payment_whatsapp: string | null;
   payment_email: string | null;
   payment_contact_name: string | null;
+  asaas_api_key: string | null;
+  asaas_wallet_id: string | null;
 };
 
 export const ORGANIZER_PAYMENT_COLUMNS =
-  "id,name,pix_key,pix_recipient,payment_whatsapp,payment_email,payment_contact_name";
+  "id,name,pix_key,pix_recipient,payment_whatsapp,payment_email,payment_contact_name,asaas_api_key,asaas_wallet_id";
 
 export type OrganizerPaymentInput = {
   pix_key: string;
@@ -154,6 +156,8 @@ export type OrganizerPaymentInput = {
   payment_whatsapp: string;
   payment_email: string;
   payment_contact_name: string;
+  asaas_api_key: string;
+  asaas_wallet_id: string;
 };
 
 export const useOrganizerPayment = (organizerId?: string | null) =>
@@ -179,6 +183,8 @@ export const useOrganizerPayment = (organizerId?: string | null) =>
             ...(res.data as OrganizerPayment),
             payment_email: "",
             payment_contact_name: "",
+            asaas_api_key: null,
+            asaas_wallet_id: null,
           };
         }
       }
@@ -202,6 +208,7 @@ export const useSaveOrganizerPayment = (organizerId?: string | null) => {
         _payment_whatsapp: input.payment_whatsapp.replace(/\D/g, ""),
         _payment_email: input.payment_email.trim(),
         _payment_contact_name: input.payment_contact_name.trim(),
+        _asaas_wallet_id: input.asaas_wallet_id?.trim() || null,
       });
       if (error) throw error;
       const row = (Array.isArray(data) ? data[0] : data) as OrganizerPayment | null;
@@ -220,6 +227,8 @@ export const useSaveOrganizerPayment = (organizerId?: string | null) => {
         payment_whatsapp: row.payment_whatsapp ?? "",
         payment_email: row.payment_email ?? "",
         payment_contact_name: row.payment_contact_name ?? "",
+        asaas_api_key: row.asaas_api_key ?? null,
+        asaas_wallet_id: row.asaas_wallet_id ?? null,
       }));
       qc.invalidateQueries({ queryKey: ["organizer_payment", id] });
       qc.invalidateQueries({ queryKey: ["event_payment_info"] });

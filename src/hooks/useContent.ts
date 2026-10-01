@@ -275,6 +275,7 @@ export const useProducts = () =>
         price: r.price ?? undefined,
         description: r.description,
         ctaMessage: r.cta_message,
+        sizes: ((r as any).sizes ?? []) as string[],
       }));
     },
   });
