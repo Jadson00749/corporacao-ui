@@ -1356,7 +1356,7 @@ const ProvaInscricao = () => {
           <div className="flex justify-between font-bold text-base pt-2 border-t border-border">
             <span>Valor final</span><span className="text-brand">{brl(total)}</span>
           </div>
-          <p className="text-xs text-muted-foreground pt-1">Pagamento via PIX após a confirmação.</p>
+          <p className="text-xs text-muted-foreground pt-1">Pagamento seguro via PIX ou cartão de crédito.</p>
         </div>
       )}
 
@@ -1555,6 +1555,7 @@ const ProvaInscricao = () => {
                               organizerId={(event as any).organizer_id}
                               value={payableAmount}
                               maxInstallments={(event as any).installments ?? 1}
+                              allowedPaymentMethods={(event as any).allowed_payment_methods ?? "both"}
                               customer={{
                                 name: pName,
                                 cpfCnpj: pCpf,

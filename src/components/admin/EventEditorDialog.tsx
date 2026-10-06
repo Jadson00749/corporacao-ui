@@ -528,6 +528,23 @@ export const EventEditorDialog = ({
                       Inscrição interna no site (desligue para usar link externo)
                     </span>
                   </div>
+                  {editing.internal_signup && (
+                    <Field label="Métodos de pagamento aceitos">
+                      <Select
+                        value={(editing as any).allowed_payment_methods ?? "both"}
+                        onValueChange={(v) => setEditing({ ...editing, allowed_payment_methods: v } as any)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="both">PIX e Cartão de crédito</SelectItem>
+                          <SelectItem value="pix">Somente PIX</SelectItem>
+                          <SelectItem value="credit_card">Somente Cartão de crédito</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
                   {!editing.internal_signup && (
                     <Field label="Link externo de inscrição">
                       <Input value={editing.registration_url} onChange={(e) => setEditing({ ...editing, registration_url: e.target.value })} placeholder="https://..." />

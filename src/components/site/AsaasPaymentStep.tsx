@@ -32,12 +32,13 @@ type Props = {
   description?: string;
   userId?: string;
   successRedirect?: string;
+  allowedPaymentMethods?: "both" | "pix" | "credit_card";
   onSuccess?: (method: "pix" | "credit-card") => void;
 };
 
 type Method = "pix" | "credit-card" | null;
 
-export function AsaasPaymentStep({ eventId, organizerId, value, maxInstallments = 12, customer, description, signupId, productId, userId, successRedirect = "/minha-conta", onSuccess }: Props) {
+export function AsaasPaymentStep({ eventId, organizerId, value, maxInstallments = 12, customer, description, signupId, productId, userId, successRedirect = "/minha-conta", allowedPaymentMethods = "both", onSuccess }: Props) {
   const navigate = useNavigate();
   const [method, setMethod] = useState<Method>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -199,19 +200,24 @@ export function AsaasPaymentStep({ eventId, organizerId, value, maxInstallments 
             >
               ← Trocar forma de pagamento
             </button>
-          ) : (
+          ) : allowedPaymentMethods === "both" ? (
             "Escolha a forma de pagamento"
+          ) : allowedPaymentMethods === "pix" ? (
+            "Pagamento via PIX"
+          ) : (
+            "Pagamento via Cartão de crédito"
           )}
         </p>
       </div>
 
       {/* ── Seleção inicial ── */}
       {!method && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className={allowedPaymentMethods === "both" ? "grid grid-cols-1 gap-3 sm:grid-cols-2" : "flex justify-center"}>
+          {(allowedPaymentMethods === "both" || allowedPaymentMethods === "pix") && (
           <button
             type="button"
             onClick={() => handleSelectMethod("pix")}
-            className="group flex flex-col items-center gap-3 rounded-2xl border border-border bg-background/60 p-5 text-center transition-all hover:border-brand/60 hover:bg-brand/5 hover:shadow-sm"
+            className={`group flex flex-col items-center gap-3 rounded-2xl border border-border bg-background/60 p-5 text-center transition-all hover:border-brand/60 hover:bg-brand/5 hover:shadow-sm${allowedPaymentMethods === "pix" ? " w-full max-w-xs" : ""}`}
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-full border border-brand/30 bg-brand/10 transition-all group-hover:bg-brand/20">
               <QrCode className="h-6 w-6 text-brand" />
@@ -225,11 +231,13 @@ export function AsaasPaymentStep({ eventId, organizerId, value, maxInstallments 
             </span>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-brand transition-colors" />
           </button>
+          )}
 
+          {(allowedPaymentMethods === "both" || allowedPaymentMethods === "credit_card") && (
           <button
             type="button"
             onClick={() => handleSelectMethod("credit-card")}
-            className="group flex flex-col items-center gap-3 rounded-2xl border border-border bg-background/60 p-5 text-center transition-all hover:border-brand/60 hover:bg-brand/5 hover:shadow-sm"
+            className={`group flex flex-col items-center gap-3 rounded-2xl border border-border bg-background/60 p-5 text-center transition-all hover:border-brand/60 hover:bg-brand/5 hover:shadow-sm${allowedPaymentMethods === "credit_card" ? " w-full max-w-xs" : ""}`}
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-full border border-brand/30 bg-brand/10 transition-all group-hover:bg-brand/20">
               <CreditCard className="h-6 w-6 text-brand" />
@@ -243,6 +251,7 @@ export function AsaasPaymentStep({ eventId, organizerId, value, maxInstallments 
             </span>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-brand transition-colors" />
           </button>
+          )}
         </div>
       )}
 
