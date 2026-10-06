@@ -49,7 +49,7 @@ import type { EventSignup } from "@/hooks/useProfile";
 import { ParticipantsPanel } from "@/components/account/ParticipantsPanel";
 import { CompleteParticipantCard } from "@/components/account/CompleteParticipantCard";
 import { AccountEventStoreOrders } from "@/components/account/AccountEventStoreOrders";
-import { useMyEventStoreOrders } from "@/lib/eventStore";
+import { useMyEventStoreOrders, orderItemsToAcquired, type MyEventStoreOrderRow } from "@/lib/eventStore";
 import { isEventStorePublicEnabled } from "@/lib/eventStoreDev";
 import { TabsCoachmark } from "@/components/site/TabsCoachmark";
 import { AttentionNeeded, type AttentionItem } from "@/components/site/AttentionNeeded";
@@ -80,6 +80,7 @@ const MinhaConta = () => {
     standaloneOnly: true,
     enabled: !!user,
   });
+  const { data: allOrders = [] } = useMyEventStoreOrders({ enabled: !!user });
   const showComprasTab =
     isEventStorePublicEnabled() || storeOrders.length > 0;
   const { data: trainings = [], isLoading: trainingsLoading } = useTrainings();
@@ -592,6 +593,7 @@ const MinhaConta = () => {
                             highlight={s.id === highlightId}
                             responsibleName={profile?.full_name || ""}
                             pricing={eventPricingById.get(s.event_id)}
+                            orders={allOrders.filter((o) => o.signup_id === s.id && o.status !== "cancelada")}
                           />
                         ))
                       )}
@@ -645,11 +647,13 @@ const SignupCard = ({
   highlight = false,
   responsibleName = "",
   pricing,
+  orders = [],
 }: {
   signup: EventSignup;
   highlight?: boolean;
   responsibleName?: string;
   pricing?: SignupPricing;
+  orders?: MyEventStoreOrderRow[];
 }) => {
   const isConfirmed = s.status === "confirmada";
   const isCancelled = s.status === "cancelada";
@@ -847,6 +851,17 @@ const SignupCard = ({
           )}
         </div>
       </details>
+
+      {orders.flatMap((o) => orderItemsToAcquired(o)).length > 0 && (
+        <div className="mt-2 border-t border-border/40 pt-2 space-y-0.5">
+          {orders.flatMap((o) => orderItemsToAcquired(o)).map((item, i) => (
+            <p key={i} className="text-xs text-muted-foreground">
+              <Package className="inline h-3 w-3 mr-1 opacity-50" />
+              {item.name}{item.variant_name ? ` · ${item.variant_name}` : ""}{item.quantity > 1 ? ` × ${item.quantity}` : ""}
+            </p>
+          ))}
+        </div>
+      )}
     </article>
   );
 };

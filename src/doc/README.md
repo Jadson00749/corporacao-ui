@@ -2,11 +2,29 @@
 
 ## O que foi implementado?
 
-Integração de pagamentos via **Asaas** no fluxo de inscrição em provas. O atleta escolhe entre **PIX** ou **Cartão de Crédito**, paga, e a inscrição é confirmada automaticamente — sem nenhuma ação manual do organizador ou da plataforma.
+Integração de pagamentos via **Asaas** nos fluxos de inscrição em provas, compra de produtos e locação de estruturas. O atleta/organizador escolhe entre **PIX** ou **Cartão de Crédito**, paga, e a confirmação acontece automaticamente via webhook — sem nenhuma ação manual.
 
 ---
 
-## Como funciona o fluxo no front-end?
+## Arquitetura de pagamentos
+
+**Todas as cobranças passam pela conta Asaas do dono da plataforma (`is_platform_owner = true`).** Isso garante webhook único, sem necessidade de configuração por cliente.
+
+| Fluxo | Conta que cria a cobrança | Split |
+|---|---|---|
+| Inscrições em provas | Dono da plataforma | Valor líquido → wallet do organizador |
+| Compra de produtos | Dono da plataforma | Sem split (100% para o dono) |
+| Locação de estruturas | Dono da plataforma | Sem split (100% para o dono) |
+
+### Por que tudo passa pelo dono?
+
+- **Webhook único** → o Asaas notifica apenas a conta que criou a cobrança. Com todos os pagamentos na conta do dono, um único webhook recebe todos os eventos.
+- **Escalável** → novos clientes/organizadores não precisam configurar webhook.
+- **Controle total** → a plataforma tem visibilidade de todas as transações.
+
+---
+
+## Como funciona o fluxo de inscrições em provas?
 
 ```
 Atleta conclui formulário de inscrição
@@ -17,11 +35,12 @@ Atleta escolhe o método e paga
       ↓
 Front-end chama a API do backend (corporacao-nest-apis) com:
   - dados do atleta (nome, CPF, e-mail)
-  - valor, eventId, organizerId, signupId (externalReference)
+  - valor, eventId, organizerId, signupId
       ↓
-Backend processa no Asaas e retorna confirmação
+Backend cria a cobrança usando a API key do DONO da plataforma
+Split automático: (100 - commission_percentage)% → wallet do organizador
       ↓
-Asaas notifica o backend via Webhook
+Asaas notifica o backend via Webhook (conta do dono)
       ↓
 Backend atualiza event_signups.status = 'confirmada' no Supabase
       ↓
@@ -32,113 +51,107 @@ Modal "Pagamento confirmado!" é exibido → redireciona para /minha-conta
 
 ---
 
-## Arquivos envolvidos
+## Como funciona o split de comissão?
 
-```
-src/
-├── components/site/
-│   └── AsaasPaymentStep.tsx      # Componente principal: seleção de método, PIX e cartão
-│
-├── screens/
-│   └── ProvaInscricao.tsx        # Tela de inscrição — integra o AsaasPaymentStep
-│                                  # e exibe o modal de confirmação
-│
-├── screens/admin/
-│   ├── AdminOrganizers.tsx       # Aba Pagamento: admin cadastra API Key + Wallet ID
-│   └── OrganizerPaymentSettings.tsx # Tela do organizador: cadastra Wallet ID
-│
-├── lib/
-│   └── eventPayment.ts           # Tipos, hook useOrganizerPayment, useSaveOrganizerPayment
-│
-└── services/
-    └── paymentService.ts         # Chamadas HTTP para o backend (createPixPayment, createCreditCardPayment)
-```
+- A cobrança é criada na conta do **dono** com a API key dele
+- O Asaas automaticamente repassa `(100 - commission_percentage)%` para o **wallet do organizador**
+- O dono retém `commission_percentage`% como comissão da plataforma
+- **PIX:** repasse instantâneo no momento do pagamento
+- **Cartão parcelado:** repasse parcela a parcela pelo Asaas automaticamente
+
+**Exemplo:** inscrição de R$70,00 com 10% de comissão
+- Organizador recebe: R$63,00 (90%)
+- Dono retém: R$7,00 (10%)
 
 ---
 
-## O que o organizador precisa fornecer?
+## O que cada cliente/organizador precisa fornecer?
 
 | Dado | Onde obter | Quem cadastra | Coluna no banco (`organizers`) |
 |---|---|---|---|
-| **API Key Asaas** | Painel Asaas → Configurações → Integrações → API Key | Admin (privado) | `asaas_api_key` |
-| **Wallet ID** | Painel Asaas → Configurações → Dados da conta | Organizador (tela "Dados de pagamento") ou Admin | `asaas_wallet_id` |
+| **Wallet ID** | Painel Asaas → Configurações → Dados da conta | Organizador ou Admin | `asaas_wallet_id` |
 | **Comissão (%)** | Definida pelo admin da plataforma | Admin | `commission_percentage` |
 
-> **API Key:** fica restrita ao admin. O organizador não vê esse campo.
-> **Wallet ID:** o organizador pode informar diretamente na tela "Dados de pagamento" do painel dele.
+> O organizador **não precisa** fornecer API Key — a cobrança é criada sempre com a API key do dono da plataforma.
+
+---
+
+## O que o dono da plataforma precisa configurar?
+
+| Dado | Coluna no banco (`organizers`) | Obrigatório |
+|---|---|---|
+| API Key Asaas | `asaas_api_key` | Sim — todas as cobranças usam essa chave |
+| Wallet ID Asaas | `asaas_wallet_id` | Sim — recebe a comissão via split |
+| `is_platform_owner` | `is_platform_owner = true` | Sim — identifica o dono |
 
 ---
 
 ## Como cadastrar no banco
 
+**Dono da plataforma:**
 ```sql
+ALTER TABLE organizers DISABLE TRIGGER organizers_guard_non_payment_update;
+
 UPDATE organizers
 SET
-  asaas_api_key         = '$aact_...',         -- API Key do organizador (privado)
+  asaas_api_key   = '$aact_...',        -- API Key da conta do dono
+  asaas_wallet_id = 'uuid-da-carteira'  -- Wallet ID da conta do dono
+WHERE is_platform_owner = true;
+
+ALTER TABLE organizers ENABLE TRIGGER organizers_guard_non_payment_update;
+```
+
+**Organizador (cliente):**
+```sql
+ALTER TABLE organizers DISABLE TRIGGER organizers_guard_non_payment_update;
+
+UPDATE organizers
+SET
   asaas_wallet_id       = 'uuid-da-carteira',  -- Wallet ID do organizador
-  commission_percentage = 15                   -- % de comissão da plataforma
+  commission_percentage = 10                   -- % de comissão da plataforma
 WHERE id = 'uuid-do-organizador';
+
+ALTER TABLE organizers ENABLE TRIGGER organizers_guard_non_payment_update;
 ```
 
 ---
 
-## Fluxo PIX
+## Arquivos envolvidos
 
 ```
-Atleta clica em PIX
-  → paymentService.createPixPayment({ eventId, organizerId, value, customer, externalReference: signupId })
-  → Backend cria cobrança PIX no Asaas com split automático
-  → Retorna QR Code (imagem base64 + copia-e-cola)
-  → Atleta paga
-  → Asaas → Webhook → backend confirma inscrição
-  → Supabase Realtime → frontend exibe modal
-```
-
-## Fluxo Cartão de Crédito
-
-```
-Atleta preenche dados do cartão (com flip visual 3D) e escolhe parcelas (1x–12x)
-  → paymentService.createCreditCardPayment({ ..., installmentCount, creditCard, creditCardHolderInfo, externalReference: signupId })
-  → Backend processa no Asaas com split automático
-  → Asaas retorna CONFIRMED
-  → Asaas → Webhook → backend confirma inscrição
-  → Supabase Realtime → frontend exibe modal
-  → Comissão fica em "Splits a receber" e é repassada conforme cada parcela é paga
+src/
+├── components/site/
+│   ├── AsaasPaymentStep.tsx      # Inscrições: PIX e cartão com split
+│   ├── CartPaymentStep.tsx       # Produtos: PIX e cartão sem split
+│   └── RentalPaymentStep.tsx     # Locações: PIX e cartão sem split
+│
+├── screens/
+│   ├── ProvaInscricao.tsx        # Tela de inscrição — integra AsaasPaymentStep
+│   └── ProdutoCheckout.tsx       # Checkout de produtos — integra CartPaymentStep
+│
+├── screens/admin/
+│   ├── AdminOrganizers.tsx       # Admin cadastra Wallet ID e comissão do organizador
+│   └── OrganizerPaymentSettings.tsx # Organizador cadastra próprio Wallet ID
+│
+├── lib/
+│   └── eventPayment.ts           # Tipos e hook useOrganizerPayment
+│
+└── services/
+    └── paymentService.ts         # Chamadas HTTP para o backend
 ```
 
 ---
 
 ## Realtime — como a confirmação chega ao front
 
-O `AsaasPaymentStep` cria um canal Supabase Realtime no mount e escuta atualizações na tabela `event_signups`. Quando o `status` muda para `'confirmada'` e o `id` bate com o `signupId` atual, o callback `onSuccess` é chamado.
-
-Padrão de refs usado para evitar closures stale:
-```ts
-signupIdRef.current  // sempre aponta para o signupId mais recente
-onSuccessRef.current // sempre aponta para o callback mais recente
-methodRef.current    // método de pagamento usado (pix | credit-card)
-```
+O `AsaasPaymentStep` cria um canal Supabase Realtime no mount e escuta atualizações na tabela `event_signups`. Quando o `status` muda para `'confirmada'` e o `id` bate com o `signupId` atual, o modal de confirmação é exibido.
 
 ---
 
-## Split de comissão
+## Webhook
 
-- A plataforma recebe `commission_percentage`% de cada pagamento
-- O organizador recebe o restante direto na carteira Asaas dele (`asaas_wallet_id`)
-- **PIX:** comissão cai instantaneamente no extrato da plataforma
-- **Cartão parcelado:** comissão fica em "A receber" e é repassada parcela a parcela pelo Asaas automaticamente
+O webhook está configurado na conta **do dono da plataforma** no Asaas. Ele recebe todos os eventos de pagamento (PIX confirmado, cartão aprovado, pagamento atrasado) e atualiza o status no Supabase automaticamente.
 
----
-
-## Telas de configuração
-
-### Admin (`/admin/organizers`)
-- Aba **Pagamento** no dialog de gerenciamento do organizador
-- Campos: Chave PIX, Beneficiário, WhatsApp, E-mail, Responsável financeiro, **API Key Asaas**, **Wallet ID Asaas**
-- Salva diretamente na tabela `organizers` via Supabase
-
-### Organizador (`/admin/payment-settings`)
-- Tela "Dados de pagamento" acessível apenas pelo próprio organizador
-- Campos visíveis: Chave PIX, Beneficiário, WhatsApp, E-mail, Responsável, **Wallet ID Asaas**
-- API Key **não é exibida** para o organizador — é gerenciada apenas pelo admin
-- Salva via RPC `update_organizer_payment_settings` (SECURITY DEFINER — só atualiza o próprio organizador)
+Eventos tratados:
+- `PAYMENT_RECEIVED` → inscrição `confirmada` / produto `paid` / locação `contracted`
+- `PAYMENT_OVERDUE` → inscrição `pagamento_atrasado`
