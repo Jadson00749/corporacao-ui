@@ -8,6 +8,8 @@ type Props = {
   title?: string;
   description?: string;
   buttonLabel?: string;
+  whatsappHref?: string;
+  whatsappLabel?: string;
 };
 
 export function PaymentSuccessModal({
@@ -16,6 +18,8 @@ export function PaymentSuccessModal({
   title = "Pagamento confirmado!",
   description = "Seu pedido foi registrado com sucesso.",
   buttonLabel = "Ver produtos",
+  whatsappHref,
+  whatsappLabel = "Chamar nosso time no WhatsApp",
 }: Props) {
   return (
     <Dialog open={open} onOpenChange={() => {}}>
@@ -28,7 +32,12 @@ export function PaymentSuccessModal({
             <DialogTitle className="font-display text-xl font-bold">{title}</DialogTitle>
             <p className="text-sm text-muted-foreground">{description}</p>
           </div>
-          <Button className="w-full" onClick={onNavigate}>
+          {whatsappHref && (
+            <Button className="w-full bg-[#25D366] hover:bg-[#1ebe5d] text-white" asChild>
+              <a href={whatsappHref} target="_blank" rel="noreferrer">{whatsappLabel}</a>
+            </Button>
+          )}
+          <Button variant="outline" className="w-full" onClick={onNavigate}>
             {buttonLabel}
           </Button>
         </div>

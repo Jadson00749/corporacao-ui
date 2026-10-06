@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { formatCPF, formatCEP } from "@/lib/cpf";
 import { supabase } from "@/integrations/supabase/client";
 import { PaymentSuccessModal } from "./PaymentSuccessModal";
+import { useWhatsappLink } from "@/contexts/SettingsContext";
 
 const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -27,6 +28,7 @@ type Method = "pix" | "credit-card" | null;
 
 export function CartPaymentStep({ productIds, value, customer, description, disabled, disabledReason, onSuccess }: Props) {
   const navigate = useNavigate();
+  const whatsappLink = useWhatsappLink();
   const [method, setMethod] = useState<Method>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -426,8 +428,11 @@ export function CartPaymentStep({ productIds, value, customer, description, disa
       <PaymentSuccessModal
         open={showSuccessModal}
         onNavigate={() => { onSuccess?.(); navigate("/produtos"); }}
-        description="Seu pedido foi registrado com sucesso."
+        title="Pedido confirmado!"
+        description="Sua retirada precisa ser combinada com a equipe. Entre em contato para alinhar os detalhes."
         buttonLabel="Ver produtos"
+        whatsappHref={whatsappLink("Olá! Acabei de finalizar meu pedido no site e gostaria de alinhar a retirada.")}
+        whatsappLabel="Chamar nosso time no WhatsApp"
       />
     </div>
   );
