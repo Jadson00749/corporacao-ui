@@ -88,6 +88,7 @@ export type CreateCartPixPaymentInput = {
   value: number;
   customer: AsaasCustomer;
   description?: string;
+  userId?: string;
 };
 
 export type CreateCartCreditCardPaymentInput = {
@@ -98,6 +99,7 @@ export type CreateCartCreditCardPaymentInput = {
   creditCard: CreditCardData;
   creditCardHolderInfo: CreditCardHolder;
   description?: string;
+  userId?: string;
 };
 
 export type CreateRentalPixPaymentInput = {

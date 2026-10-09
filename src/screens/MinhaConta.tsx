@@ -49,6 +49,7 @@ import type { EventSignup } from "@/hooks/useProfile";
 import { ParticipantsPanel } from "@/components/account/ParticipantsPanel";
 import { CompleteParticipantCard } from "@/components/account/CompleteParticipantCard";
 import { AccountEventStoreOrders } from "@/components/account/AccountEventStoreOrders";
+import { AccountProductOrders } from "@/components/account/AccountProductOrders";
 import { useMyEventStoreOrders, orderItemsToAcquired, type MyEventStoreOrderRow } from "@/lib/eventStore";
 import { isEventStorePublicEnabled } from "@/lib/eventStoreDev";
 import { TabsCoachmark } from "@/components/site/TabsCoachmark";
@@ -69,7 +70,7 @@ const formatDate = (d: string) =>
 const formatDateShort = (d: string) =>
   dateFromYMD(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 
-type AccountTab = "signups" | "compras" | "participants" | "data";
+type AccountTab = "signups" | "compras" | "pedidos" | "participants" | "data";
 
 const MinhaConta = () => {
   const navigate = useNavigate();
@@ -105,6 +106,7 @@ const MinhaConta = () => {
     if (typeof window === "undefined") return;
     const tab = new URLSearchParams(window.location.search).get("tab");
     if (tab === "compras" && showComprasTab) setActiveTab("compras");
+    else if (tab === "pedidos") setActiveTab("pedidos");
     else if (tab === "participants") setActiveTab("participants");
     else if (tab === "data") setActiveTab("data");
     else if (tab === "signups") setActiveTab("signups");
@@ -470,6 +472,20 @@ const MinhaConta = () => {
               ) : null}
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === "pedidos"}
+                onClick={() => setActiveTab("pedidos")}
+                className={cn(
+                  "px-5 py-3.5 text-sm font-semibold whitespace-nowrap cursor-pointer transition-all duration-200 border-b-2 -mb-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-brand/40 rounded-t-lg",
+                  activeTab === "pedidos"
+                    ? "text-brand border-brand bg-accent-brand/5"
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:border-border hover:bg-muted/40"
+                )}
+              >
+                Meus pedidos
+              </button>
+              <button
+                type="button"
                 ref={tabParticipantsRef}
                 role="tab"
                 aria-selected={activeTab === "participants"}
@@ -607,8 +623,12 @@ const MinhaConta = () => {
               )}
 
               {activeTab === "compras" && showComprasTab ? (
-                <AccountEventStoreOrders />
+                <div className="space-y-8">
+                  <AccountEventStoreOrders />
+                </div>
               ) : null}
+
+              {activeTab === "pedidos" && <AccountProductOrders />}
 
               {activeTab === "participants" && <ParticipantsPanel />}
 

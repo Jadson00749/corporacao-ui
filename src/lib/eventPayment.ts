@@ -156,8 +156,6 @@ export type OrganizerPaymentInput = {
   payment_whatsapp: string;
   payment_email: string;
   payment_contact_name: string;
-  asaas_api_key: string;
-  asaas_wallet_id: string;
 };
 
 export const useOrganizerPayment = (organizerId?: string | null) =>
@@ -208,7 +206,6 @@ export const useSaveOrganizerPayment = (organizerId?: string | null) => {
         _payment_whatsapp: input.payment_whatsapp.replace(/\D/g, ""),
         _payment_email: input.payment_email.trim(),
         _payment_contact_name: input.payment_contact_name.trim(),
-        _asaas_wallet_id: input.asaas_wallet_id?.trim() || null,
       });
       if (error) throw error;
       const row = (Array.isArray(data) ? data[0] : data) as OrganizerPayment | null;

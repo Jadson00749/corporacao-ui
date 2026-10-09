@@ -26,7 +26,6 @@ const OrganizerPaymentSettings = () => {
   const [paymentWhatsapp, setPaymentWhatsapp] = useState("");
   const [paymentEmail, setPaymentEmail] = useState("");
   const [paymentContactName, setPaymentContactName] = useState("");
-  const [asaasWalletId, setAsaasWalletId] = useState("");
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -36,7 +35,6 @@ const OrganizerPaymentSettings = () => {
     setPaymentWhatsapp(pay.payment_whatsapp ?? "");
     setPaymentEmail(pay.payment_email ?? "");
     setPaymentContactName(pay.payment_contact_name ?? "");
-    setAsaasWalletId(pay.asaas_wallet_id ?? "");
     setLoaded(true);
   }, [pay, loaded]);
 
@@ -56,8 +54,6 @@ const OrganizerPaymentSettings = () => {
     payment_whatsapp: paymentWhatsapp,
     payment_email: paymentEmail,
     payment_contact_name: paymentContactName,
-    asaas_api_key: pay?.asaas_api_key ?? "",
-    asaas_wallet_id: asaasWalletId,
   };
   const ready = isOrganizerPaymentReady(draft);
 
@@ -78,7 +74,6 @@ const OrganizerPaymentSettings = () => {
       setPaymentWhatsapp(saved.payment_whatsapp ?? "");
       setPaymentEmail(saved.payment_email ?? "");
       setPaymentContactName(saved.payment_contact_name ?? "");
-      setAsaasWalletId(saved.asaas_wallet_id ?? "");
       toast.success("Dados de pagamento salvos!");
     } catch (e: any) {
       toast.error(e?.message || "Não foi possível salvar.");
@@ -174,18 +169,6 @@ const OrganizerPaymentSettings = () => {
               />
             </div>
 
-            <div className="border-t border-border/60 pt-4 space-y-1">
-              <Label>Wallet ID Asaas</Label>
-              <Input
-                className="mt-1 font-mono text-xs"
-                value={asaasWalletId}
-                onChange={(e) => setAsaasWalletId(e.target.value)}
-                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              />
-              <p className="text-[11px] text-muted-foreground mt-1">
-                ID da sua carteira Asaas para receber pagamentos. Encontre em Configurações → Dados da conta no painel Asaas.
-              </p>
-            </div>
 
             <div className="flex justify-end pt-1">
               <Button variant="brand" onClick={onSave} disabled={save.isPending}>

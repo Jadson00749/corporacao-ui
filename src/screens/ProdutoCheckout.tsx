@@ -235,6 +235,7 @@ const ProdutoCheckout = () => {
             <CartPaymentStep
               productIds={productIds}
               value={value}
+              userId={user?.id}
               customer={{
                 name: profile?.full_name || user.email?.split("@")[0] || "",
                 cpfCnpj: profile?.cpf?.replace(/\D/g, "") || "",

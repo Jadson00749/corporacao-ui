@@ -21,12 +21,13 @@ type Props = {
   description?: string;
   disabled?: boolean;
   disabledReason?: string;
+  userId?: string;
   onSuccess?: () => void;
 };
 
 type Method = "pix" | "credit-card" | null;
 
-export function CartPaymentStep({ productIds, value, customer, description, disabled, disabledReason, onSuccess }: Props) {
+export function CartPaymentStep({ productIds, value, customer, description, disabled, disabledReason, userId, onSuccess }: Props) {
   const navigate = useNavigate();
   const whatsappLink = useWhatsappLink();
   const [method, setMethod] = useState<Method>(null);
@@ -101,7 +102,7 @@ export function CartPaymentStep({ productIds, value, customer, description, disa
   const handleGeneratePix = async () => {
     setPixLoading(true);
     try {
-      const result = await paymentService.createCartPixPayment({ productIds, value, customer, description });
+      const result = await paymentService.createCartPixPayment({ productIds, value, customer, description, userId });
       setPixResult(result);
       if (result.productOrderId) setProductOrderId(result.productOrderId);
     } catch (e: any) {
@@ -144,6 +145,7 @@ export function CartPaymentStep({ productIds, value, customer, description, disa
           addressNumber: holder.addressNumber,
           phone: holder.postalCode || customer.phone,
         },
+        userId,
       });
       setCcResult(result);
       if (result.productOrderId) setProductOrderId(result.productOrderId);
@@ -427,10 +429,10 @@ export function CartPaymentStep({ productIds, value, customer, description, disa
       )}
       <PaymentSuccessModal
         open={showSuccessModal}
-        onNavigate={() => { onSuccess?.(); navigate("/produtos"); }}
+        onNavigate={() => { onSuccess?.(); navigate("/minha-conta?tab=pedidos"); }}
         title="Pedido confirmado!"
         description="Sua retirada precisa ser combinada com a equipe. Entre em contato para alinhar os detalhes."
-        buttonLabel="Ver produtos"
+        buttonLabel="Ver meus pedidos"
         whatsappHref={whatsappLink("Olá! Acabei de finalizar meu pedido no site e gostaria de alinhar a retirada.")}
         whatsappLabel="Chamar nosso time no WhatsApp"
       />

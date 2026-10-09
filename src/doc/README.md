@@ -69,8 +69,11 @@ Modal "Pagamento confirmado!" é exibido → redireciona para /minha-conta
 
 | Dado | Onde obter | Quem cadastra | Coluna no banco (`organizers`) |
 |---|---|---|---|
-| **Wallet ID** | Painel Asaas → Configurações → Dados da conta | Organizador ou Admin | `asaas_wallet_id` |
-| **Comissão (%)** | Definida pelo admin da plataforma | Admin | `commission_percentage` |
+| **API Key Asaas** | Painel Asaas → Integrações → Chave de API | Admin (somente via banco) | `asaas_api_key` |
+| **Wallet ID** | Painel Asaas → Integrações → Wallet ID | Admin (somente via banco) | `asaas_wallet_id` |
+| **Comissão (%)** | Definida pelo admin da plataforma | Admin (somente via banco) | `commission_percentage` |
+
+> ⚠️ **Segurança:** As credenciais Asaas (`asaas_api_key` e `asaas_wallet_id`) **nunca são editadas pelo front-end**. Qualquer pessoa com DevTools aberto conseguiria interceptá-las. O cadastro é feito **exclusivamente via Supabase dashboard ou SQL direto**. Ver script em "Como cadastrar no banco".
 
 > O organizador **não precisa** fornecer API Key — a cobrança é criada sempre com a API key do dono da plataforma.
 
@@ -121,17 +124,20 @@ ALTER TABLE organizers ENABLE TRIGGER organizers_guard_non_payment_update;
 ```
 src/
 ├── components/site/
-│   ├── AsaasPaymentStep.tsx      # Inscrições: PIX e cartão com split
-│   ├── CartPaymentStep.tsx       # Produtos: PIX e cartão sem split
+│   ├── AsaasPaymentStep.tsx      # Inscrições: PIX e cartão com split (suporta allowed_payment_methods)
+│   ├── CartPaymentStep.tsx       # Produtos: PIX e cartão sem split — redireciona para /minha-conta?tab=pedidos
 │   └── RentalPaymentStep.tsx     # Locações: PIX e cartão sem split
 │
+├── components/account/
+│   └── AccountProductOrders.tsx  # Aba "Meus pedidos" em Minha Conta — lista product_orders do usuário
+│
 ├── screens/
-│   ├── ProvaInscricao.tsx        # Tela de inscrição — integra AsaasPaymentStep
-│   └── ProdutoCheckout.tsx       # Checkout de produtos — integra CartPaymentStep
+│   ├── ProvaInscricao.tsx        # Tela de inscrição — passa allowed_payment_methods para AsaasPaymentStep
+│   └── ProdutoCheckout.tsx       # Checkout de produtos — passa userId para CartPaymentStep
 │
 ├── screens/admin/
-│   ├── AdminOrganizers.tsx       # Admin cadastra Wallet ID e comissão do organizador
-│   └── OrganizerPaymentSettings.tsx # Organizador cadastra próprio Wallet ID
+│   ├── AdminOrganizers.tsx       # Admin gerencia comissão e dados do organizador (credenciais Asaas apenas via banco)
+│   └── OrganizerPaymentSettings.tsx # Organizador edita dados financeiros (PIX, WhatsApp, e-mail)
 │
 ├── lib/
 │   └── eventPayment.ts           # Tipos e hook useOrganizerPayment
@@ -145,6 +151,28 @@ src/
 ## Realtime — como a confirmação chega ao front
 
 O `AsaasPaymentStep` cria um canal Supabase Realtime no mount e escuta atualizações na tabela `event_signups`. Quando o `status` muda para `'confirmada'` e o `id` bate com o `signupId` atual, o modal de confirmação é exibido.
+
+---
+
+## Métodos de pagamento por evento (`allowed_payment_methods`)
+
+Cada evento pode restringir os métodos de pagamento aceitos. O campo `allowed_payment_methods` na tabela `events` aceita:
+
+| Valor | Comportamento |
+|---|---|
+| `both` (padrão) | Exibe PIX e Cartão de crédito |
+| `pix` | Exibe somente PIX |
+| `credit_card` | Exibe somente Cartão de crédito |
+
+O admin configura isso no painel de edição do evento. O `AsaasPaymentStep` recebe a prop `allowedPaymentMethods` e oculta automaticamente o método não permitido. Quando há somente um método, o texto de instrução também muda.
+
+---
+
+## Aba "Meus pedidos" (product_orders)
+
+Após comprar produtos, o usuário pode ver o histórico em **Minha Conta → Meus pedidos**. O registro é salvo na tabela `product_orders` com `user_id` preenchido. O componente `AccountProductOrders` busca esses pedidos filtrados pelo usuário logado e exibe status, valor e detalhes de cada compra.
+
+Após o pagamento ser confirmado, o modal redireciona para `/minha-conta?tab=pedidos` abrindo direto na aba correta.
 
 ---
 
