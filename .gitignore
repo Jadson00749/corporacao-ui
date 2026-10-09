@@ -1,3 +1,6 @@
+# Secrets — never commit
+src/doc/SECRETS.md
+
 # Logs
 logs
 *.log
