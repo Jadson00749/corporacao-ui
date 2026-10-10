@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, MessageCircle } from "lucide-react";
+import { useWhatsappLink } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -75,13 +76,26 @@ export function AccountProductOrders() {
 
   if (!user) return null;
 
+  const whatsappLink = useWhatsappLink();
+
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="font-display text-xl font-bold">Meus pedidos</h2>
-        <p className="text-sm text-muted-foreground">
-          Produtos adquiridos na loja da Corporação.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-bold">Meus pedidos</h2>
+          <p className="text-sm text-muted-foreground">
+            Produtos adquiridos na loja da Corporação.
+          </p>
+        </div>
+        <a
+          href={whatsappLink("Olá! Gostaria de tirar uma dúvida sobre meu pedido.")}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-brand/30 bg-brand/10 px-3 py-2 text-sm font-medium text-brand hover:bg-brand/20 transition-colors"
+        >
+          <MessageCircle className="w-4 h-4" />
+          Falar com a assessoria
+        </a>
       </div>
 
       {loading ? (

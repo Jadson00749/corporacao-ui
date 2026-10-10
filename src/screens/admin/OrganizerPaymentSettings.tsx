@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Info, Wallet } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   isOrganizerPaymentReady,
@@ -20,12 +22,14 @@ const OrganizerPaymentSettings = () => {
   const { organizerId, isAdmin } = useAuth();
   const { data: pay, isLoading } = useOrganizerPayment(organizerId);
   const save = useSaveOrganizerPayment(organizerId);
+  const qc = useQueryClient();
 
   const [pixKey, setPixKey] = useState("");
   const [pixRecipient, setPixRecipient] = useState("");
   const [paymentWhatsapp, setPaymentWhatsapp] = useState("");
   const [paymentEmail, setPaymentEmail] = useState("");
   const [paymentContactName, setPaymentContactName] = useState("");
+  const [useAsaas, setUseAsaas] = useState(true);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -35,8 +39,21 @@ const OrganizerPaymentSettings = () => {
     setPaymentWhatsapp(pay.payment_whatsapp ?? "");
     setPaymentEmail(pay.payment_email ?? "");
     setPaymentContactName(pay.payment_contact_name ?? "");
+    setUseAsaas(pay.use_asaas !== false);
     setLoaded(true);
   }, [pay, loaded]);
+
+  const toggleUseAsaas = async (value: boolean) => {
+    setUseAsaas(value);
+    const { error } = await (supabase as any).rpc("update_organizer_use_asaas", { _use_asaas: value });
+    if (error) {
+      setUseAsaas(!value);
+      toast.error("Não foi possível atualizar o modo de pagamento.");
+    } else {
+      qc.invalidateQueries({ queryKey: ["organizer_payment", organizerId] });
+      toast.success(value ? "Gateway Asaas ativado." : "Modo manual ativado.");
+    }
+  };
 
   // Super Admin gerencia isso em Organizadores › Pagamento.
   if (isAdmin) {
@@ -169,6 +186,26 @@ const OrganizerPaymentSettings = () => {
               />
             </div>
 
+
+            <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Gateway de pagamento (Asaas)</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {useAsaas
+                    ? "Pagamentos processados automaticamente via Asaas."
+                    : "Pagamento manual — usuário paga via PIX e envia comprovante."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleUseAsaas(!useAsaas)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${useAsaas ? "bg-brand" : "bg-input"}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${useAsaas ? "translate-x-5" : "translate-x-0"}`}
+                />
+              </button>
+            </div>
 
             <div className="flex justify-end pt-1">
               <Button variant="brand" onClick={onSave} disabled={save.isPending}>

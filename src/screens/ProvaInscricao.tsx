@@ -408,6 +408,8 @@ const ProvaInscricao = () => {
     isError: paymentError,
     isFetched: paymentFetched,
   } = useEventPayment(event?.id);
+  // use_asaas vem direto da RPC get_event_payment_info — não precisa de query extra
+  const useAsaasGateway = !paymentFetched ? true : (eventPayment?.use_asaas ?? true);
   const payView = resolveAthletePaymentView({
     eventPayment,
     isLoading: paymentLoading,
@@ -1548,7 +1550,7 @@ const ProvaInscricao = () => {
                         </p>
                         {payView.loading ? (
                           <p className="text-sm text-muted-foreground">Carregando dados de pagamento…</p>
-                        ) : (event as any)?.organizer_id ? (
+                        ) : (event as any)?.organizer_id && useAsaasGateway ? (
                           <>
                             <AsaasPaymentStep
                               eventId={event.id}

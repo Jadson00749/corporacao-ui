@@ -18,6 +18,7 @@ export type EventPaymentInfo = {
   payment_contact_name?: string;
   organizer_name: string;
   is_partner: boolean;
+  use_asaas: boolean;
 };
 
 /**
@@ -145,10 +146,11 @@ export type OrganizerPayment = {
   payment_contact_name: string | null;
   asaas_api_key: string | null;
   asaas_wallet_id: string | null;
+  use_asaas: boolean | null;
 };
 
 export const ORGANIZER_PAYMENT_COLUMNS =
-  "id,name,pix_key,pix_recipient,payment_whatsapp,payment_email,payment_contact_name,asaas_api_key,asaas_wallet_id";
+  "id,name,pix_key,pix_recipient,payment_whatsapp,payment_email,payment_contact_name,asaas_api_key,asaas_wallet_id,use_asaas";
 
 export type OrganizerPaymentInput = {
   pix_key: string;

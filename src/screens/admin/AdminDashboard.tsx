@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "@/lib/router-compat";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +13,7 @@ import { OrganizerActivationChecklist } from "@/components/admin/OrganizerActiva
 import { isOrganizerPaymentReady, useOrganizerPayment } from "@/lib/eventPayment";
 import { statusOf } from "@/lib/rentalOrders";
 import { cn } from "@/lib/utils";
-import { Trophy } from "lucide-react";
+import { Trophy, ChevronDown, Check } from "lucide-react";
 import { DashboardQuickActions, type QuickAction } from "@/components/admin/dashboard/DashboardQuickActions";
 import {
   DashboardFinancialStats,
@@ -59,6 +59,19 @@ const AdminDashboard = () => {
   const { user, isAdmin, organizerId } = useAuth();
   const [period, setPeriod] = useState<PeriodKey>("30");
   const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
+  const [eventFilterOpen, setEventFilterOpen] = useState(false);
+  const eventFilterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (eventFilterOpen && !eventFilterRef.current?.contains(e.target as Node)) {
+        setEventFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler, true);
+    return () => document.removeEventListener("mousedown", handler, true);
+  }, [eventFilterOpen]);
 
   /** Visão do Parceiro: só filtro de leitura via search param (?organizer=UUID). */
   const selectedPartnerId = isAdmin ? searchParams.get("organizer") : null;
@@ -303,12 +316,19 @@ const AdminDashboard = () => {
     [organizers]
   );
 
+  const pricingWithMock = pricing as AdminPricingRow[];
+
   /** Escopo operacional da Visão Geral = provas com `active === true` (regra do Admin/site). */
   const activePricing = useMemo(
-    () => (pricing as AdminPricingRow[]).filter((e) => e.active === true),
-    [pricing]
+    () => pricingWithMock.filter((e) => e.active === true),
+    [pricingWithMock]
   );
   const activeEventIds = useMemo(() => new Set(activePricing.map((e) => e.id)), [activePricing]);
+
+  const effectiveEventIds = useMemo(
+    () => (!isAdmin && selectedEventIds.length > 0 ? new Set(selectedEventIds) : activeEventIds),
+    [isAdmin, selectedEventIds, activeEventIds]
+  );
 
   const since = useMemo(() => {
     if (period === "all") return null;
@@ -337,9 +357,9 @@ const AdminDashboard = () => {
 
   const metrics = useMemo(() => {
     const priceMap = new Map(activePricing.map((e) => [e.id, e]));
-    const rows = signups.filter((s) => activeEventIds.has(s.event_id) && inPeriod(s.created_at));
+    const rows = signups.filter((s) => effectiveEventIds.has(s.event_id) && inPeriod(s.created_at));
     const standaloneRows = standaloneOrders.filter(
-      (o) => activeEventIds.has(o.event_id) && inPeriod(o.created_at),
+      (o) => effectiveEventIds.has(o.event_id) && inPeriod(o.created_at),
     );
 
     let confirmed = 0;
@@ -587,7 +607,7 @@ const AdminDashboard = () => {
     // Não duplica: cada order entra uma vez (bundle e standalone são pedidos distintos).
     let productsSoldQty = 0;
     for (const o of confirmedStoreOrders) {
-      if (!activeEventIds.has(o.event_id) || !inPeriod(o.created_at)) continue;
+      if (!effectiveEventIds.has(o.event_id) || !inPeriod(o.created_at)) continue;
       productsSoldQty += o.items_qty || 0;
     }
 
@@ -630,6 +650,7 @@ const AdminDashboard = () => {
     members,
     activePricing,
     activeEventIds,
+    effectiveEventIds,
     since,
     organizerMap,
     pricing,
@@ -660,7 +681,7 @@ const AdminDashboard = () => {
       ),
     [pricing, selectedPartner]
   );
-  const scopeEventIds = partnerMode ? partnerEventIds : activeEventIds;
+  const scopeEventIds = partnerMode ? partnerEventIds : effectiveEventIds;
 
   /**
    * Analytics do parceiro selecionado sobre o histórico completo (todas as provas
@@ -1090,6 +1111,74 @@ const AdminDashboard = () => {
         </div>
       ) : (
         <>
+          {!isAdmin && pricingWithMock.length > 0 && (
+            <div ref={eventFilterRef} className="relative mt-3 flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Filtrar por prova:</span>
+              <button
+                type="button"
+                onClick={() => setEventFilterOpen((v) => !v)}
+                className={cn(
+                  "flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm transition-colors hover:bg-secondary/60",
+                  selectedEventIds.length > 0 && "border-brand/50 text-brand"
+                )}
+              >
+                <span>
+                  {selectedEventIds.length === 0
+                    ? "Todas as provas"
+                    : selectedEventIds.length === 1
+                    ? (pricingWithMock.find((e) => e.id === selectedEventIds[0])?.name ?? "1 prova")
+                    : `${selectedEventIds.length} provas selecionadas`}
+                </span>
+                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", eventFilterOpen && "rotate-180")} />
+              </button>
+              {selectedEventIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedEventIds([])}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Limpar
+                </button>
+              )}
+              <div className={cn(
+                "absolute left-0 top-10 z-50 w-max min-w-48 max-w-[calc(100vw-2rem)] max-h-72 overflow-y-auto rounded-md border border-input bg-popover shadow-md transition-all duration-200 origin-top",
+                eventFilterOpen ? "opacity-100 scale-y-100 pointer-events-auto" : "opacity-0 scale-y-95 pointer-events-none"
+              )}>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedEventIds([]); setEventFilterOpen(false); }}
+                    className={cn(
+                      "flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-secondary/60",
+                      selectedEventIds.length === 0 && "text-brand font-medium"
+                    )}
+                  >
+                    Todas as provas
+                  </button>
+                  <div className="my-1 border-t border-input" />
+                  {pricingWithMock.map((e) => {
+                    const checked = selectedEventIds.includes(e.id);
+                    return (
+                      <button
+                        key={e.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedEventIds((prev) =>
+                            prev.includes(e.id) ? prev.filter((id) => id !== e.id) : [...prev, e.id]
+                          )
+                        }
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-secondary/60"
+                      >
+                        <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-all duration-200", checked ? "border-brand bg-brand text-brand-foreground scale-100" : "border-brand/40 bg-transparent")}>
+                          <Check className={cn("h-3 w-3 transition-all duration-200", checked ? "opacity-100 scale-100" : "opacity-0 scale-50")} />
+                        </span>
+                        <span className="truncate text-left">{e.name || "Prova"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+            </div>
+          )}
+
           <DashboardFinancialStats
             metrics={metrics}
             isAdmin={isAdmin}
